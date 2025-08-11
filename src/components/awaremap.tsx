@@ -18,13 +18,29 @@ interface Position {
   lng: number;
 }
 
+interface CategoryFilter {
+  village: boolean;
+  dwelling: boolean;
+  city: boolean;
+  farm: boolean;
+}
+
+interface CategoryConfig {
+  color: string;
+  opacity: number;
+  icon: string;
+}
+
 interface AwareMapProps {
   radius: number;
   onPositionChange?: (position: Position) => void;
+  categoryFilters: CategoryFilter;
+  categoryConfigs: Record<keyof CategoryFilter, CategoryConfig>;
 }
 
-export default function AwareMap({ radius, onPositionChange }: AwareMapProps) {
+export default function AwareMap({ radius, onPositionChange, categoryFilters, categoryConfigs }: AwareMapProps) {
   const [isClient, setIsClient] = useState(false);
+  const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
@@ -38,5 +54,31 @@ export default function AwareMap({ radius, onPositionChange }: AwareMapProps) {
     );
   }
 
-  return <MapComponent radius={radius} onPositionChange={onPositionChange} />;
+  if (hasError) {
+    return (
+      <div className="w-full h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-lg text-red-600 mb-2">Feil ved lasting av kart</div>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Prøv igjen
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full h-screen">
+      <MapComponent 
+        radius={radius} 
+        onPositionChange={onPositionChange}
+        categoryFilters={categoryFilters}
+        categoryConfigs={categoryConfigs}
+        onError={() => setHasError(true)}
+      />
+    </div>
+  );
 }

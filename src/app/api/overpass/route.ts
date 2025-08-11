@@ -34,35 +34,35 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Overpass API query to get various types of places
+    // Overpass API query to get only the categories we control
     const query = `
       [out:json][timeout:25];
       (
-        // Villages and towns
+        // Villages and settlements
         node(around:${radius}, ${lat}, ${lng})[place=village];
-        node(around:${radius}, ${lat}, ${lng})[place=town];
         node(around:${radius}, ${lat}, ${lng})[place=hamlet];
+        node(around:${radius}, ${lat}, ${lng})[place=town];
+        node(around:${radius}, ${lat}, ${lng})[place=suburb];
         
-        // Farms and farmyards
-        way(around:${radius}, ${lat}, ${lng})[landuse=farmyard];
-        way(around:${radius}, ${lat}, ${lng})[landuse=farmland];
+        // Individual dwellings
+        node(around:${radius}, ${lat}, ${lng})[building=house];
+        node(around:${radius}, ${lat}, ${lng})[building=residential];
+        node(around:${radius}, ${lat}, ${lng})[building=apartments];
+        node(around:${radius}, ${lat}, ${lng})[building=detached];
         
-        // Buildings
-        way(around:${radius}, ${lat}, ${lng})[building=house];
-        way(around:${radius}, ${lat}, ${lng})[building=residential];
-        way(around:${radius}, ${lat}, ${lng})[building=commercial];
-        way(around:${radius}, ${lat}, ${lng})[building=industrial];
+        // Cities (larger settlements)
+        node(around:${radius}, ${lat}, ${lng})[place=city];
         
-        // Amenities
-        node(around:${radius}, ${lat}, ${lng})[amenity];
-        way(around:${radius}, ${lat}, ${lng})[amenity];
-        
-        // Shops and services
-        node(around:${radius}, ${lat}, ${lng})[shop];
-        way(around:${radius}, ${lat}, ${lng})[shop];
+        // Farms (look for farm-related names and landuse)
+        node(around:${radius}, ${lat}, ${lng})[name~="gård"][place];
+        node(around:${radius}, ${lat}, ${lng})[name~="farm"][place];
+        node(around:${radius}, ${lat}, ${lng})[landuse=farmland];
+        node(around:${radius}, ${lat}, ${lng})[landuse=farmyard];
       );
-      out center;
+      out;
     `;
+
+    console.log('Overpass query:', query);
 
     const response = await fetch('https://overpass-api.de/api/interpreter', {
       method: 'POST',
@@ -77,35 +77,30 @@ export async function GET(request: NextRequest) {
     }
 
     const data: OverpassResponse = await response.json();
+    console.log('Overpass response count:', data.elements.length);
 
     // Process and categorize the data
     const places: PlaceData[] = data.elements.map((element) => {
       let category = 'other';
       let name = element.tags?.name || element.tags?.ref || `ID: ${element.id}`;
 
-      // Categorize based on tags
-      if (element.tags?.place === 'village' || element.tags?.place === 'town' || element.tags?.place === 'hamlet') {
+      // Categorize based on tags - only the categories we control
+      if (element.tags?.place === 'village' || element.tags?.place === 'hamlet' || 
+          element.tags?.place === 'town' || element.tags?.place === 'suburb') {
         category = 'village';
-      } else if (element.tags?.landuse === 'farmyard' || element.tags?.landuse === 'farmland') {
+      } else if (element.tags?.building === 'house' || element.tags?.building === 'residential' ||
+                 element.tags?.building === 'apartments' || element.tags?.building === 'detached') {
+        category = 'dwelling';
+      } else if (element.tags?.place === 'city') {
+        category = 'city';
+      } else if (element.tags?.name && (element.tags.name.includes('gård') || element.tags.name.includes('farm')) ||
+                 element.tags?.landuse === 'farmland' || element.tags?.landuse === 'farmyard') {
         category = 'farm';
-      } else if (element.tags?.building) {
-        category = 'building';
-      } else if (element.tags?.amenity) {
-        category = 'amenity';
-      } else if (element.tags?.shop) {
-        category = 'shop';
       }
 
-      // Get coordinates (handle both nodes and ways)
-      let elementLat = element.lat;
-      let elementLng = element.lon;
-
-      // For ways, use center coordinates if available
-      if (element.type === 'way' && !elementLat && !elementLng) {
-        // This is a simplified approach - in a real app you'd want to calculate the center properly
-        elementLat = parseFloat(lat) + (Math.random() - 0.5) * 0.01; // Temporary approximation
-        elementLng = parseFloat(lng) + (Math.random() - 0.5) * 0.01;
-      }
+      // Get coordinates (nodes only for now)
+      const elementLat = element.lat;
+      const elementLng = element.lon;
 
       return {
         id: element.id,
@@ -118,11 +113,16 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    // Filter out invalid coordinates
+    // Filter out invalid coordinates and only include our controlled categories
     const validPlaces = places.filter(place => 
       place.lat && place.lng && 
-      !isNaN(place.lat) && !isNaN(place.lng)
-    );
+      !isNaN(place.lat) && !isNaN(place.lng) &&
+      ['village', 'dwelling', 'city', 'farm'].includes(place.category)
+    ).slice(0, 50); // Limit to 50 results for testing
+
+    console.log('Valid places found:', validPlaces.length);
+    console.log('Categories found:', [...new Set(validPlaces.map(p => p.category))]);
+    console.log('Sample places:', validPlaces.slice(0, 3).map(p => ({ name: p.name, category: p.category })));
 
     return NextResponse.json({
       success: true,

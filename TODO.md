@@ -1,74 +1,72 @@
-# Aware App - TODO List
+# Aware - TODO
 
-## 🎯 Hovedfunksjonalitet
-- [ ] Kart-app som viser brukerens posisjon (GPS) eller manuell navigering
-- [ ] Finne bygninger, gårder, landsbyer rundt valgt posisjon
-- [ ] Vise retning og avstand til omkringliggende steder
-- [ ] Pie-slices som viser retninger og befolkningskategorier
+## Hovedfunksjonalitet
+- [x] Next.js prosjektsetup
+- [x] Leaflet.js integrasjon
+- [x] Kartverkets WMTS som bakgrunnskart
+- [x] GPS-posisjonering (midlertidig deaktivert for testing)
+- [x] Manuell posisjonsvalg via klikk
+- [x] Visning av valgt posisjon
+- [x] Radius-velger (1000m-4000m, 500m steg)
+- [x] Radius-sirkel visning
+- [x] Overpass API integrasjon
+- [x] Serverless API for caching
+- [x] Git repository setup
 
-## 📱 Mobil-først Design
-- [ ] Responsive design for mobil
-- [ ] Touch-friendly interface
-- [ ] Optimalisert for mobile nettlesere
+## Kart og posisjon
+- [x] Kartverkets WMTS Topographic4
+- [x] Default posisjon: 60.424834440433045, 12.408766398367092
+- [ ] GPS-posisjonering (reaktiver senere)
+- [ ] Kompassrose for GPS-modus
+- [ ] Live GPS-sporing
 
-## 🗺️ Kart & Posisjon
-- [ ] Kartverket WMTS som bakgrunnskart (norsk topografi) ✅
-- [ ] GPS-posisjonering på mobil ✅
-- [ ] Manuell kartnavigering (scroll/pan) ✅
-- [ ] Kompassrose når i live GPS-mode
-- [ ] Vise brukerens nåværende posisjon ✅
+## Data og API
+- [x] Overpass API for GIS-data
+- [x] Fokus på boliger (dwellings) først
+- [ ] Utvid til andre kategorier:
+  - [ ] Landsbyer og tettsteder
+  - [ ] Gårder
+  - [ ] Butikker og tjenester
+  - [ ] Offentlige tjenester
+- [ ] Matrikkelen fra Geonorge (for mer nøyaktige bygningstyper)
 
-## 📏 Radius & Avstand
-- [ ] Radius-velger: 1000m - 4000m ✅
-- [ ] Steg på 500m ✅
-- [ ] Vise reell radius på kartet ✅
-- [ ] Pie-slices basert på faktisk radius
+## Pie-slices og visualisering
+- [ ] Implementer pie-slices som viser retninger
+- [ ] Kategorisering med farger:
+  - [ ] Hvit for gårder
+  - [ ] Rød for landsbyer
+  - [ ] Grønn for boliger
+  - [ ] Andre kategorier
+- [ ] SVG overlays på Leaflet
+- [ ] Interaktive pie-slices (ikke klikkbare)
 
-## 🎨 Pie-slices & Kategorier
-- [ ] Hardkodede farger per kategori:
-  - [ ] Gård: Hvit overlay
-  - [ ] Landsby: Rød overlay
-  - [ ] Andre kategorier: TBD
-- [ ] Vise retning til hver kategori
-- [ ] Non-interaktive slices (ikke klikkbare)
-- [ ] SVG overlays på Leaflet (anbefalt implementasjon)
+## UI/UX
+- [x] Mobile-first responsivt design
+- [x] Tailwind CSS styling
+- [x] Radius-kontroll
+- [ ] Forbedre GUI radius-kontroll (fjern gul bakgrunn, bedre styling)
+- [ ] Filter-kontroller for kategorier
+- [ ] Kompassrose-komponent
+- [ ] Loading states
+- [ ] Error handling
 
-## 🔧 Teknisk Setup
-- [ ] Next.js prosjekt ✅
-- [ ] Vercel deployment
-- [ ] Leaflet.js for kart-integrasjon (MVP) ✅
-- [ ] MapLibre GL som fremtidig oppgradering (vektortiles/3D)
-- [ ] Kartverket WMTS tiles ✅
-- [ ] Overpass API integrasjon
-- [ ] Serverless API routes
-- [ ] Responsive CSS framework (Tailwind) ✅
-
-## 📊 Data & API
-- [ ] Overpass API (OSM) for bygninger/landsbyer i radius ✅
-- [ ] Spørringer: landuse=farmyard, place=village, building=* ✅
-- [ ] Matrikkelen fra Geonorge for nøyaktige bygningstyper
-- [ ] Serverless API på Vercel for data-caching ✅
-- [ ] Radius-spørringer mot valgt posisjon ✅
-- [ ] Kartverkets WMTS (topografisk kart, terreng, sjøkart) ✅
-
-## 🎨 UI/UX
-- [ ] Radius-velger komponent
-- [ ] Filter-komponent
-- [ ] Kart-kontroller
-- [ ] Posisjon-indikator
-- [ ] Kompassrose (GPS-mode)
-
-## 🚀 Deployment
-- [ ] Git repository setup ✅ (https://github.com/thenninge/aware.git)
-- [ ] Vercel konfigurasjon
-- [ ] Environment variables
+## Teknisk
+- [x] Client-side rendering (CSR) for Leaflet
+- [x] Dynamisk import for SSR-avoidance
+- [x] Error boundaries
+- [ ] Environment variables setup
 - [ ] Production build
+- [ ] Vercel deployment
 - [ ] Domain setup
 
-## 📝 Notater
-- Hobbyprosjekt, lav trafikk
-- Gratis/billig hosting på Vercel
-- Åpne APIer og datasett
-- Mobil-først tilnærming
-- Start med Leaflet (MVP), oppgrader til MapLibre hvis nødvendig
-- SVG overlays for pie-slices (lettest å prototypere)
+## Testing
+- [x] Local testing med default posisjon
+- [ ] Test på mobil
+- [ ] Test med GPS
+- [ ] Performance testing
+
+## Deployment
+- [ ] Vercel konfigurasjon
+- [ ] Production build
+- [ ] Domain setup
+- [ ] Environment variables
