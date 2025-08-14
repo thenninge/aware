@@ -34,31 +34,12 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Overpass API query to get only the categories we control
+    // Overpass API query using regex matching
     const query = `
       [out:json][timeout:25];
-      (
-        // Villages and settlements
-        node(around:${radius}, ${lat}, ${lng})[place=village];
-        node(around:${radius}, ${lat}, ${lng})[place=hamlet];
-        node(around:${radius}, ${lat}, ${lng})[place=town];
-        node(around:${radius}, ${lat}, ${lng})[place=suburb];
-        
-        // Individual dwellings
-        node(around:${radius}, ${lat}, ${lng})[building=house];
-        node(around:${radius}, ${lat}, ${lng})[building=residential];
-        node(around:${radius}, ${lat}, ${lng})[building=apartments];
-        node(around:${radius}, ${lat}, ${lng})[building=detached];
-        
-        // Cities (larger settlements)
-        node(around:${radius}, ${lat}, ${lng})[place=city];
-        
-        // Farms (look for farm-related names and landuse)
-        node(around:${radius}, ${lat}, ${lng})[name~="gård"][place];
-        node(around:${radius}, ${lat}, ${lng})[name~="farm"][place];
-        node(around:${radius}, ${lat}, ${lng})[landuse=farmland];
-        node(around:${radius}, ${lat}, ${lng})[landuse=farmyard];
-      );
+      node
+        ["place"~"city|town|village|hamlet|farm|isolated_dwelling"]
+        (around:${radius}, ${lat}, ${lng});
       out;
     `;
 
@@ -79,23 +60,24 @@ export async function GET(request: NextRequest) {
     const data: OverpassResponse = await response.json();
     console.log('Overpass response count:', data.elements.length);
 
-    // Process and categorize the data
+    // Process and categorize the data using new categories
     const places: PlaceData[] = data.elements.map((element) => {
       let category = 'other';
       let name = element.tags?.name || element.tags?.ref || `ID: ${element.id}`;
 
-      // Categorize based on tags - only the categories we control
-      if (element.tags?.place === 'village' || element.tags?.place === 'hamlet' || 
-          element.tags?.place === 'town' || element.tags?.place === 'suburb') {
-        category = 'village';
-      } else if (element.tags?.building === 'house' || element.tags?.building === 'residential' ||
-                 element.tags?.building === 'apartments' || element.tags?.building === 'detached') {
-        category = 'dwelling';
-      } else if (element.tags?.place === 'city') {
+      // Categorize based on place tags
+      if (element.tags?.place === 'city') {
         category = 'city';
-      } else if (element.tags?.name && (element.tags.name.includes('gård') || element.tags.name.includes('farm')) ||
-                 element.tags?.landuse === 'farmland' || element.tags?.landuse === 'farmyard') {
+      } else if (element.tags?.place === 'town') {
+        category = 'town';
+      } else if (element.tags?.place === 'village') {
+        category = 'village';
+      } else if (element.tags?.place === 'hamlet') {
+        category = 'hamlet';
+      } else if (element.tags?.place === 'farm') {
         category = 'farm';
+      } else if (element.tags?.place === 'isolated_dwelling') {
+        category = 'isolated_dwelling';
       }
 
       // Get coordinates (nodes only for now)
@@ -117,7 +99,7 @@ export async function GET(request: NextRequest) {
     const validPlaces = places.filter(place => 
       place.lat && place.lng && 
       !isNaN(place.lat) && !isNaN(place.lng) &&
-      ['village', 'dwelling', 'city', 'farm'].includes(place.category)
+      ['city', 'town', 'village', 'hamlet', 'farm', 'isolated_dwelling'].includes(place.category)
     ).slice(0, 50); // Limit to 50 results for testing
 
     console.log('Valid places found:', validPlaces.length);

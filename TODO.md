@@ -22,12 +22,12 @@
 
 ## Data og API
 - [x] Overpass API for GIS-data
-- [x] Fokus på boliger (dwellings) først
-- [ ] Utvid til andre kategorier:
-  - [ ] Landsbyer og tettsteder
-  - [ ] Gårder
-  - [ ] Butikker og tjenester
-  - [ ] Offentlige tjenester
+- [x] Kategorisering basert på place-tags:
+  - [x] place=town (Mindre byer) - 🏙️ Lilla
+  - [x] place=village (Landsby/tettsted) - 🏘️ Rød
+  - [x] place=hamlet (Små bygdesamfunn) - 🏘️ Oransje
+  - [x] place=farm (Store gårder) - 🏡 Hvit
+  - [x] place=isolated_dwelling (Enkelt hus eller liten gård) - 🏠 Grønn
 - [ ] Matrikkelen fra Geonorge (for mer nøyaktige bygningstyper)
 
 ## Pie-slices og visualisering
@@ -49,6 +49,7 @@
 - [ ] Kompassrose-komponent
 - [ ] Loading states
 - [ ] Error handling
+- [ ] Fjern lagg i map-pan (debounce API-kall)
 
 ## Teknisk
 - [x] Client-side rendering (CSR) for Leaflet

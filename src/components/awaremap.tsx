@@ -19,10 +19,12 @@ interface Position {
 }
 
 interface CategoryFilter {
-  village: boolean;
-  dwelling: boolean;
   city: boolean;
+  town: boolean;
+  village: boolean;
+  hamlet: boolean;
   farm: boolean;
+  isolated_dwelling: boolean;
 }
 
 interface CategoryConfig {
@@ -36,9 +38,28 @@ interface AwareMapProps {
   onPositionChange?: (position: Position) => void;
   categoryFilters: CategoryFilter;
   categoryConfigs: Record<keyof CategoryFilter, CategoryConfig>;
+  shouldScan?: boolean;
+  onCategoryChange?: (category: keyof CategoryFilter) => void;
+  onScanArea?: () => void;
+  onRadiusChange?: (radius: number) => void;
+  onCategoryConfigChange?: (category: string, config: CategoryConfig) => void;
+  angleRange?: number;
+  onAngleRangeChange?: (angleRange: number) => void;
 }
 
-export default function AwareMap({ radius, onPositionChange, categoryFilters, categoryConfigs }: AwareMapProps) {
+export default function AwareMap({ 
+  radius, 
+  onPositionChange, 
+  categoryFilters, 
+  categoryConfigs, 
+  shouldScan,
+  onCategoryChange,
+  onScanArea,
+  onRadiusChange,
+  onCategoryConfigChange,
+  angleRange,
+  onAngleRangeChange
+}: AwareMapProps) {
   const [isClient, setIsClient] = useState(false);
   const [hasError, setHasError] = useState(false);
 
@@ -77,7 +98,14 @@ export default function AwareMap({ radius, onPositionChange, categoryFilters, ca
         onPositionChange={onPositionChange}
         categoryFilters={categoryFilters}
         categoryConfigs={categoryConfigs}
+        shouldScan={shouldScan}
         onError={() => setHasError(true)}
+        onCategoryChange={onCategoryChange}
+        onScanArea={onScanArea}
+        onRadiusChange={onRadiusChange}
+        onCategoryConfigChange={onCategoryConfigChange}
+        angleRange={angleRange}
+        onAngleRangeChange={onAngleRangeChange}
       />
     </div>
   );
