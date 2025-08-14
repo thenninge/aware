@@ -61,7 +61,7 @@ export default function SettingsMenu({ categoryConfigs, onCategoryConfigChange, 
   };
 
   return (
-    <div ref={menuRef} className="absolute top-4 right-45 z-[1001]">
+    <div ref={menuRef} className="fixed top-4 right-4 z-[1001]">
       {/* Settings Button */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}

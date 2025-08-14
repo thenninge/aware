@@ -69,7 +69,8 @@ function MapController({
   angleRange,
   showMarkers,
   isLiveMode = false,
-  onLiveModeChange
+  onLiveModeChange,
+  onLoadingChange
 }: { 
   onPositionChange?: (position: Position) => void; 
   radius: number;
@@ -82,6 +83,7 @@ function MapController({
   showMarkers?: boolean;
   isLiveMode?: boolean;
   onLiveModeChange?: (isLive: boolean) => void;
+  onLoadingChange?: (loading: boolean) => void;
 }) {
   const map = useMap();
   const [currentPosition, setCurrentPosition] = useState<Position>({ lat: 60.424834440433045, lng: 12.408766398367092 });
@@ -234,6 +236,7 @@ function MapController({
 
     const fetchPlaces = async () => {
       setLoading(true);
+      onLoadingChange?.(true);
       try {
         console.log('Scanning area for radius:', radius, 'at position:', currentPosition);
         const response = await fetch(
@@ -256,6 +259,7 @@ function MapController({
         setPlaces([]);
       } finally {
         setLoading(false);
+        onLoadingChange?.(false);
       }
     };
 
@@ -398,8 +402,10 @@ export default function MapComponent({
   const [hasError, setHasError] = useState(false);
   const [places, setPlaces] = useState<PlaceData[]>([]);
   const [, setCurrentPosition] = useState<Position>({ lat: 60.424834440433045, lng: 12.408766398367092 });
+  const [isSettingsExpanded, setIsSettingsExpanded] = useState(false);
   const [isFilterExpanded, setIsFilterExpanded] = useState(false);
   const filterMenuRef = useRef<HTMLDivElement>(null);
+  const [isScanning, setIsScanning] = useState(false);
 
   // Close filter menu when clicking outside
   useEffect(() => {
@@ -498,6 +504,7 @@ export default function MapComponent({
           showMarkers={showMarkers}
           isLiveMode={isLiveMode}
           onLiveModeChange={onLiveModeChange}
+          onLoadingChange={setIsScanning}
         />
       </MapContainer>
 
@@ -506,31 +513,52 @@ export default function MapComponent({
         <div className="w-4 h-4 bg-red-600 border-2 border-white rounded-full shadow-lg"></div>
       </div>
 
-      {/* Settings Menu */}
-      <SettingsMenu 
-        categoryConfigs={categoryConfigs}
-        onCategoryConfigChange={onCategoryConfigChange || (() => {})}
-        angleRange={angleRange}
-        onAngleRangeChange={onAngleRangeChange || (() => {})}
-      />
+      {/* Settings & Filter Buttons - Top Right */}
+      <div className="fixed top-4 right-4 z-[1001] flex flex-col gap-2">
+        <button
+          onClick={() => setIsSettingsExpanded((v) => !v)}
+          className="bg-white/90 backdrop-blur-sm w-12 h-12 rounded-lg shadow-lg flex items-center justify-center hover:bg-white transition-colors border border-gray-200"
+          title="Innstillinger"
+        >
+          <span className="text-2xl">⚙️</span>
+        </button>
+        <button
+          onClick={() => setIsFilterExpanded((v) => !v)}
+          className="bg-white/90 backdrop-blur-sm w-12 h-12 rounded-lg shadow-lg flex items-center justify-center hover:bg-white transition-colors border border-gray-200"
+          title="Filter"
+        >
+          <span className="text-2xl">🧩</span>
+        </button>
+      </div>
 
-      {/* Filter controls on right side */}
-      <div ref={filterMenuRef} className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg z-[1000] max-w-xs">
-        {/* Filter Header with Expand/Collapse */}
-        <div className="p-3 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            <div className="text-sm font-medium text-gray-700">Filtrer & Kontroller</div>
-            <button
-              onClick={() => setIsFilterExpanded(!isFilterExpanded)}
-              className="text-gray-500 hover:text-gray-700 transition-colors"
-            >
-              {isFilterExpanded ? '▼' : '▶'}
-            </button>
-          </div>
+      {/* Settings Menu */}
+      {isSettingsExpanded && (
+        <div className="fixed top-20 right-4 z-[1002]">
+          <SettingsMenu
+            categoryConfigs={categoryConfigs}
+            onCategoryConfigChange={onCategoryConfigChange || (() => {})}
+            angleRange={angleRange}
+            onAngleRangeChange={onAngleRangeChange || (() => {})}
+          />
         </div>
-        
-        {/* Expandable Filter Content */}
-        {isFilterExpanded && (
+      )}
+
+      {/* Filter Menu */}
+      {isFilterExpanded && (
+        <div ref={filterMenuRef} className="fixed top-36 right-4 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg z-[1000] max-w-xs">
+          {/* Filter Header with Expand/Collapse */}
+          <div className="p-3 border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              <div className="text-sm font-medium text-gray-700">Filtrer & Kontroller</div>
+              <button
+                onClick={() => setIsFilterExpanded(false)}
+                className="text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+          {/* Expandable Filter Content */}
           <div className="p-3 border-b border-gray-200">
             {/* Radius Control */}
             <div className="mb-3">
@@ -582,92 +610,94 @@ export default function MapComponent({
               />
             </div>
 
-                         {/* Category Filters */}
-             <div className="mb-3">
-               <div className="text-xs font-medium text-gray-700 mb-2">Filtrer:</div>
-               <div className="space-y-1">
-                 {Object.entries(categoryConfigs).map(([category, config]) => (
-                   <label key={category} className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
-                     <input
-                       type="checkbox"
-                       checked={categoryFilters[category as keyof CategoryFilter]}
-                       onChange={() => onCategoryChange?.(category as keyof CategoryFilter)}
-                       className="w-3 h-3 text-blue-600 rounded focus:ring-blue-500"
-                     />
-                     <span 
-                       className="font-medium"
-                       style={{ color: config.color }}
-                     >
-                       {category === 'city' && 'By'}
-                       {category === 'town' && 'Tettsted'}
-                       {category === 'village' && 'Landsby'}
-                       {category === 'hamlet' && 'Grend'}
-                       {category === 'farm' && 'Gård'}
-                       {category === 'isolated_dwelling' && 'Enkeltbolig'}
-                     </span>
-                   </label>
-                 ))}
-               </div>
-             </div>
+            {/* Category Filters */}
+            <div className="mb-3">
+              <div className="text-xs font-medium text-gray-700 mb-2">Filtrer:</div>
+              <div className="space-y-1">
+                {Object.entries(categoryConfigs).map(([category, config]) => (
+                  <label key={category} className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={categoryFilters[category as keyof CategoryFilter]}
+                      onChange={() => onCategoryChange?.(category as keyof CategoryFilter)}
+                      className="w-3 h-3 text-blue-600 rounded focus:ring-blue-500"
+                    />
+                    <span 
+                      className="font-medium"
+                      style={{ color: config.color }}
+                    >
+                      {category === 'city' && 'By'}
+                      {category === 'town' && 'Tettsted'}
+                      {category === 'village' && 'Landsby'}
+                      {category === 'hamlet' && 'Grend'}
+                      {category === 'farm' && 'Gård'}
+                      {category === 'isolated_dwelling' && 'Enkeltbolig'}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
 
-             {/* Show Markers Setting */}
-             <div className="mb-3">
-               <div className="text-xs font-medium text-gray-700 mb-2">Visning:</div>
-               <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
-                 <input
-                   type="checkbox"
-                   checked={showMarkers}
-                   onChange={(e) => onShowMarkersChange?.(e.target.checked)}
-                   className="w-3 h-3 text-blue-600 rounded focus:ring-blue-500"
-                 />
-                 <span className="font-medium text-gray-700">
-                   Vis treff i kart
-                 </span>
-               </label>
-             </div>
+            {/* Show Markers Setting */}
+            <div className="mb-3">
+              <div className="text-xs font-medium text-gray-700 mb-2">Visning:</div>
+              <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={showMarkers}
+                  onChange={(e) => onShowMarkersChange?.(e.target.checked)}
+                  className="w-3 h-3 text-blue-600 rounded focus:ring-blue-500"
+                />
+                <span className="font-medium text-gray-700">
+                  Vis treff i kart
+                </span>
+              </label>
+            </div>
 
-             {/* Live Position Setting */}
-             <div className="mb-3">
-               <div className="text-xs font-medium text-gray-700 mb-2">Live:</div>
-               <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
-                 <input
-                   type="checkbox"
-                   checked={isLiveMode}
-                   onChange={(e) => onLiveModeChange?.(e.target.checked)}
-                   className="w-3 h-3 text-blue-600 rounded focus:ring-blue-500"
-                 />
-                 <span className="font-medium text-gray-700">
-                   Live GPS & Kompass
-                 </span>
-               </label>
-             </div>
-
+            {/* Live Position Setting */}
+            <div className="mb-3">
+              <div className="text-xs font-medium text-gray-700 mb-2">Live:</div>
+              <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={isLiveMode}
+                  onChange={(e) => onLiveModeChange?.(e.target.checked)}
+                  className="w-3 h-3 text-blue-600 rounded focus:ring-blue-500"
+                />
+                <span className="font-medium text-gray-700">
+                  Live GPS & Kompass
+                </span>
+              </label>
+            </div>
           </div>
-        )}
-
-        {/* Live Pos Button - Always Visible */}
-        <div className="p-3 border-b border-gray-200">
-          <button
-            onClick={() => onLiveModeChange?.(!isLiveMode)}
-            className={`w-full px-3 py-2 rounded text-sm font-medium transition-colors shadow-sm ${
-              isLiveMode 
-                ? 'bg-green-600 hover:bg-green-700 text-white' 
-                : 'bg-gray-600 hover:bg-gray-700 text-white'
-            }`}
-          >
-            {isLiveMode ? '📍 Live Pos (ON)' : '📍 Live Pos'}
-          </button>
         </div>
+      )}
 
-        {/* Scan Button - Always Visible */}
-        <div className="p-3">
-          <button
-            onClick={onScanArea}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm font-medium transition-colors shadow-sm"
-          >
-            🔍 Scan område
-          </button>
-        </div>
+      {/* Scan & Live Buttons - Bottom Right */}
+      <div className="fixed bottom-4 right-4 z-[1000] flex flex-col gap-2">
+        <button
+          onClick={onScanArea}
+          disabled={isScanning}
+          className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
+            isScanning 
+              ? 'bg-gray-400 cursor-not-allowed text-white' 
+              : 'bg-blue-600 hover:bg-blue-700 text-white'
+          }`}
+          title={isScanning ? 'Scanning...' : 'Scan område'}
+        >
+          {isScanning ? '⏳' : '🔍'}
+        </button>
+        <button
+          onClick={() => onLiveModeChange?.(!isLiveMode)}
+          className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
+            isLiveMode 
+              ? 'bg-green-600 hover:bg-green-700 text-white' 
+              : 'bg-gray-600 hover:bg-gray-700 text-white'
+          }`}
+          title={isLiveMode ? 'Live GPS ON' : 'Live GPS'}
+        >
+          📍
+        </button>
       </div>
     </div>
   );
