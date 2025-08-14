@@ -6,6 +6,7 @@ import AwareMap from '@/components/awaremap';
 interface Position {
   lat: number;
   lng: number;
+  heading?: number; // Compass heading in degrees (0-360)
 }
 
 interface CategoryFilter {
@@ -37,6 +38,7 @@ export default function Home() {
     const [shouldScan, setShouldScan] = useState(false);
   const [angleRange, setAngleRange] = useState(5); // Default ±5 degrees
   const [showMarkers, setShowMarkers] = useState(true); // Default show markers
+  const [isLiveMode, setIsLiveMode] = useState(false); // Default live mode off
  
   const [categoryConfigs, setCategoryConfigs] = useState<Record<keyof CategoryFilter, CategoryConfig>>({
     city: {
@@ -107,6 +109,10 @@ export default function Home() {
     setShowMarkers(show);
   };
 
+  const handleLiveModeChange = (isLive: boolean) => {
+    setIsLiveMode(isLive);
+  };
+
  
 
   return (
@@ -125,6 +131,8 @@ export default function Home() {
         onAngleRangeChange={handleAngleRangeChange}
         showMarkers={showMarkers}
         onShowMarkersChange={handleShowMarkersChange}
+        isLiveMode={isLiveMode}
+        onLiveModeChange={handleLiveModeChange}
       />
     </div>
   );

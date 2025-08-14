@@ -10,6 +10,7 @@ import SettingsMenu from './settingsmenu';
 interface Position {
   lat: number;
   lng: number;
+  heading?: number; // Compass heading in degrees (0-360)
 }
 
 interface PlaceData {
@@ -37,6 +38,8 @@ interface MapComponentProps {
   onAngleRangeChange?: (angleRange: number) => void;
   showMarkers?: boolean;
   onShowMarkersChange?: (show: boolean) => void;
+  isLiveMode?: boolean;
+  onLiveModeChange?: (isLive: boolean) => void;
 }
 
 interface CategoryFilter {
@@ -64,7 +67,9 @@ function MapController({
   shouldScan,
   onPlacesChange,
   angleRange,
-  showMarkers
+  showMarkers,
+  isLiveMode = false,
+  onLiveModeChange
 }: { 
   onPositionChange?: (position: Position) => void; 
   radius: number;
@@ -75,12 +80,15 @@ function MapController({
   onPlacesChange?: (places: PlaceData[]) => void;
   angleRange?: number;
   showMarkers?: boolean;
-
+  isLiveMode?: boolean;
+  onLiveModeChange?: (isLive: boolean) => void;
 }) {
   const map = useMap();
   const [currentPosition, setCurrentPosition] = useState<Position>({ lat: 60.424834440433045, lng: 12.408766398367092 });
   const [places, setPlaces] = useState<PlaceData[]>([]);
   const [loading, setLoading] = useState(false);
+  const [watchId, setWatchId] = useState<number | null>(null);
+  const [compassId, setCompassId] = useState<number | null>(null);
 
   // Fix Leaflet icons when component mounts
   useEffect(() => {
@@ -140,6 +148,85 @@ function MapController({
       onError?.();
     }
   }, [map, onError, onPositionChange]);
+
+  // GPS and Compass functionality
+  useEffect(() => {
+    // Start compass watching
+    const handleCompass = (event: DeviceOrientationEvent) => {
+      if (event.alpha !== null) {
+        const heading = event.alpha;
+        setCurrentPosition(prev => ({
+          ...prev,
+          heading
+        }));
+        onPositionChange?.({
+          ...currentPosition,
+          heading
+        });
+      }
+    };
+
+    if (!isLiveMode) {
+      // Clean up watchers when live mode is disabled
+      if (watchId) {
+        navigator.geolocation.clearWatch(watchId);
+        setWatchId(null);
+      }
+      if (compassId) {
+        // Clean up compass if available
+        if ('DeviceOrientationEvent' in window) {
+          window.removeEventListener('deviceorientation', handleCompass);
+        }
+        setCompassId(null);
+      }
+      return;
+    }
+
+    // Start GPS watching
+    if ('geolocation' in navigator) {
+      const id = navigator.geolocation.watchPosition(
+        (position) => {
+          const newPosition: Position = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+            heading: currentPosition.heading // Keep existing heading
+          };
+          setCurrentPosition(newPosition);
+          onPositionChange?.(newPosition);
+          
+          // Center map on new position
+          if (map) {
+            map.setView([newPosition.lat, newPosition.lng], map.getZoom());
+          }
+        },
+        (error) => {
+          console.error('GPS error:', error);
+          onError?.();
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 1000
+        }
+      );
+      setWatchId(id);
+    }
+
+    if ('DeviceOrientationEvent' in window) {
+      window.addEventListener('deviceorientation', handleCompass);
+      setCompassId(1); // Just a flag to indicate compass is active
+    }
+
+    // Cleanup function
+    return () => {
+      if (watchId) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+      if ('DeviceOrientationEvent' in window) {
+        window.removeEventListener('deviceorientation', handleCompass);
+      }
+    };
+  }, [isLiveMode, map, onPositionChange, onError, currentPosition]);
 
   // Fetch places when shouldScan is true or radius/category filters change
   useEffect(() => {
@@ -303,7 +390,9 @@ export default function MapComponent({
   angleRange = 5,
   onAngleRangeChange,
   showMarkers = true,
-  onShowMarkersChange
+  onShowMarkersChange,
+  isLiveMode = false,
+  onLiveModeChange
 }: MapComponentProps) {
   const [isLeafletLoaded, setIsLeafletLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
@@ -407,6 +496,8 @@ export default function MapComponent({
           onPlacesChange={setPlaces}
           angleRange={angleRange}
           showMarkers={showMarkers}
+          isLiveMode={isLiveMode}
+          onLiveModeChange={onLiveModeChange}
         />
       </MapContainer>
 
@@ -535,8 +626,38 @@ export default function MapComponent({
                </label>
              </div>
 
+             {/* Live Position Setting */}
+             <div className="mb-3">
+               <div className="text-xs font-medium text-gray-700 mb-2">Live:</div>
+               <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+                 <input
+                   type="checkbox"
+                   checked={isLiveMode}
+                   onChange={(e) => onLiveModeChange?.(e.target.checked)}
+                   className="w-3 h-3 text-blue-600 rounded focus:ring-blue-500"
+                 />
+                 <span className="font-medium text-gray-700">
+                   Live GPS & Kompass
+                 </span>
+               </label>
+             </div>
+
           </div>
         )}
+
+        {/* Live Pos Button - Always Visible */}
+        <div className="p-3 border-b border-gray-200">
+          <button
+            onClick={() => onLiveModeChange?.(!isLiveMode)}
+            className={`w-full px-3 py-2 rounded text-sm font-medium transition-colors shadow-sm ${
+              isLiveMode 
+                ? 'bg-green-600 hover:bg-green-700 text-white' 
+                : 'bg-gray-600 hover:bg-gray-700 text-white'
+            }`}
+          >
+            {isLiveMode ? '📍 Live Pos (ON)' : '📍 Live Pos'}
+          </button>
+        </div>
 
         {/* Scan Button - Always Visible */}
         <div className="p-3">

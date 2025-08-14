@@ -16,6 +16,7 @@ const MapComponent = dynamic(() => import('./mapcomponent'), {
 interface Position {
   lat: number;
   lng: number;
+  heading?: number; // Compass heading in degrees (0-360)
 }
 
 interface CategoryFilter {
@@ -47,6 +48,8 @@ interface AwareMapProps {
   onAngleRangeChange?: (angleRange: number) => void;
   showMarkers?: boolean;
   onShowMarkersChange?: (show: boolean) => void;
+  isLiveMode?: boolean;
+  onLiveModeChange?: (isLive: boolean) => void;
 }
 
 export default function AwareMap({ 
@@ -62,7 +65,9 @@ export default function AwareMap({
   angleRange,
   onAngleRangeChange,
   showMarkers,
-  onShowMarkersChange
+  onShowMarkersChange,
+  isLiveMode,
+  onLiveModeChange
 }: AwareMapProps) {
   const [isClient, setIsClient] = useState(false);
   const [hasError, setHasError] = useState(false);
@@ -112,6 +117,8 @@ export default function AwareMap({
         onAngleRangeChange={onAngleRangeChange}
         showMarkers={showMarkers}
         onShowMarkersChange={onShowMarkersChange}
+        isLiveMode={isLiveMode}
+        onLiveModeChange={onLiveModeChange}
       />
     </div>
   );
