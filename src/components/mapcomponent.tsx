@@ -35,6 +35,8 @@ interface MapComponentProps {
   onCategoryConfigChange?: (category: string, config: CategoryConfig) => void;
   angleRange?: number;
   onAngleRangeChange?: (angleRange: number) => void;
+  showMarkers?: boolean;
+  onShowMarkersChange?: (show: boolean) => void;
 }
 
 interface CategoryFilter {
@@ -61,7 +63,8 @@ function MapController({
   categoryConfigs, 
   shouldScan,
   onPlacesChange,
-  angleRange
+  angleRange,
+  showMarkers
 }: { 
   onPositionChange?: (position: Position) => void; 
   radius: number;
@@ -71,6 +74,7 @@ function MapController({
   shouldScan?: boolean;
   onPlacesChange?: (places: PlaceData[]) => void;
   angleRange?: number;
+  showMarkers?: boolean;
 
 }) {
   const map = useMap();
@@ -210,7 +214,7 @@ function MapController({
       />
 
       {/* Place markers */}
-      {places
+      {showMarkers && places
         .filter(place => {
           // Filter based on category filters
           if (place.category === 'city' && !categoryFilters.city) return false;
@@ -297,7 +301,9 @@ export default function MapComponent({
   onRadiusChange,
   onCategoryConfigChange,
   angleRange = 5,
-  onAngleRangeChange
+  onAngleRangeChange,
+  showMarkers = true,
+  onShowMarkersChange
 }: MapComponentProps) {
   const [isLeafletLoaded, setIsLeafletLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
@@ -400,6 +406,7 @@ export default function MapComponent({
           shouldScan={shouldScan}
           onPlacesChange={setPlaces}
           angleRange={angleRange}
+          showMarkers={showMarkers}
         />
       </MapContainer>
 
@@ -512,6 +519,21 @@ export default function MapComponent({
                </div>
              </div>
 
+             {/* Show Markers Setting */}
+             <div className="mb-3">
+               <div className="text-xs font-medium text-gray-700 mb-2">Visning:</div>
+               <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+                 <input
+                   type="checkbox"
+                   checked={showMarkers}
+                   onChange={(e) => onShowMarkersChange?.(e.target.checked)}
+                   className="w-3 h-3 text-blue-600 rounded focus:ring-blue-500"
+                 />
+                 <span className="font-medium text-gray-700">
+                   Vis treff i kart
+                 </span>
+               </label>
+             </div>
 
           </div>
         )}

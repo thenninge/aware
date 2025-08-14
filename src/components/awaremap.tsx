@@ -45,6 +45,8 @@ interface AwareMapProps {
   onCategoryConfigChange?: (category: string, config: CategoryConfig) => void;
   angleRange?: number;
   onAngleRangeChange?: (angleRange: number) => void;
+  showMarkers?: boolean;
+  onShowMarkersChange?: (show: boolean) => void;
 }
 
 export default function AwareMap({ 
@@ -58,7 +60,9 @@ export default function AwareMap({
   onRadiusChange,
   onCategoryConfigChange,
   angleRange,
-  onAngleRangeChange
+  onAngleRangeChange,
+  showMarkers,
+  onShowMarkersChange
 }: AwareMapProps) {
   const [isClient, setIsClient] = useState(false);
   const [hasError, setHasError] = useState(false);
@@ -104,9 +108,10 @@ export default function AwareMap({
         onScanArea={onScanArea}
         onRadiusChange={onRadiusChange}
         onCategoryConfigChange={onCategoryConfigChange}
-        angleRange={angleRange}
+                angleRange={angleRange}
         onAngleRangeChange={onAngleRangeChange}
-
+        showMarkers={showMarkers}
+        onShowMarkersChange={onShowMarkersChange}
       />
     </div>
   );

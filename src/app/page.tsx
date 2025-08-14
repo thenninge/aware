@@ -34,9 +34,10 @@ export default function Home() {
     farm: true,
     isolated_dwelling: true
   });
-  const [shouldScan, setShouldScan] = useState(false);
+    const [shouldScan, setShouldScan] = useState(false);
   const [angleRange, setAngleRange] = useState(5); // Default ±5 degrees
-
+  const [showMarkers, setShowMarkers] = useState(true); // Default show markers
+ 
   const [categoryConfigs, setCategoryConfigs] = useState<Record<keyof CategoryFilter, CategoryConfig>>({
     city: {
       color: '#1e40af', // Dark blue
@@ -98,11 +99,15 @@ export default function Home() {
     }));
   };
 
-  const handleAngleRangeChange = (newAngleRange: number) => {
+    const handleAngleRangeChange = (newAngleRange: number) => {
     setAngleRange(newAngleRange);
   };
 
+  const handleShowMarkersChange = (show: boolean) => {
+    setShowMarkers(show);
+  };
 
+ 
 
   return (
     <div className="w-full h-screen">
@@ -116,9 +121,10 @@ export default function Home() {
         onScanArea={handleScanArea}
         onRadiusChange={handleRadiusChange}
         onCategoryConfigChange={handleCategoryConfigChange}
-        angleRange={angleRange}
+                angleRange={angleRange}
         onAngleRangeChange={handleAngleRangeChange}
-
+        showMarkers={showMarkers}
+        onShowMarkersChange={handleShowMarkersChange}
       />
     </div>
   );
