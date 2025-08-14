@@ -35,8 +35,6 @@ interface MapComponentProps {
   onCategoryConfigChange?: (category: string, config: CategoryConfig) => void;
   angleRange?: number;
   onAngleRangeChange?: (angleRange: number) => void;
-  showMarkers?: boolean;
-  onShowMarkersChange?: (show: boolean) => void;
 }
 
 interface CategoryFilter {
@@ -63,8 +61,7 @@ function MapController({
   categoryConfigs, 
   shouldScan,
   onPlacesChange,
-  angleRange,
-  showMarkers
+  angleRange
 }: { 
   onPositionChange?: (position: Position) => void; 
   radius: number;
@@ -74,7 +71,7 @@ function MapController({
   shouldScan?: boolean;
   onPlacesChange?: (places: PlaceData[]) => void;
   angleRange?: number;
-  showMarkers?: boolean;
+
 }) {
   const map = useMap();
   const [currentPosition, setCurrentPosition] = useState<Position>({ lat: 60.424834440433045, lng: 12.408766398367092 });
@@ -85,7 +82,7 @@ function MapController({
   useEffect(() => {
     if (typeof window !== 'undefined' && typeof L !== 'undefined') {
       try {
-        delete (L.Icon.Default.prototype as any)._getIconUrl;
+        delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
         L.Icon.Default.mergeOptions({
           iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
           iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
@@ -172,7 +169,7 @@ function MapController({
     };
 
     fetchPlaces();
-  }, [shouldScan, radius, currentPosition, categoryFilters]);
+  }, [shouldScan, radius, currentPosition, categoryFilters, onPlacesChange]);
 
   // Don't render anything if L is not available
   if (typeof L === 'undefined') {
@@ -213,7 +210,7 @@ function MapController({
       />
 
       {/* Place markers */}
-      {showMarkers && places
+      {places
         .filter(place => {
           // Filter based on category filters
           if (place.category === 'city' && !categoryFilters.city) return false;
@@ -300,14 +297,12 @@ export default function MapComponent({
   onRadiusChange,
   onCategoryConfigChange,
   angleRange = 5,
-  onAngleRangeChange,
-  showMarkers = true,
-  onShowMarkersChange
+  onAngleRangeChange
 }: MapComponentProps) {
   const [isLeafletLoaded, setIsLeafletLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [places, setPlaces] = useState<PlaceData[]>([]);
-  const [currentPosition, setCurrentPosition] = useState<Position>({ lat: 60.424834440433045, lng: 12.408766398367092 });
+  const [, setCurrentPosition] = useState<Position>({ lat: 60.424834440433045, lng: 12.408766398367092 });
   const [isFilterExpanded, setIsFilterExpanded] = useState(false);
   const filterMenuRef = useRef<HTMLDivElement>(null);
 
@@ -405,7 +400,6 @@ export default function MapComponent({
           shouldScan={shouldScan}
           onPlacesChange={setPlaces}
           angleRange={angleRange}
-          showMarkers={showMarkers}
         />
       </MapContainer>
 
@@ -420,8 +414,6 @@ export default function MapComponent({
         onCategoryConfigChange={onCategoryConfigChange || (() => {})}
         angleRange={angleRange}
         onAngleRangeChange={onAngleRangeChange || (() => {})}
-        showMarkers={showMarkers}
-        onShowMarkersChange={onShowMarkersChange || (() => {})}
       />
 
       {/* Filter controls on right side */}
@@ -520,21 +512,7 @@ export default function MapComponent({
                </div>
              </div>
 
-             {/* Show Markers Setting */}
-             <div className="mb-3">
-               <div className="text-xs font-medium text-gray-700 mb-2">Visning:</div>
-               <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
-                 <input
-                   type="checkbox"
-                   checked={showMarkers}
-                   onChange={(e) => onShowMarkersChange?.(e.target.checked)}
-                   className="w-3 h-3 text-blue-600 rounded focus:ring-blue-500"
-                 />
-                 <span className="font-medium text-gray-700">
-                   Vis treff i kart
-                 </span>
-               </label>
-             </div>
+
           </div>
         )}
 

@@ -13,8 +13,6 @@ interface SettingsMenuProps {
   onCategoryConfigChange: (category: string, config: CategoryConfig) => void;
   angleRange: number;
   onAngleRangeChange: (angleRange: number) => void;
-  showMarkers: boolean;
-  onShowMarkersChange: (show: boolean) => void;
 }
 
 const predefinedColors = [
@@ -23,7 +21,7 @@ const predefinedColors = [
   '#15803d', '#0e7490', '#a16207', '#1d4ed8', '#b91c1c', '#047857'
 ];
 
-export default function SettingsMenu({ categoryConfigs, onCategoryConfigChange, angleRange, onAngleRangeChange, showMarkers, onShowMarkersChange }: SettingsMenuProps) {
+export default function SettingsMenu({ categoryConfigs, onCategoryConfigChange, angleRange, onAngleRangeChange }: SettingsMenuProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 

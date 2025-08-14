@@ -62,14 +62,14 @@ export default function PieChart({
   }, [places, centerLat, centerLng, radius]);
 
   // Helper function to convert hex to rgba
-  const hexToRgba = (hex: string, opacity: number) => {
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
-    const rgbaColor = `rgba(${r}, ${g}, ${b}, ${opacity})`;
-    console.log(`Converting ${hex} with opacity ${opacity} to ${rgbaColor}`); // Debug log
-    return rgbaColor;
-  };
+  // const hexToRgba = (hex: string, opacity: number) => {
+  //   const r = parseInt(hex.slice(1, 3), 16);
+  //   const g = parseInt(hex.slice(3, 5), 16);
+  //   const b = parseInt(hex.slice(5, 7), 16);
+  //   const rgbaColor = `rgba(${r}, ${g}, ${b}, ${opacity})`;
+  //   console.log(`Converting ${hex} with opacity ${opacity} to ${rgbaColor}`); // Debug log
+  //   return rgbaColor;
+  // };
 
   const directionGroups = useMemo(() => {
     const groups: Array<{

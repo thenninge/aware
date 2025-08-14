@@ -25,7 +25,7 @@ interface CategoryConfig {
 
 export default function Home() {
   const [radius, setRadius] = useState(3000); // Default 3000m
-  const [currentPosition, setCurrentPosition] = useState<Position | null>(null);
+  const [, setCurrentPosition] = useState<Position | null>(null);
   const [categoryFilters, setCategoryFilters] = useState<CategoryFilter>({
     city: true,
     town: true,
@@ -36,7 +36,7 @@ export default function Home() {
   });
   const [shouldScan, setShouldScan] = useState(false);
   const [angleRange, setAngleRange] = useState(5); // Default ±5 degrees
-  const [showMarkers, setShowMarkers] = useState(true); // Default show markers
+
   const [categoryConfigs, setCategoryConfigs] = useState<Record<keyof CategoryFilter, CategoryConfig>>({
     city: {
       color: '#1e40af', // Dark blue
@@ -102,9 +102,7 @@ export default function Home() {
     setAngleRange(newAngleRange);
   };
 
-  const handleShowMarkersChange = (show: boolean) => {
-    setShowMarkers(show);
-  };
+
 
   return (
     <div className="w-full h-screen">
@@ -120,8 +118,7 @@ export default function Home() {
         onCategoryConfigChange={handleCategoryConfigChange}
         angleRange={angleRange}
         onAngleRangeChange={handleAngleRangeChange}
-        showMarkers={showMarkers}
-        onShowMarkersChange={handleShowMarkersChange}
+
       />
     </div>
   );

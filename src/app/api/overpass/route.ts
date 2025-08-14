@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
     // Process and categorize the data using new categories
     const places: PlaceData[] = data.elements.map((element) => {
       let category = 'other';
-      let name = element.tags?.name || element.tags?.ref || `ID: ${element.id}`;
+      const name = element.tags?.name || element.tags?.ref || `ID: ${element.id}`;
 
       // Categorize based on place tags
       if (element.tags?.place === 'city') {
