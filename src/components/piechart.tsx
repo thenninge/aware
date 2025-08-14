@@ -61,6 +61,16 @@ export default function PieChart({
       .filter(place => place.distance <= radius);
   }, [places, centerLat, centerLng, radius]);
 
+  // Helper function to convert hex to rgba
+  const hexToRgba = (hex: string, opacity: number) => {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    const rgbaColor = `rgba(${r}, ${g}, ${b}, ${opacity})`;
+    console.log(`Converting ${hex} with opacity ${opacity} to ${rgbaColor}`); // Debug log
+    return rgbaColor;
+  };
+
   const directionGroups = useMemo(() => {
     const groups: Array<{
       startAngle: number;
@@ -74,13 +84,13 @@ export default function PieChart({
       const startAngle = place.bearing - angleRange;
       const endAngle = place.bearing + angleRange;
       const config = categoryConfigs[place.category];
-
+      
       groups.push({
         startAngle,
         endAngle,
         category: place.category,
-        color: config?.color || '#999',
-        opacity: config?.opacity || 0.8
+        color: config?.color || '#999', // hex only
+        opacity: config?.opacity ?? 0.8
       });
     });
 
@@ -115,7 +125,7 @@ export default function PieChart({
               color: group.color,
               fillColor: group.color,
               fillOpacity: group.opacity,
-              weight: 1,
+              weight: 0,
             }}
           />
         );

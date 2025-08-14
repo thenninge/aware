@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 interface CategoryConfig {
   color: string;
@@ -13,16 +13,38 @@ interface SettingsMenuProps {
   onCategoryConfigChange: (category: string, config: CategoryConfig) => void;
   angleRange: number;
   onAngleRangeChange: (angleRange: number) => void;
+  showMarkers: boolean;
+  onShowMarkersChange: (show: boolean) => void;
 }
 
 const predefinedColors = [
-  '#B3D9FF', '#D4B3FF', '#FFB3B3', '#FFD4B3', '#B3FFB3', '#B3F0FF',
-  '#E6B3FF', '#FFB3E6', '#B3FFE6', '#FFE6B3', '#B3E6FF', '#FFB3D4',
-  '#D4FFB3', '#B3FFFF', '#FFE6B3', '#B3D4FF', '#FFB3B3', '#B3FFD4'
+  '#1e40af', '#7c3aed', '#dc2626', '#ea580c', '#16a34a', '#0891b2',
+  '#9333ea', '#e11d48', '#059669', '#d97706', '#2563eb', '#be185d',
+  '#15803d', '#0e7490', '#a16207', '#1d4ed8', '#b91c1c', '#047857'
 ];
 
-export default function SettingsMenu({ categoryConfigs, onCategoryConfigChange, angleRange, onAngleRangeChange }: SettingsMenuProps) {
+export default function SettingsMenu({ categoryConfigs, onCategoryConfigChange, angleRange, onAngleRangeChange, showMarkers, onShowMarkersChange }: SettingsMenuProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: Event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsExpanded(false);
+      }
+    };
+
+    if (isExpanded) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [isExpanded]);
 
   const handleColorChange = (category: string, color: string) => {
     const currentConfig = categoryConfigs[category];
@@ -41,7 +63,7 @@ export default function SettingsMenu({ categoryConfigs, onCategoryConfigChange, 
   };
 
   return (
-    <div className="absolute top-4 right-32 z-[1001]">
+    <div ref={menuRef} className="absolute top-4 right-45 z-[1001]">
       {/* Settings Button */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
@@ -94,6 +116,8 @@ export default function SettingsMenu({ categoryConfigs, onCategoryConfigChange, 
             </div>
           </div>
 
+
+
           <div className="space-y-4">
             {Object.entries(categoryConfigs).map(([category, config]) => (
               <div key={category} className="border-b border-gray-200 pb-3 last:border-b-0">
@@ -137,7 +161,7 @@ export default function SettingsMenu({ categoryConfigs, onCategoryConfigChange, 
                   </label>
                   <input
                     type="range"
-                    min="0.1"
+                    min="0"
                     max="1"
                     step="0.1"
                     value={config.opacity}
@@ -158,12 +182,12 @@ export default function SettingsMenu({ categoryConfigs, onCategoryConfigChange, 
               onClick={() => {
                 // Reset to default colors
                 const defaultConfigs = {
-                  city: { color: '#B3D9FF', opacity: 0.8, icon: '🏙️' },
-                  town: { color: '#D4B3FF', opacity: 0.8, icon: '🏙️' },
-                  village: { color: '#FFB3B3', opacity: 0.8, icon: '🏘️' },
-                  hamlet: { color: '#FFD4B3', opacity: 0.8, icon: '🏘️' },
-                  farm: { color: '#B3FFB3', opacity: 0.8, icon: '🏡' },
-                  isolated_dwelling: { color: '#B3F0FF', opacity: 0.8, icon: '🏠' }
+                  city: { color: '#1e40af', opacity: 0.5, icon: '🏙️' },
+                  town: { color: '#7c3aed', opacity: 0.5, icon: '🏙️' },
+                  village: { color: '#dc2626', opacity: 0.5, icon: '🏘️' },
+                  hamlet: { color: '#ea580c', opacity: 0.5, icon: '🏘️' },
+                  farm: { color: '#16a34a', opacity: 0.5, icon: '🏡' },
+                  isolated_dwelling: { color: '#0891b2', opacity: 0.5, icon: '🏠' }
                 };
                 Object.entries(defaultConfigs).forEach(([category, config]) => {
                   onCategoryConfigChange(category, config);

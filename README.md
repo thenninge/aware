@@ -1,36 +1,97 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Aware2 - Interactive Map Application
+
+A Next.js application that displays interactive maps using Leaflet.js, OpenStreetMap tiles, and Overpass API for building data visualization.
+
+## Features
+
+- **Interactive Maps**: Built with Leaflet.js and OpenStreetMap
+- **Building Data**: Fetches building information via Overpass API
+- **Pie Chart Visualization**: Shows building density with colored slices
+- **Category Filtering**: Filter by city, town, village, hamlet, farm, isolated dwelling
+- **Customizable Settings**: Adjust colors, opacity, and angle ranges
+- **Responsive Design**: Works on desktop and mobile devices
+
+## Tech Stack
+
+- **Framework**: Next.js 15.4.6
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **Maps**: Leaflet.js + React-Leaflet
+- **Data**: Overpass API (OpenStreetMap)
+- **Deployment**: Vercel
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
+- Node.js 18+ 
+- npm or yarn
+
+### Installation
+
+1. Clone the repository:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone <your-repo-url>
+cd aware2
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Install dependencies:
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. Run the development server:
+```bash
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-## Learn More
+## Development
 
-To learn more about Next.js, take a look at the following resources:
+- **Main Map Component**: `src/components/mapcomponent.tsx`
+- **Pie Chart**: `src/components/piechart.tsx`
+- **Settings Menu**: `src/components/settingsmenu.tsx`
+- **API Routes**: `src/app/api/overpass/route.ts`
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Deployment
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Deploy on Vercel
 
-## Deploy on Vercel
+The easiest way to deploy this app is using the [Vercel Platform](https://vercel.com/new):
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. **Connect your GitHub repository** to Vercel
+2. **Import the project** - Vercel will automatically detect Next.js
+3. **Deploy** - Vercel will build and deploy your app
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Manual Deployment
+
+1. **Build the project**:
+```bash
+npm run build
+```
+
+2. **Deploy to Vercel**:
+```bash
+npx vercel --prod
+```
+
+### Environment Variables
+
+No environment variables are required for basic functionality. The app uses public APIs (OpenStreetMap, Overpass).
+
+## API Endpoints
+
+- `GET /api/overpass` - Fetches building data from Overpass API
+  - Query params: `lat`, `lng`, `radius`
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
+
+## License
+
+This project is open source and available under the [MIT License](LICENSE).

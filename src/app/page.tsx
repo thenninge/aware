@@ -24,7 +24,7 @@ interface CategoryConfig {
 }
 
 export default function Home() {
-  const [radius, setRadius] = useState(2000); // Default 2000m
+  const [radius, setRadius] = useState(3000); // Default 3000m
   const [currentPosition, setCurrentPosition] = useState<Position | null>(null);
   const [categoryFilters, setCategoryFilters] = useState<CategoryFilter>({
     city: true,
@@ -36,35 +36,36 @@ export default function Home() {
   });
   const [shouldScan, setShouldScan] = useState(false);
   const [angleRange, setAngleRange] = useState(5); // Default ±5 degrees
+  const [showMarkers, setShowMarkers] = useState(true); // Default show markers
   const [categoryConfigs, setCategoryConfigs] = useState<Record<keyof CategoryFilter, CategoryConfig>>({
     city: {
-      color: '#B3D9FF', // Vibrant blue
-      opacity: 0.8,
+      color: '#1e40af', // Dark blue
+      opacity: 0.5,
       icon: '🏙️'
     },
     town: {
-      color: '#D4B3FF', // Vibrant purple
-      opacity: 0.8,
+      color: '#7c3aed', // Dark purple
+      opacity: 0.5,
       icon: '🏙️'
     },
     village: {
-      color: '#FFB3B3', // Vibrant red
-      opacity: 0.8,
+      color: '#dc2626', // Dark red
+      opacity: 0.5,
       icon: '🏘️'
     },
     hamlet: {
-      color: '#FFD4B3', // Vibrant orange
-      opacity: 0.8,
+      color: '#ea580c', // Dark orange
+      opacity: 0.5,
       icon: '🏘️'
     },
     farm: {
-      color: '#B3FFB3', // Vibrant green
-      opacity: 0.8,
+      color: '#16a34a', // Dark green
+      opacity: 0.5,
       icon: '🏡'
     },
     isolated_dwelling: {
-      color: '#B3F0FF', // Vibrant cyan
-      opacity: 0.8,
+      color: '#0891b2', // Dark cyan
+      opacity: 0.5,
       icon: '🏠'
     }
   });
@@ -101,6 +102,10 @@ export default function Home() {
     setAngleRange(newAngleRange);
   };
 
+  const handleShowMarkersChange = (show: boolean) => {
+    setShowMarkers(show);
+  };
+
   return (
     <div className="w-full h-screen">
       <AwareMap 
@@ -115,6 +120,8 @@ export default function Home() {
         onCategoryConfigChange={handleCategoryConfigChange}
         angleRange={angleRange}
         onAngleRangeChange={handleAngleRangeChange}
+        showMarkers={showMarkers}
+        onShowMarkersChange={handleShowMarkersChange}
       />
     </div>
   );

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, useMap, Circle } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -35,6 +35,8 @@ interface MapComponentProps {
   onCategoryConfigChange?: (category: string, config: CategoryConfig) => void;
   angleRange?: number;
   onAngleRangeChange?: (angleRange: number) => void;
+  showMarkers?: boolean;
+  onShowMarkersChange?: (show: boolean) => void;
 }
 
 interface CategoryFilter {
@@ -61,7 +63,8 @@ function MapController({
   categoryConfigs, 
   shouldScan,
   onPlacesChange,
-  angleRange
+  angleRange,
+  showMarkers
 }: { 
   onPositionChange?: (position: Position) => void; 
   radius: number;
@@ -71,6 +74,7 @@ function MapController({
   shouldScan?: boolean;
   onPlacesChange?: (places: PlaceData[]) => void;
   angleRange?: number;
+  showMarkers?: boolean;
 }) {
   const map = useMap();
   const [currentPosition, setCurrentPosition] = useState<Position>({ lat: 60.424834440433045, lng: 12.408766398367092 });
@@ -101,9 +105,6 @@ function MapController({
     }
 
     try {
-      // Set initial position
-      map.setView([currentPosition.lat, currentPosition.lng], 13);
-
       // Handle map movement (pan/zoom) to update center position
       const handleMapMove = () => {
         const center = map.getCenter();
@@ -123,8 +124,7 @@ function MapController({
         };
         setCurrentPosition(pos);
         onPositionChange?.(pos); // Update parent component when user clicks
-        // Move map to center on clicked position
-        map.setView([pos.lat, pos.lng], map.getZoom());
+        // Don't auto-zoom - let user control zoom level
       };
 
       map.on('moveend', handleMapMove);
@@ -213,7 +213,7 @@ function MapController({
       />
 
       {/* Place markers */}
-      {places
+      {showMarkers && places
         .filter(place => {
           // Filter based on category filters
           if (place.category === 'city' && !categoryFilters.city) return false;
@@ -235,26 +235,26 @@ function MapController({
           else if (place.category === 'farm') config = categoryConfigs.farm;
           else if (place.category === 'isolated_dwelling') config = categoryConfigs.isolated_dwelling;
 
-                        // Convert hex to rgba for opacity
-              const hexToRgba = (hex: string, opacity: number) => {
-                const r = parseInt(hex.slice(1, 3), 16);
-                const g = parseInt(hex.slice(3, 5), 16);
-                const b = parseInt(hex.slice(5, 7), 16);
-                return `rgba(${r}, ${g}, ${b}, ${opacity})`;
-              };
+          // Convert hex to rgba for opacity - use half opacity for markers
+          const hexToRgba = (hex: string, opacity: number) => {
+            const r = parseInt(hex.slice(1, 3), 16);
+            const g = parseInt(hex.slice(3, 5), 16);
+            const b = parseInt(hex.slice(5, 7), 16);
+            return `rgba(${r}, ${g}, ${b}, ${opacity * 0.5})`; // Half opacity for markers
+          };
 
-              return (
-                <Marker
-                  key={`${place.type}-${place.id}`}
-                  position={[place.lat, place.lng]}
-                  icon={L.divIcon({
-                    className: 'custom-marker place-marker',
-                    html: `<div style="color: ${hexToRgba(config.color, config.opacity)}; font-size: 16px; text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">${config.icon}</div>`,
-                    iconSize: [20, 20],
-                    iconAnchor: [10, 10],
-                  })}
-                />
-              );
+          return (
+            <Marker
+              key={`${place.type}-${place.id}`}
+              position={[place.lat, place.lng]}
+              icon={L.divIcon({
+                className: 'custom-marker place-marker',
+                html: `<div style="width: 12px; height: 12px; background-color: ${hexToRgba(config.color, config.opacity)}; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 4px rgba(0,0,0,0.5);"></div>`,
+                iconSize: [12, 12],
+                iconAnchor: [6, 6],
+              })}
+            />
+          );
         })}
 
       {/* Loading indicator */}
@@ -300,12 +300,35 @@ export default function MapComponent({
   onRadiusChange,
   onCategoryConfigChange,
   angleRange = 5,
-  onAngleRangeChange
+  onAngleRangeChange,
+  showMarkers = true,
+  onShowMarkersChange
 }: MapComponentProps) {
   const [isLeafletLoaded, setIsLeafletLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [places, setPlaces] = useState<PlaceData[]>([]);
   const [currentPosition, setCurrentPosition] = useState<Position>({ lat: 60.424834440433045, lng: 12.408766398367092 });
+  const [isFilterExpanded, setIsFilterExpanded] = useState(false);
+  const filterMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close filter menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: Event) => {
+      if (filterMenuRef.current && !filterMenuRef.current.contains(event.target as Node)) {
+        setIsFilterExpanded(false);
+      }
+    };
+
+    if (isFilterExpanded) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [isFilterExpanded]);
 
   useEffect(() => {
     // Ensure Leaflet is loaded
@@ -382,6 +405,7 @@ export default function MapComponent({
           shouldScan={shouldScan}
           onPlacesChange={setPlaces}
           angleRange={angleRange}
+          showMarkers={showMarkers}
         />
       </MapContainer>
 
@@ -396,58 +420,133 @@ export default function MapComponent({
         onCategoryConfigChange={onCategoryConfigChange || (() => {})}
         angleRange={angleRange}
         onAngleRangeChange={onAngleRangeChange || (() => {})}
+        showMarkers={showMarkers}
+        onShowMarkersChange={onShowMarkersChange || (() => {})}
       />
 
       {/* Filter controls on right side */}
-      <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm p-3 rounded-lg shadow-lg z-[1000] max-w-xs">
-        {/* Radius Control */}
-        <div className="mb-3">
-          <label className="text-xs font-medium text-gray-700 block mb-1">
-            Radius: {radius}m
-          </label>
-          <input
-            type="range"
-            min="1000"
-            max="4000"
-            step="500"
-            value={radius}
-            onChange={(e) => {
-              onRadiusChange?.(Number(e.target.value));
-            }}
-            className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer hover:bg-gray-300 transition-colors"
-            style={{
-              background: 'linear-gradient(to right, #3b82f6 0%, #3b82f6 ' + ((radius - 1000) / 3000 * 100) + '%, #e5e7eb ' + ((radius - 1000) / 3000 * 100) + '%, #e5e7eb 100%)'
-            }}
-          />
-        </div>
-
-        {/* Category Filters */}
-        <div className="mb-3">
-          <div className="text-xs font-medium text-gray-700 mb-2">Filtrer:</div>
-          <div className="grid grid-cols-2 gap-1">
-            {Object.entries(categoryConfigs).map(([category, config]) => (
-              <label key={category} className="flex items-center gap-1 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
-                <input
-                  type="checkbox"
-                  checked={categoryFilters[category as keyof CategoryFilter]}
-                  onChange={() => onCategoryChange?.(category as keyof CategoryFilter)}
-                  className="w-3 h-3 text-blue-600 rounded focus:ring-blue-500"
-                />
-                <span className="font-medium text-gray-700">
-                  {config.icon}
-                </span>
-              </label>
-            ))}
+      <div ref={filterMenuRef} className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg z-[1000] max-w-xs">
+        {/* Filter Header with Expand/Collapse */}
+        <div className="p-3 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <div className="text-sm font-medium text-gray-700">Filtrer & Kontroller</div>
+            <button
+              onClick={() => setIsFilterExpanded(!isFilterExpanded)}
+              className="text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              {isFilterExpanded ? '▼' : '▶'}
+            </button>
           </div>
         </div>
+        
+        {/* Expandable Filter Content */}
+        {isFilterExpanded && (
+          <div className="p-3 border-b border-gray-200">
+            {/* Radius Control */}
+            <div className="mb-3">
+              <label className="text-xs font-medium text-gray-700 block mb-1">
+                Radius: {radius}m
+              </label>
+              <input
+                type="range"
+                min="1000"
+                max="4000"
+                step="500"
+                value={radius}
+                onChange={(e) => {
+                  onRadiusChange?.(Number(e.target.value));
+                }}
+                className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer hover:bg-gray-300 transition-colors"
+                style={{
+                  background: 'linear-gradient(to right, #3b82f6 0%, #3b82f6 ' + ((radius - 1000) / 3000 * 100) + '%, #e5e7eb ' + ((radius - 1000) / 3000 * 100) + '%, #e5e7eb 100%)'
+                }}
+              />
+            </div>
 
-        {/* Scan Button */}
-        <button
-          onClick={onScanArea}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm font-medium transition-colors shadow-sm"
-        >
-          🔍 Scan område
-        </button>
+            {/* Global Opacity Control */}
+            <div className="mb-3">
+              <label className="text-xs font-medium text-gray-700 block mb-1">
+                Gjennomsiktighet: {Math.round((categoryConfigs.city?.opacity || 1.0) * 100)}%
+              </label>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.1"
+                value={categoryConfigs.city?.opacity || 1.0}
+                onChange={(e) => {
+                  const newOpacity = parseFloat(e.target.value);
+                  // Apply to all categories
+                  Object.keys(categoryConfigs).forEach(category => {
+                    const currentConfig = categoryConfigs[category as keyof CategoryFilter];
+                    onCategoryConfigChange?.(category as keyof CategoryFilter, {
+                      ...currentConfig,
+                      opacity: newOpacity
+                    });
+                  });
+                }}
+                className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer hover:bg-gray-300 transition-colors"
+                style={{
+                  background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${(categoryConfigs.city?.opacity || 1.0) * 100}%, #e5e7eb ${(categoryConfigs.city?.opacity || 1.0) * 100}%, #e5e7eb 100%)`
+                }}
+              />
+            </div>
+
+                         {/* Category Filters */}
+             <div className="mb-3">
+               <div className="text-xs font-medium text-gray-700 mb-2">Filtrer:</div>
+               <div className="space-y-1">
+                 {Object.entries(categoryConfigs).map(([category, config]) => (
+                   <label key={category} className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+                     <input
+                       type="checkbox"
+                       checked={categoryFilters[category as keyof CategoryFilter]}
+                       onChange={() => onCategoryChange?.(category as keyof CategoryFilter)}
+                       className="w-3 h-3 text-blue-600 rounded focus:ring-blue-500"
+                     />
+                     <span 
+                       className="font-medium"
+                       style={{ color: config.color }}
+                     >
+                       {category === 'city' && 'By'}
+                       {category === 'town' && 'Tettsted'}
+                       {category === 'village' && 'Landsby'}
+                       {category === 'hamlet' && 'Grend'}
+                       {category === 'farm' && 'Gård'}
+                       {category === 'isolated_dwelling' && 'Enkeltbolig'}
+                     </span>
+                   </label>
+                 ))}
+               </div>
+             </div>
+
+             {/* Show Markers Setting */}
+             <div className="mb-3">
+               <div className="text-xs font-medium text-gray-700 mb-2">Visning:</div>
+               <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+                 <input
+                   type="checkbox"
+                   checked={showMarkers}
+                   onChange={(e) => onShowMarkersChange?.(e.target.checked)}
+                   className="w-3 h-3 text-blue-600 rounded focus:ring-blue-500"
+                 />
+                 <span className="font-medium text-gray-700">
+                   Vis treff i kart
+                 </span>
+               </label>
+             </div>
+          </div>
+        )}
+
+        {/* Scan Button - Always Visible */}
+        <div className="p-3">
+          <button
+            onClick={onScanArea}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm font-medium transition-colors shadow-sm"
+          >
+            🔍 Scan område
+          </button>
+        </div>
       </div>
     </div>
   );
