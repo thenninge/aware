@@ -95,15 +95,11 @@ function MapController({
   // Fix Leaflet icons when component mounts
   useEffect(() => {
     if (typeof window !== 'undefined' && typeof L !== 'undefined') {
-      try {
         L.Icon.Default.mergeOptions({
           iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
           iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
           shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
         });
-      } catch (error) {
-        console.warn('Could not fix Leaflet icons:', error);
-      }
     }
   }, []);
 
