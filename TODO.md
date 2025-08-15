@@ -71,3 +71,9 @@
 - [ ] Production build
 - [ ] Domain setup
 - [ ] Environment variables
+
+## Database og lagring av punkter
+- [ ] Sette opp SQLite database for prosjektet
+- [ ] Lage tabell for punkter med feltene: id, latitude, longitude, category, creator_id, created_at
+- [ ] Lage API-endepunkt for å lagre og hente punkter fra databasen
+- [ ] Integrere lagring og henting av punkter i frontend

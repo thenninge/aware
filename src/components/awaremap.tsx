@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
+import React from 'react';
 
 // Dynamically import the entire map component to avoid SSR issues
 const MapComponent = dynamic(() => import('./mapcomponent'), {
@@ -50,6 +51,29 @@ interface AwareMapProps {
   onShowMarkersChange?: (show: boolean) => void;
   isLiveMode?: boolean;
   onLiveModeChange?: (isLive: boolean) => void;
+  mode?: 'aware' | 'track'; // <-- NY
+}
+
+function ErrorBoundary({ children }: { children: React.ReactNode }) {
+  const [error, setError] = React.useState<Error | null>(null);
+  // @ts-ignore
+  if (error) {
+    return (
+      <div className="w-full h-screen bg-red-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-lg text-red-600 mb-2">Feil i kartet: {error.message}</div>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Prøv igjen
+          </button>
+        </div>
+      </div>
+    );
+  }
+  // @ts-ignore
+  return React.cloneElement(children, { onError: (e: Error) => setError(e) });
 }
 
 export default function AwareMap({ 
@@ -67,7 +91,8 @@ export default function AwareMap({
   showMarkers,
   onShowMarkersChange,
   isLiveMode,
-  onLiveModeChange
+  onLiveModeChange,
+  mode = 'aware', // <-- NY
 }: AwareMapProps) {
   const [isClient, setIsClient] = useState(false);
   const [hasError, setHasError] = useState(false);
@@ -102,24 +127,27 @@ export default function AwareMap({
 
   return (
     <div className="w-full h-screen">
-      <MapComponent 
-        radius={radius} 
-        onPositionChange={onPositionChange}
-        categoryFilters={categoryFilters}
-        categoryConfigs={categoryConfigs}
-        shouldScan={shouldScan}
-        onError={() => setHasError(true)}
-        onCategoryChange={onCategoryChange}
-        onScanArea={onScanArea}
-        onRadiusChange={onRadiusChange}
-        onCategoryConfigChange={onCategoryConfigChange}
+      <ErrorBoundary>
+        <MapComponent 
+          radius={radius} 
+          onPositionChange={onPositionChange}
+          categoryFilters={categoryFilters}
+          categoryConfigs={categoryConfigs}
+          shouldScan={shouldScan}
+          onError={() => setHasError(true)}
+          onCategoryChange={onCategoryChange}
+          onScanArea={onScanArea}
+          onRadiusChange={onRadiusChange}
+          onCategoryConfigChange={onCategoryConfigChange}
                 angleRange={angleRange}
         onAngleRangeChange={onAngleRangeChange}
         showMarkers={showMarkers}
         onShowMarkersChange={onShowMarkersChange}
         isLiveMode={isLiveMode}
         onLiveModeChange={onLiveModeChange}
+        mode={mode} // <-- NY
       />
+      </ErrorBoundary>
     </div>
   );
 }

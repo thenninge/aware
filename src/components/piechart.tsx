@@ -20,25 +20,20 @@ interface PieChartProps {
   centerLng: number;
   angleRange: number; // in degrees, for ±angleRange
   radius: number; // radius in meters
+  mode?: 'aware' | 'track';
 }
 
-export default function PieChart({
-  places,
-  categoryConfigs,
-  centerLat,
-  centerLng,
-  angleRange,
-  radius
-}: PieChartProps) {
+export default function PieChart(props: PieChartProps) {
+  if (props.mode === 'track') return null;
   
 
 
   const placeDirections = useMemo(() => {
-    return places
+    return props.places
       .map(place => {
-        const lat1 = centerLat * Math.PI / 180;
+        const lat1 = props.centerLat * Math.PI / 180;
         const lat2 = place.lat * Math.PI / 180;
-        const lng1 = centerLng * Math.PI / 180;
+        const lng1 = props.centerLng * Math.PI / 180;
         const lng2 = place.lng * Math.PI / 180;
         
         const dLng = lng2 - lng1;
@@ -48,8 +43,8 @@ export default function PieChart({
         const normalizedBearing = (bearing + 360) % 360;
         
         const distance = Math.sqrt(
-          Math.pow((place.lat - centerLat) * 111000, 2) + 
-          Math.pow((place.lng - centerLng) * 111000 * Math.cos(centerLat * Math.PI / 180), 2)
+          Math.pow((place.lat - props.centerLat) * 111000, 2) + 
+          Math.pow((place.lng - props.centerLng) * 111000 * Math.cos(props.centerLat * Math.PI / 180), 2)
         );
 
         return {
@@ -58,8 +53,8 @@ export default function PieChart({
           distance
         };
       })
-      .filter(place => place.distance <= radius);
-  }, [places, centerLat, centerLng, radius]);
+      .filter(place => place.distance <= props.radius);
+  }, [props.places, props.centerLat, props.centerLng, props.radius]);
 
   // Helper function to convert hex to rgba
   // const hexToRgba = (hex: string, opacity: number) => {
@@ -81,9 +76,9 @@ export default function PieChart({
     }> = [];
 
     placeDirections.forEach(place => {
-      const startAngle = place.bearing - angleRange;
-      const endAngle = place.bearing + angleRange;
-      const config = categoryConfigs[place.category];
+      const startAngle = place.bearing - props.angleRange;
+      const endAngle = place.bearing + props.angleRange;
+      const config = props.categoryConfigs[place.category];
       
       groups.push({
         startAngle,
@@ -95,27 +90,27 @@ export default function PieChart({
     });
 
     return groups;
-  }, [placeDirections, angleRange, categoryConfigs]);
+  }, [placeDirections, props.angleRange, props.categoryConfigs]);
 
-  if (places.length === 0) return null;
+  if (props.places.length === 0) return null;
 
   return (
     <>
       {directionGroups.map((group, index) => {
         const points: [number, number][] = [];
-        points.push([centerLat, centerLng]); // center of the pie
+        points.push([props.centerLat, props.centerLng]); // center of the pie
 
         // create arc points
         const step = 5; // degrees between points on the arc
         for (let angle = group.startAngle; angle <= group.endAngle; angle += step) {
           const rad = (angle * Math.PI) / 180;
-          const lat = centerLat + (radius * Math.cos(rad)) / 111000;
-          const lng = centerLng + (radius * Math.sin(rad)) / (111000 * Math.cos(centerLat * Math.PI / 180));
+          const lat = props.centerLat + (props.radius * Math.cos(rad)) / 111000;
+          const lng = props.centerLng + (props.radius * Math.sin(rad)) / (111000 * Math.cos(props.centerLat * Math.PI / 180));
           points.push([lat, lng]);
         }
 
         // close back to center
-        points.push([centerLat, centerLng]);
+        points.push([props.centerLat, props.centerLng]);
 
         return (
           <Polygon

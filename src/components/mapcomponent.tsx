@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, useMap, Circle } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMap, Circle, Polyline, Tooltip } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import PieChart from './piechart';
 import SettingsMenu from './settingsmenu';
+import React from 'react';
 
 interface Position {
   lat: number;
@@ -40,6 +41,7 @@ interface MapComponentProps {
   onShowMarkersChange?: (show: boolean) => void;
   isLiveMode?: boolean;
   onLiveModeChange?: (isLive: boolean) => void;
+  mode?: 'aware' | 'track'; // <-- NY
 }
 
 interface CategoryFilter {
@@ -70,7 +72,8 @@ function MapController({
   showMarkers,
   isLiveMode = false,
   onLiveModeChange,
-  onLoadingChange
+  onLoadingChange,
+  mode = 'aware', // <-- NY
 }: { 
   onPositionChange?: (position: Position) => void; 
   radius: number;
@@ -84,6 +87,7 @@ function MapController({
   isLiveMode?: boolean;
   onLiveModeChange?: (isLive: boolean) => void;
   onLoadingChange?: (loading: boolean) => void;
+  mode?: 'aware' | 'track'; // <-- NY
 }) {
   const map = useMap();
   const [currentPosition, setCurrentPosition] = useState<Position>({ lat: 60.424834440433045, lng: 12.408766398367092 });
@@ -292,7 +296,7 @@ function MapController({
       />
       
       {/* Radius circle */}
-      <Circle
+      {/* <Circle
         key={`radius-${radius}-${currentPosition.lat}-${currentPosition.lng}`}
         center={currentPosition}
         radius={radius}
@@ -302,7 +306,7 @@ function MapController({
           fillOpacity: 0.1,
           weight: 2,
         }}
-      />
+      /> */}
 
       {/* Place markers */}
       {showMarkers && places
@@ -374,10 +378,60 @@ function MapController({
           centerLng={currentPosition.lng}
           angleRange={angleRange ?? 5}
           radius={radius}
+          mode={mode}
         />
       )}
     </>
   );
+}
+
+// Enkel SVG-kompassrose
+function CompassRose({ heading = 0 }: { heading?: number }) {
+  return (
+    <div
+      className="w-16 h-16 select-none pointer-events-none"
+      style={{ transform: `rotate(${heading}deg)` }}
+    >
+      <svg viewBox="0 0 64 64" width="64" height="64">
+        <circle cx="32" cy="32" r="30" fill="#fff" stroke="#333" strokeWidth="2" />
+        <polygon points="32,8 36,32 32,24 28,32" fill="#dc2626" />
+        <polygon points="32,56 36,32 32,40 28,32" fill="#2563eb" />
+        <text x="32" y="18" textAnchor="middle" fontSize="10" fill="#333" fontWeight="bold">N</text>
+        <text x="32" y="58" textAnchor="middle" fontSize="10" fill="#333">S</text>
+        <text x="54" y="36" textAnchor="middle" fontSize="10" fill="#333">E</text>
+        <text x="10" y="36" textAnchor="middle" fontSize="10" fill="#333">W</text>
+      </svg>
+    </div>
+  );
+}
+
+// Hjelpefunksjon for å kalkulere ny posisjon ut fra avstand og retning
+function destinationPoint(lat: number, lng: number, distance: number, bearing: number): Position {
+  const R = 6371000; // Jordradius i meter
+  const δ = distance / R; // angular distance in radians
+  const θ = (bearing * Math.PI) / 180; // bearing i radianer
+  const φ1 = (lat * Math.PI) / 180;
+  const λ1 = (lng * Math.PI) / 180;
+  const φ2 = Math.asin(
+    Math.sin(φ1) * Math.cos(δ) +
+      Math.cos(φ1) * Math.sin(δ) * Math.cos(θ)
+  );
+  const λ2 =
+    λ1 +
+    Math.atan2(
+      Math.sin(θ) * Math.sin(δ) * Math.cos(φ1),
+      Math.cos(δ) - Math.sin(φ1) * Math.sin(φ2)
+    );
+  return {
+    lat: (φ2 * 180) / Math.PI,
+    lng: (λ2 * 180) / Math.PI,
+  };
+}
+
+// Ny type for punktpar
+interface PointPair {
+  current: Position;
+  target?: Position;
 }
 
 export default function MapComponent({ 
@@ -396,16 +450,47 @@ export default function MapComponent({
   showMarkers = true,
   onShowMarkersChange,
   isLiveMode = false,
-  onLiveModeChange
+  onLiveModeChange,
+  mode = 'aware', // <-- NY
 }: MapComponentProps) {
   const [isLeafletLoaded, setIsLeafletLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [places, setPlaces] = useState<PlaceData[]>([]);
-  const [, setCurrentPosition] = useState<Position>({ lat: 60.424834440433045, lng: 12.408766398367092 });
+  const [currentPosition, setCurrentPosition] = useState<Position>({ lat: 60.424834440433045, lng: 12.408766398367092 });
   const [isSettingsExpanded, setIsSettingsExpanded] = useState(false);
   const [isFilterExpanded, setIsFilterExpanded] = useState(false);
+  const [rotateMap, setRotateMap] = useState(false); // Ny state
   const filterMenuRef = useRef<HTMLDivElement>(null);
   const [isScanning, setIsScanning] = useState(false);
+  const [savedPairs, setSavedPairs] = useState<PointPair[]>([]);
+  // --- For interaktiv target-pos modal ---
+  const [showTargetRadiusModal, setShowTargetRadiusModal] = useState(false);
+  const [showTargetDirectionUI, setShowTargetDirectionUI] = useState(false);
+  const [targetRange, setTargetRange] = useState(250); // Default 250m
+  const [targetDirection, setTargetDirection] = useState(0); // Startverdi 0 (nord)
+  const [previewTarget, setPreviewTarget] = useState<Position | null>(null);
+  const [showCurrentFeedback, setShowCurrentFeedback] = useState(false);
+
+  // Oppdater previewTarget når range eller direction endres
+  useEffect(() => {
+    if (!showTargetDirectionUI || savedPairs.length === 0) {
+      setPreviewTarget(null);
+      return;
+    }
+    const lastPair = savedPairs[savedPairs.length - 1];
+    if (!lastPair.current) return;
+    // 0° = nord, positiv = med klokka, negativ = mot klokka
+    // Kompassgrad: -90 => 270, 90 => 90, -180/180 => 180
+    const compassDeg = ((targetDirection + 360) % 360);
+    setPreviewTarget(
+      destinationPoint(
+        lastPair.current.lat,
+        lastPair.current.lng,
+        targetRange,
+        compassDeg
+      )
+    );
+  }, [showTargetDirectionUI, targetRange, targetDirection, savedPairs]);
 
   // Close filter menu when clicking outside
   useEffect(() => {
@@ -470,10 +555,38 @@ export default function MapComponent({
     );
   }
 
+  // --- NYE FUNKSJONER FOR TRACK MODE ---
+  const handleSaveCurrentPos = () => {
+    if (currentPosition) {
+      setSavedPairs((prev) => [...prev, { current: { ...currentPosition } }]);
+      setShowCurrentFeedback(true);
+      setTimeout(() => setShowCurrentFeedback(false), 700);
+    }
+  };
+  const handleSaveTargetPos = () => {
+    setTargetRange(250);
+    setTargetDirection(0);
+    setShowTargetRadiusModal(true);
+    setShowTargetDirectionUI(false);
+  };
+  const handleTargetRadiusOk = () => {
+    setShowTargetRadiusModal(false);
+    setShowTargetDirectionUI(true);
+  };
+  const handleTargetModalSave = () => {
+    if (savedPairs.length === 0 || !previewTarget) return;
+    setSavedPairs((prev) =>
+      prev.map((pair, idx) =>
+        idx === prev.length - 1 ? { ...pair, target: previewTarget } : pair
+      )
+    );
+    setShowTargetDirectionUI(false);
+  };
+
   return (
     <div className="w-full h-screen relative">
       <MapContainer
-        center={[60.424834440433045, 12.408766398367092]} // New default position
+        center={[currentPosition.lat, currentPosition.lng]}
         zoom={13}
         style={{ height: '100%', width: '100%' }}
         zoomControl={true}
@@ -505,7 +618,132 @@ export default function MapComponent({
           isLiveMode={isLiveMode}
           onLiveModeChange={onLiveModeChange}
           onLoadingChange={setIsScanning}
+          mode={mode}
         />
+        {/* Radius circle: kun i aware-mode */}
+        {mode === 'aware' && currentPosition && (
+          <Circle
+            key={`radius-${radius}-${currentPosition.lat}-${currentPosition.lng}`}
+            center={currentPosition}
+            radius={radius}
+            pathOptions={{
+              color: '#3b82f6',
+              fillColor: '#3b82f6',
+              fillOpacity: 0.1,
+              weight: 2,
+            }}
+          />
+        )}
+        {/* Place markers: kun i aware-mode */}
+        {mode === 'aware' && showMarkers && places
+          .filter(place => {
+            // Filter based on category filters
+            if (place.category === 'city' && !categoryFilters.city) return false;
+            if (place.category === 'town' && !categoryFilters.town) return false;
+            if (place.category === 'village' && !categoryFilters.village) return false;
+            if (place.category === 'hamlet' && !categoryFilters.hamlet) return false;
+            if (place.category === 'farm' && !categoryFilters.farm) return false;
+            if (place.category === 'isolated_dwelling' && !categoryFilters.isolated_dwelling) return false;
+            return true;
+          })
+          .map((place) => {
+            let config = categoryConfigs[place.category as keyof CategoryFilter] || { color: '#999', opacity: 0.8, icon: '' };
+            return (
+              <Marker
+                key={`${place.type}-${place.id}`}
+                position={[place.lat, place.lng]}
+                icon={L.divIcon({
+                  className: 'custom-marker place-marker',
+                  html: `<div style="width: 12px; height: 12px; background-color: ${config.color}; opacity: ${config.opacity}; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 4px rgba(0,0,0,0.5);"></div>`,
+                  iconSize: [12, 12],
+                  iconAnchor: [6, 6],
+                })}
+              />
+            );
+          })}
+
+        {/* Saved points: vis blå X for hver current-posisjon i track-mode */}
+        {mode === 'track' && savedPairs.map((pair, idx) => (
+          <React.Fragment key={`pair-${idx}`}>
+            {/* Current pos: blå dot */}
+            {pair.current && (
+              <Marker
+                position={pair.current}
+                icon={L.divIcon({
+                  className: 'custom-marker saved-point',
+                  html: '<div style="width: 18px; height: 18px; background-color: #2563eb; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 4px rgba(0,0,0,0.5);"></div>',
+                  iconSize: [18, 18],
+                  iconAnchor: [9, 9],
+                })}
+              />
+            )}
+            {/* Target pos: kun sirkel og linje */}
+            {pair.target && (
+              <>
+                {/* Sirkel rundt target-pos */}
+                <Circle
+                  center={pair.target}
+                  radius={15}
+                  pathOptions={{
+                    color: '#dc2626',
+                    fillColor: '#dc2626',
+                    fillOpacity: 0.15,
+                    weight: 2,
+                  }}
+                />
+                {/* Stiplet linje mellom current og target */}
+                <Polyline
+                  positions={[[pair.current.lat, pair.current.lng], [pair.target.lat, pair.target.lng]]}
+                  pathOptions={{ color: '#dc2626', weight: 2, dashArray: '6 6' }}
+                />
+              </>
+            )}
+          </React.Fragment>
+        ))}
+        {/* Interaktiv preview for target-posisjon i retning-UI */}
+        {showTargetDirectionUI && savedPairs.length > 0 && (
+          <>
+            {/* Sirkel for valgt radius */}
+            <Circle
+              center={savedPairs[savedPairs.length - 1].current}
+              radius={targetRange}
+              pathOptions={{
+                color: '#2563eb',
+                fillColor: '#2563eb',
+                fillOpacity: 0.08,
+                weight: 2,
+                dashArray: '2 6',
+              }}
+            />
+            {/* Strek fra current til previewTarget */}
+            {previewTarget && (
+              <>
+                <Polyline
+                  positions={[[
+                    savedPairs[savedPairs.length - 1].current.lat,
+                    savedPairs[savedPairs.length - 1].current.lng
+                  ], [previewTarget.lat, previewTarget.lng]]}
+                  pathOptions={{ color: '#2563eb', weight: 2 }}
+                />
+                {/* Markør på sirkelen med grad-tall */}
+                <Marker
+                  position={previewTarget}
+                  icon={L.divIcon({
+                    className: 'custom-marker preview-target',
+                    html: '<div style="font-size: 20px; color: #2563eb; font-weight: bold;">•</div>',
+                    iconSize: [20, 20],
+                    iconAnchor: [10, 10],
+                  })}
+                >
+                  <Tooltip direction="top" offset={[0, -10]} permanent>
+                    {((targetDirection + 360) % 360)}°
+                  </Tooltip>
+                </Marker>
+              </>
+            )}
+          </>
+        )}
+        {/* TODO: Tegn linje og target-pos senere */}
       </MapContainer>
 
       {/* Center marker overlay - always visible in center */}
@@ -513,23 +751,32 @@ export default function MapComponent({
         <div className="w-4 h-4 bg-red-600 border-2 border-white rounded-full shadow-lg"></div>
       </div>
 
+      {/* Kompassrose overlay */}
+      {isLiveMode && (
+        <div className="absolute top-4 left-4 z-[1002]">
+          <CompassRose heading={rotateMap ? 0 : (currentPosition?.heading || 0)} />
+        </div>
+      )}
+
       {/* Settings & Filter Buttons - Top Right */}
-      <div className="fixed top-4 right-4 z-[1001] flex flex-col gap-2">
-        <button
-          onClick={() => setIsSettingsExpanded((v) => !v)}
-          className="bg-white/90 backdrop-blur-sm w-12 h-12 rounded-lg shadow-lg flex items-center justify-center hover:bg-white transition-colors border border-gray-200"
-          title="Innstillinger"
-        >
-          <span className="text-2xl">⚙️</span>
-        </button>
-        <button
-          onClick={() => setIsFilterExpanded((v) => !v)}
-          className="bg-white/90 backdrop-blur-sm w-12 h-12 rounded-lg shadow-lg flex items-center justify-center hover:bg-white transition-colors border border-gray-200"
-          title="Filter"
-        >
-          <span className="text-2xl">🧩</span>
-        </button>
-      </div>
+      {false && (
+        <div className="fixed top-4 right-4 z-[1001] flex flex-col gap-2">
+          <button
+            onClick={() => setIsSettingsExpanded((v) => !v)}
+            className="bg-white/90 backdrop-blur-sm w-12 h-12 rounded-lg shadow-lg flex items-center justify-center hover:bg-white transition-colors border border-gray-200"
+            title="Innstillinger"
+          >
+            <span className="text-2xl">⚙️</span>
+          </button>
+          <button
+            onClick={() => setIsFilterExpanded((v) => !v)}
+            className="bg-white/90 backdrop-blur-sm w-12 h-12 rounded-lg shadow-lg flex items-center justify-center hover:bg-white transition-colors border border-gray-200"
+            title="Filter"
+          >
+            <span className="text-2xl">🧩</span>
+          </button>
+        </div>
+      )}
 
       {/* Settings Menu */}
       {isSettingsExpanded && (
@@ -669,21 +916,58 @@ export default function MapComponent({
                 </span>
               </label>
             </div>
+
+            {/* Kartrotasjon Setting */}
+            <div className="mb-3">
+              <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={rotateMap}
+                  onChange={(e) => setRotateMap(e.target.checked)}
+                  className="w-3 h-3 text-blue-600 rounded focus:ring-blue-500"
+                />
+                <span className="font-medium text-gray-700">
+                  Roter kart etter mobilretning (Front up)
+                </span>
+              </label>
+            </div>
           </div>
         </div>
       )}
 
+      {/* --- PATCH FOR BEDRE KNAPPEPLASSERING --- */}
+      {/* Track-mode: Knapper for lagring av posisjoner */}
+      {mode === 'track' && (
+        <div className="fixed bottom-4 inset-x-0 z-[2001] flex flex-wrap justify-center items-center gap-2 px-2">
+          <button
+            onClick={handleSaveTargetPos}
+            className="flex-1 min-w-[60px] max-w-[110px] w-auto h-9 rounded-full shadow-lg bg-red-600 hover:bg-red-700 text-white font-semibold text-[0.75rem] transition-colors border border-red-700 flex flex-col items-center justify-center px-[0.375em] py-[0.375em]"
+            title="Save target pos"
+          >
+            <span className="text-[10px] mt-0.5">Target</span>
+          </button>
+          <button
+            onClick={handleSaveCurrentPos}
+            className="flex-1 min-w-[60px] max-w-[110px] w-auto h-9 rounded-full shadow-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-[0.75rem] transition-colors border border-blue-700 flex flex-col items-center justify-center px-[0.375em] py-[0.375em]"
+            title="Save current pos"
+          >
+            <span className="text-[10px] mt-0.5">Current</span>
+          </button>
+        </div>
+      )}
       {/* Scan & Live Buttons - Bottom Right */}
-      <div className="fixed bottom-4 right-4 z-[1000] flex flex-col gap-2">
+      <div className="fixed bottom-4 right-4 sm:bottom-4 sm:right-4 bottom-2 right-2 z-[1000] flex flex-col gap-2">
         <button
           onClick={onScanArea}
-          disabled={isScanning}
+          disabled={mode === 'track'}
           className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
-            isScanning 
-              ? 'bg-gray-400 cursor-not-allowed text-white' 
-              : 'bg-blue-600 hover:bg-blue-700 text-white'
+            mode === 'track'
+              ? 'bg-gray-400 cursor-not-allowed text-white'
+              : isScanning 
+                ? 'bg-gray-400 cursor-not-allowed text-white' 
+                : 'bg-blue-600 hover:bg-blue-700 text-white'
           }`}
-          title={isScanning ? 'Scanning...' : 'Scan område'}
+          title={mode === 'track' ? 'Scan disabled in Track-mode' : (isScanning ? 'Scanning...' : 'Scan område')}
         >
           {isScanning ? '⏳' : '🔍'}
         </button>
@@ -699,6 +983,87 @@ export default function MapComponent({
           📍
         </button>
       </div>
+
+      {/* Kartrotasjon (bare i live-mode og rotateMap) */}
+      <style jsx>{`
+        .leaflet-container {
+          transition: transform 0.3s;
+          ${isLiveMode && rotateMap && currentPosition?.heading !== undefined ? `transform: rotate(${-currentPosition.heading}deg);` : ''}
+        }
+      `}</style>
+
+      {/* Modal for target-radius (første steg) */}
+      {showTargetRadiusModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[2000]">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-80 flex flex-col gap-4">
+            <div className="text-xl font-bold mb-2 text-gray-800">Velg avstand</div>
+            <label className="text-base font-semibold text-gray-700">Range (meter):
+              <input
+                type="number"
+                min={1}
+                max={999}
+                value={targetRange}
+                onChange={e => setTargetRange(Math.max(1, Math.min(999, Number(e.target.value))))}
+                className="w-full border rounded px-2 py-1 mt-1 mb-2 text-lg text-gray-900"
+                maxLength={3}
+              />
+              <input
+                type="range"
+                min={1}
+                max={999}
+                value={targetRange}
+                onChange={e => setTargetRange(Number(e.target.value))}
+                className="w-full mt-1"
+              />
+              <div className="text-base text-gray-800 text-center font-semibold">{targetRange} meter</div>
+            </label>
+            <div className="flex gap-2 justify-end mt-2">
+              <button
+                onClick={() => setShowTargetRadiusModal(false)}
+                className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold"
+              >Avbryt</button>
+              <button
+                onClick={handleTargetRadiusOk}
+                className="px-3 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white font-bold"
+              >OK</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Feedback for current-pos lagring */}
+      {showCurrentFeedback && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[3000] bg-green-500 text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-2 animate-bounce">
+          <span className="text-2xl">✅</span>
+          <span className="font-semibold text-lg">Punkt lagret!</span>
+        </div>
+      )}
+      {/* Slider og lagre-knapp for retning (andre steg) */}
+      {showTargetDirectionUI && (
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[2002] bg-white rounded-lg shadow-lg px-4 py-3 flex flex-col items-center gap-2 w-[90vw] max-w-xs">
+          <label className="text-sm font-medium w-full">Retning (grader):
+            <input
+              type="range"
+              min={-180}
+              max={180}
+              value={targetDirection}
+              onChange={e => setTargetDirection(Number(e.target.value))}
+              className="w-full mt-1"
+            />
+            <div className="text-base text-gray-800 text-center font-semibold">
+              {((targetDirection + 360) % 360)}° {
+                ((targetDirection + 360) % 360) === 0 ? '(nord)' :
+                ((targetDirection + 360) % 360) === 180 ? '(sør)' :
+                ((targetDirection + 360) % 360) === 90 ? '(øst)' :
+                ((targetDirection + 360) % 360) === 270 ? '(vest)' : ''
+              }
+            </div>
+          </label>
+          <button
+            onClick={handleTargetModalSave}
+            className="px-4 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white font-semibold mt-1"
+          >Lagre</button>
+        </div>
+      )}
     </div>
   );
 }
