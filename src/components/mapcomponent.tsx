@@ -522,6 +522,16 @@ export default function MapComponent({
     checkLeaflet();
   }, [onError]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!L?.Icon?.Default) return;
+    L.Icon.Default.mergeOptions({
+      iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+      iconUrl:      'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+      shadowUrl:    'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+    });
+  }, []);
+
   if (hasError) {
     return (
       <div className="w-full h-screen bg-gray-100 flex items-center justify-center">
@@ -593,13 +603,6 @@ export default function MapComponent({
   return (
     <div className="w-full h-screen relative">
       {/* Rett før <MapContainer ...> i render: */}
-      {typeof window !== 'undefined' && typeof L !== 'undefined' && (
-        L.Icon.Default.mergeOptions({
-          iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-          iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-        });
-      )}
       <MapContainer
         center={[currentPosition.lat, currentPosition.lng]}
         zoom={13}
