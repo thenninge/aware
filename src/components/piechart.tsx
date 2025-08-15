@@ -1,133 +1,156 @@
-'use client';
+"use client";
 
 import { useMemo } from 'react';
 import { Polygon } from 'react-leaflet';
 
-interface PlaceData {
+type Tags = Record<string, string>;
+
+export interface PlaceData {
   id: number;
   type: string;
   lat: number;
   lng: number;
   name?: string;
   category: string;
-  tags: Record<string, string>;
+  tags: Tags;
+}
+
+export interface CategoryConfig {
+  color: string;
+  opacity: number;
+  icon: string;
 }
 
 interface PieChartProps {
-  places: PlaceData[];
-  categoryConfigs: Record<string, { color: string; opacity: number; icon: string }>;
+  places: PlaceData[] | undefined | null;
+  categoryConfigs: Record<string, CategoryConfig> | undefined | null;
   centerLat: number;
   centerLng: number;
-  angleRange: number; // in degrees, for ±angleRange
-  radius: number; // radius in meters
-  mode?: 'aware' | 'track';
+  angleRange: number; // ± degrees
+  radius: number; // meters
+  stepDeg?: number; // resolution of arc (default 4°)
+  globalOpacity?: number; // optional user override multiplier (0..1)
+}
+
+const clampOpacity = (v: number) => Math.max(0, Math.min(1, v));
+const toRad = (deg: number) => (deg * Math.PI) / 180;
+const norm360 = (deg: number) => ((deg % 360) + 360) % 360;
+
+function arcPoints(
+  centerLat: number,
+  centerLng: number,
+  radius: number,
+  startAngleDeg: number,
+  endAngleDeg: number,
+  stepDeg: number
+): [number, number][] {
+  const points: [number, number][] = [];
+
+  let a0 = norm360(startAngleDeg);
+  let a1 = norm360(endAngleDeg);
+  if (a1 < a0) a1 += 360; // wrap over 360
+
+  const step = Math.max(0.5, stepDeg); // avoid 0 / too fine
+  for (let a = a0; a <= a1 + 1e-6; a += step) {
+    const rad = toRad(norm360(a));
+    const lat = centerLat + (radius * Math.cos(rad)) / 111000;
+    const lng = centerLng + (radius * Math.sin(rad)) / (111000 * Math.cos(toRad(centerLat)));
+    points.push([lat, lng]);
+  }
+  return points;
 }
 
 export default function PieChart(props: PieChartProps) {
-  if (props.mode === 'track') return null;
-  
+  const {
+    places,
+    categoryConfigs,
+    centerLat,
+    centerLng,
+    angleRange,
+    radius,
+    stepDeg = 4,
+    globalOpacity,
+  } = props;
 
+  const safePlaces = useMemo<PlaceData[]>(
+    () => (Array.isArray(places) ? places : []),
+    [places]
+  );
 
-  const safePlaces = Array.isArray(props.places) ? props.places : [];
-  const placeDirections = useMemo(() => {
-    if (!Array.isArray(props.places) || props.places.length === 0) return [];
-    return safePlaces
-      .map(place => {
-        const lat1 = props.centerLat * Math.PI / 180;
-        const lat2 = place.lat * Math.PI / 180;
-        const lng1 = props.centerLng * Math.PI / 180;
-        const lng2 = place.lng * Math.PI / 180;
-        
-        const dLng = lng2 - lng1;
+  const cfg = useMemo<Record<string, CategoryConfig>>(
+    () => (categoryConfigs ?? {}),
+    [categoryConfigs]
+  );
+
+  const placeDirections = useMemo(
+    () =>
+      safePlaces.map((place) => {
+        const lat1 = toRad(centerLat);
+        const lat2 = toRad(place.lat);
+        const dLng = toRad(place.lng - centerLng);
+
         const y = Math.sin(dLng) * Math.cos(lat2);
         const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
-        const bearing = Math.atan2(y, x) * 180 / Math.PI;
-        const normalizedBearing = (bearing + 360) % 360;
-        
-        const distance = Math.sqrt(
-          Math.pow((place.lat - props.centerLat) * 111000, 2) + 
-          Math.pow((place.lng - props.centerLng) * 111000 * Math.cos(props.centerLat * Math.PI / 180), 2)
+        const bearing = (Math.atan2(y, x) * 180) / Math.PI;
+        const normalizedBearing = norm360(bearing);
+
+        const dy = (place.lat - centerLat) * 111000;
+        const dx =
+          (place.lng - centerLng) * 111000 * Math.cos(toRad(centerLat));
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        return { ...place, bearing: normalizedBearing, distance };
+      }),
+    [safePlaces, centerLat, centerLng]
+  );
+
+  const slices = useMemo(() => {
+    return placeDirections
+      .filter((p) => Number.isFinite(p.distance) && p.distance <= radius)
+      .map((p) => {
+        const startAngle = p.bearing - angleRange;
+        const endAngle = p.bearing + angleRange;
+
+        const catCfg = cfg[p.category];
+        const color = catCfg?.color ?? '#999999';
+        const baseOpacity = catCfg?.opacity ?? 0.6;
+        const fillOpacity = clampOpacity(
+          (globalOpacity ?? 1) * baseOpacity
         );
 
+        const edge = arcPoints(centerLat, centerLng, radius, startAngle, endAngle, stepDeg);
+        const positions: [number, number][] = [
+          [centerLat, centerLng],
+          ...edge,
+          [centerLat, centerLng],
+        ];
+
         return {
-          ...place,
-          bearing: normalizedBearing,
-          distance
+          key: `slice-${p.id}-${p.bearing.toFixed(2)}`,
+          positions,
+          color,
+          fillOpacity,
         };
-      })
-      .filter(place => place.distance <= props.radius);
-  }, [props.places, props.centerLat, props.centerLng]);
-
-  // Helper function to convert hex to rgba
-  // const hexToRgba = (hex: string, opacity: number) => {
-  //   const r = parseInt(hex.slice(1, 3), 16);
-  //   const g = parseInt(hex.slice(3, 5), 16);
-  //   const b = parseInt(hex.slice(5, 7), 16);
-  //   const rgbaColor = `rgba(${r}, ${g}, ${b}, ${opacity})`;
-  //   console.log(`Converting ${hex} with opacity ${opacity} to ${rgbaColor}`); // Debug log
-  //   return rgbaColor;
-  // };
-
-  const directionGroups = useMemo(() => {
-    if (!Array.isArray(props.places) || props.places.length === 0) return [];
-    const groups: Array<{
-      startAngle: number;
-      endAngle: number;
-      category: string;
-      color: string;
-      opacity: number;
-    }> = [];
-
-    placeDirections.forEach(place => {
-      const startAngle = place.bearing - props.angleRange;
-      const endAngle = place.bearing + props.angleRange;
-      const config = props.categoryConfigs[place.category];
-      
-      groups.push({
-        startAngle,
-        endAngle,
-        category: place.category,
-        color: config?.color || '#999', // hex only
-        opacity: config?.opacity ?? 0.8
       });
-    });
+  }, [placeDirections, radius, angleRange, cfg, centerLat, centerLng, stepDeg, globalOpacity]);
 
-    return groups;
-  }, [placeDirections, props.angleRange, props.categoryConfigs]);
-
-  if (!Array.isArray(props.places) || props.places.length === 0) return null;
+  // Render (kan returnere null etter hooks er kalt)
+  if (slices.length === 0) return null;
 
   return (
     <>
-      {directionGroups.map((group, index) => {
-        const points: [number, number][] = [];
-        points.push([props.centerLat, props.centerLng]); // center of the pie
-
-        // create arc points
-        const step = 5; // degrees between points on the arc
-        for (let angle = group.startAngle; angle <= group.endAngle; angle += step) {
-          const rad = (angle * Math.PI) / 180;
-          const lat = props.centerLat + (props.radius * Math.cos(rad)) / 111000;
-          const lng = props.centerLng + (props.radius * Math.sin(rad)) / (111000 * Math.cos(props.centerLat * Math.PI / 180));
-          points.push([lat, lng]);
-        }
-
-        // close back to center
-        points.push([props.centerLat, props.centerLng]);
-
-        return (
-          <Polygon
-            key={`slice-${index}`}
-            positions={points}
-            pathOptions={{
-              color: group.color,
-              fillColor: group.color,
-              fillOpacity: group.opacity,
-              weight: 0,
-            }}
-          />
-        );
-      })}
+      {slices.map((s) => (
+        <Polygon
+          key={s.key}
+          positions={Array.isArray(s.positions) ? s.positions : []}
+          pathOptions={{
+            color: s.color,
+            fillColor: s.color,
+            fillOpacity: s.fillOpacity,
+            weight: 1,
+          }}
+        />
+      ))}
     </>
   );
 }
