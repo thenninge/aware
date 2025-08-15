@@ -368,7 +368,6 @@ function MapController({
           centerLng={currentPosition.lng}
           angleRange={angleRange ?? 5}
           radius={radius}
-          mode={mode}
         />
       )}
     </>
