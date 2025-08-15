@@ -363,7 +363,6 @@ export default function MapComponent({
           <PieChart 
             places={places}
             categoryConfigs={categoryConfigs}
-            size={Math.min(radius * 0.8, 200)} // Scale with radius but max 200px
             centerLat={currentPosition.lat}
             centerLng={currentPosition.lng}
             angleRange={angleRange}
