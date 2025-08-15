@@ -390,7 +390,7 @@ function CompassRose({ heading = 0 }: { heading?: number }) {
 function destinationPoint(lat: number, lng: number, distance: number, bearing: number): Position {
   const R = 6371000; // Jordradius i meter
   const δ = distance / R; // angular distance in radians
-  const θ = (bearing * Math.PI) / 180; // bearing i radianer
+  const θ = (bearing * Math.PI) / 180; // bearing in radians
   const φ1 = (lat * Math.PI) / 180;
   const λ1 = (lng * Math.PI) / 180;
   const φ2 = Math.asin(
@@ -451,6 +451,10 @@ export default function MapComponent({
   const [targetDirection, setTargetDirection] = useState(0); // Startverdi 0 (nord)
   const [previewTarget, setPreviewTarget] = useState<Position | null>(null);
   const [showCurrentFeedback, setShowCurrentFeedback] = useState(false);
+  // State for ny post-dialog
+  const [showNewPostDialog, setShowNewPostDialog] = useState(false);
+  const [newPostPosition, setNewPostPosition] = useState<Position | null>(null);
+  const [newPostName, setNewPostName] = useState('');
 
   // Oppdater previewTarget når range eller direction endres
   useEffect(() => {
@@ -523,43 +527,85 @@ export default function MapComponent({
     });
   }, []);
 
-  if (hasError) {
-    return (
-      <div className="w-full h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-lg text-red-600 mb-2">Feil ved lasting av kart</div>
-          <button 
-            onClick={() => window.location.reload()} 
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
-            Prøv igjen
-          </button>
-        </div>
-      </div>
-    );
-  }
+  // 1. Hent alle poster fra backend ved mount
+  useEffect(() => {
+    fetch('/api/posts')
+      .then(res => res.json())
+      .then(data => {
+        console.log('Fetched posts:', data);
+        if (Array.isArray(data)) {
+          setSavedPairs(data.map(post => ({
+            current: post.current_lat && post.current_lng ? { lat: post.current_lat, lng: post.current_lng } : undefined,
+            target: post.target_lat && post.target_lng ? { lat: post.target_lat, lng: post.target_lng } : undefined,
+            category: post.category,
+            id: post.id,
+          })));
+        }
+      })
+      .catch(err => {
+        console.error('Error fetching posts:', err);
+        alert('Kunne ikke hente poster fra backend.');
+      });
+  }, []);
 
-  if (!isLeafletLoaded) {
-    return (
-      <div className="w-full h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-lg">Laster kart-bibliotek...</div>
-      </div>
-    );
-  }
-
-  // --- NYE FUNKSJONER FOR TRACK MODE ---
+  // 2. Lagre current-posisjon til backend
   const handleSaveCurrentPos = () => {
     if (currentPosition) {
-      setSavedPairs((prev) => [...prev, { current: { ...currentPosition } }]);
-      setShowCurrentFeedback(true);
-      setTimeout(() => setShowCurrentFeedback(false), 700);
+      fetch('/api/posts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          current_lat: currentPosition.lat,
+          current_lng: currentPosition.lng,
+          category: 'Skyteplass',
+        })
+      })
+        .then(res => res.json())
+        .then(data => {
+          console.log('POST response (current):', data);
+          setSavedPairs(prev => [...prev, {
+            current: { ...currentPosition },
+            category: 'Skyteplass',
+            id: data.id,
+          }]);
+          setShowCurrentFeedback(true);
+          setTimeout(() => setShowCurrentFeedback(false), 700);
+        })
+        .catch(err => {
+          console.error('Error saving current:', err);
+          alert('Kunne ikke lagre Skyteplass.');
+        });
     }
   };
+
+  // 3. Lagre target-posisjon til backend
   const handleSaveTargetPos = () => {
-    setTargetRange(250);
-    setTargetDirection(0);
-    setShowTargetRadiusModal(true);
-    setShowTargetDirectionUI(false);
+    if (currentPosition) {
+      fetch('/api/posts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          target_lat: currentPosition.lat,
+          target_lng: currentPosition.lng,
+          category: 'Treffpunkt',
+        })
+      })
+        .then(res => res.json())
+        .then(data => {
+          console.log('POST response (target):', data);
+          setSavedPairs(prev => [...prev, {
+            target: { ...currentPosition },
+            category: 'Treffpunkt',
+            id: data.id,
+          }]);
+          setShowCurrentFeedback(true);
+          setTimeout(() => setShowCurrentFeedback(false), 700);
+        })
+        .catch(err => {
+          console.error('Error saving target:', err);
+          alert('Kunne ikke lagre Treffpunkt.');
+        });
+    }
   };
   const handleTargetRadiusOk = () => {
     setShowTargetRadiusModal(false);
@@ -582,6 +628,32 @@ export default function MapComponent({
       )
     );
     setShowTargetDirectionUI(false);
+  };
+
+  // 2. Når bruker lagrer ny post, send POST til backend
+  const handleSaveNewPost = () => {
+    if (newPostPosition && newPostName.trim()) {
+      fetch('/api/posts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newPostName.trim(),
+          current_lat: newPostPosition.lat,
+          current_lng: newPostPosition.lng,
+        })
+      })
+        .then(res => res.json())
+        .then(data => {
+          setSavedPairs(prev => [...prev, {
+            current: { ...newPostPosition },
+            name: newPostName.trim(),
+            id: data.id,
+          }]);
+          setShowNewPostDialog(false);
+          setNewPostName('');
+          setNewPostPosition(null);
+        });
+    }
   };
 
   // Defensive guards i toppen av renderblokken
@@ -667,43 +739,44 @@ export default function MapComponent({
           })}
 
         {/* Saved points: vis blå X for hver current-posisjon i track-mode */}
-        {mode === 'track' && hasSavedPairs && safeSavedPairs.map((pair, idx) => (
-          <React.Fragment key={`pair-${idx}`}>
-            {/* Current pos: blå dot */}
-            {pair.current && (
-              <Marker
-                position={Array.isArray(pair.current) && pair.current.length === 2 ? pair.current : [0,0]}
-                icon={L.divIcon({
-                  className: 'custom-marker saved-point',
-                  html: '<div style="width: 18px; height: 18px; background-color: #2563eb; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 4px rgba(0,0,0,0.5);"></div>',
-                  iconSize: [18, 18],
-                  iconAnchor: [9, 9],
-                })}
-              />
-            )}
-            {/* Target pos: kun sirkel og linje */}
-            {pair.target && (
-              <>
-                {/* Sirkel rundt target-pos */}
-                <Circle
-                  center={Array.isArray(pair.target) && pair.target.length === 2 ? pair.target : [0,0]}
-                  radius={15}
-                  pathOptions={{
-                    color: '#dc2626',
-                    fillColor: '#dc2626',
-                    fillOpacity: 0.15,
-                    weight: 2,
-                  }}
-                />
-                {/* Stiplet linje mellom current og target */}
-                <Polyline
-                  positions={Array.isArray(pair.current) && pair.current.length === 2 ? [pair.current, pair.target] : []}
-                  pathOptions={{ color: '#dc2626', weight: 2, dashArray: '6 6' }}
-                />
-              </>
-            )}
-          </React.Fragment>
-        ))}
+        {mode === 'track' && hasSavedPairs && (
+          <>
+            {safeSavedPairs.map((pair, idx) => (
+              <React.Fragment key={`pair-current-${idx}`}>
+                {pair.current && (
+                  <Marker
+                    position={[pair.current.lat, pair.current.lng]}
+                    icon={L.divIcon({
+                      className: 'custom-marker saved-point',
+                      html: '<div style="width: 18px; height: 18px; background-color: #2563eb; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 4px rgba(0,0,0,0.5);"></div>',
+                      iconSize: [18, 18],
+                      iconAnchor: [9, 9],
+                    })}
+                  >
+                    <Tooltip direction="top" offset={[0, -10]} permanent>{pair.category}</Tooltip>
+                  </Marker>
+                )}
+              </React.Fragment>
+            ))}
+            {safeSavedPairs.map((pair, idx) => (
+              <React.Fragment key={`pair-target-${idx}`}>
+                {pair.target && (
+                  <Marker
+                    position={[pair.target.lat, pair.target.lng]}
+                    icon={L.divIcon({
+                      className: 'custom-marker saved-point',
+                      html: '<div style="width: 18px; height: 18px; background-color: #dc2626; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 4px rgba(0,0,0,0.5);"></div>',
+                      iconSize: [18, 18],
+                      iconAnchor: [9, 9],
+                    })}
+                  >
+                    <Tooltip direction="top" offset={[0, -10]} permanent>{pair.category}</Tooltip>
+                  </Marker>
+                )}
+              </React.Fragment>
+            ))}
+          </>
+        )}
         {/* Interaktiv preview for target-posisjon i retning-UI */}
         {showTargetDirectionUI && hasSavedPairs && lastPair && (
           <>
@@ -958,8 +1031,8 @@ export default function MapComponent({
       )}
       {/* Scan & Live Buttons - Bottom Right */}
       <div className="fixed bottom-4 right-4 sm:bottom-4 sm:right-4 bottom-2 right-2 z-[1000] flex flex-col gap-2">
-        <button
-          onClick={onScanArea}
+          <button
+            onClick={onScanArea}
           disabled={mode === 'track'}
           className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
             mode === 'track'
@@ -982,8 +1055,8 @@ export default function MapComponent({
           title={isLiveMode ? 'Live GPS ON' : 'Live GPS'}
         >
           📍
-        </button>
-      </div>
+          </button>
+        </div>
 
       {/* Kartrotasjon (bare i live-mode og rotateMap) */}
       <style jsx>{`
@@ -1027,7 +1100,7 @@ export default function MapComponent({
                 onClick={handleTargetRadiusOk}
                 className="px-3 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white font-bold"
               >OK</button>
-            </div>
+      </div>
           </div>
         </div>
       )}
@@ -1063,6 +1136,31 @@ export default function MapComponent({
             onClick={handleTargetModalSave}
             className="px-4 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white font-semibold mt-1"
           >Lagre</button>
+        </div>
+      )}
+      {showNewPostDialog && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[2000]">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-80 flex flex-col gap-4">
+            <div className="text-xl font-bold mb-2 text-gray-800">Ny post</div>
+            <label className="text-base font-semibold text-gray-700">Navn:
+              <input
+                type="text"
+                value={newPostName}
+                onChange={e => setNewPostName(e.target.value)}
+                className="w-full border rounded px-2 py-1 mt-1 mb-2 text-lg text-gray-900"
+              />
+            </label>
+            <div className="flex gap-2 justify-end mt-2">
+              <button
+                onClick={() => { setShowNewPostDialog(false); setNewPostName(''); setNewPostPosition(null); }}
+                className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold"
+              >Avbryt</button>
+              <button
+                onClick={handleSaveNewPost}
+                className="px-3 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white font-bold"
+              >Lagre</button>
+            </div>
+          </div>
         </div>
       )}
     </div>

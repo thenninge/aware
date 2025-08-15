@@ -26,6 +26,11 @@ interface CategoryConfig {
   icon: string;
 }
 
+type Post = {
+  id: number;
+  // legg til flere felter hvis nødvendig
+};
+
 export default function Home() {
   const [mode, setMode] = useState<'aware' | 'track'>('aware');
   const [radius, setRadius] = useState(3000); // Default 3000m
