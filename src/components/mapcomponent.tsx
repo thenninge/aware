@@ -350,24 +350,16 @@ function MapController({
         </div>
       )}
 
-      {/* Pie Chart slices - only show when there's data */}
-      {Array.isArray(places) && places.length > 0 && (
+      {/* Pie Chart slices - only show in aware-mode */}
+      {mode === 'aware' && Array.isArray(places) && places.length > 0 && (
         <PieChart 
-          places={places.filter(place => {
-            // Filter based on category filters for pie chart too
-            if (place.category === 'city' && !categoryFilters.city) return false;
-            if (place.category === 'town' && !categoryFilters.town) return false;
-            if (place.category === 'village' && !categoryFilters.village) return false;
-            if (place.category === 'hamlet' && !categoryFilters.hamlet) return false;
-            if (place.category === 'farm' && !categoryFilters.farm) return false;
-            if (place.category === 'isolated_dwelling' && !categoryFilters.isolated_dwelling) return false;
-            return true;
-          })}
+          places={places}
           categoryConfigs={categoryConfigs}
           centerLat={currentPosition.lat}
           centerLng={currentPosition.lng}
           angleRange={angleRange ?? 5}
           radius={radius}
+          globalOpacity={categoryConfigs.city?.opacity ?? 1}
         />
       )}
     </>
@@ -636,7 +628,7 @@ export default function MapComponent({
         {mode === 'aware' && currentPosition && (
           <Circle
             key={`radius-${radius}-${currentPosition.lat}-${currentPosition.lng}`}
-            center={Array.isArray(currentPosition) && currentPosition.length === 2 ? currentPosition : [0,0]}
+            center={[currentPosition.lat, currentPosition.lng]}
             radius={radius ?? 0}
             pathOptions={{
               color: '#3b82f6',

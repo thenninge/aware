@@ -144,10 +144,10 @@ export default function PieChart(props: PieChartProps) {
           key={s.key}
           positions={Array.isArray(s.positions) ? s.positions : []}
           pathOptions={{
-            color: s.color,
             fillColor: s.color,
             fillOpacity: s.fillOpacity,
-            weight: 1,
+            weight: 0,
+            color: 'transparent',
           }}
         />
       ))}
