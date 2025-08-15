@@ -30,7 +30,7 @@ export default function PieChart(props: PieChartProps) {
 
   const safePlaces = Array.isArray(props.places) ? props.places : [];
   const placeDirections = useMemo(() => {
-    if (safePlaces.length === 0) return [];
+    if (!Array.isArray(props.places) || props.places.length === 0) return [];
     return safePlaces
       .map(place => {
         const lat1 = props.centerLat * Math.PI / 180;
@@ -56,7 +56,7 @@ export default function PieChart(props: PieChartProps) {
         };
       })
       .filter(place => place.distance <= props.radius);
-  }, [safePlaces, props.centerLat, props.centerLng, props.radius]);
+  }, [props.places, props.centerLat, props.centerLng]);
 
   // Helper function to convert hex to rgba
   // const hexToRgba = (hex: string, opacity: number) => {
@@ -69,7 +69,7 @@ export default function PieChart(props: PieChartProps) {
   // };
 
   const directionGroups = useMemo(() => {
-    if (safePlaces.length === 0) return [];
+    if (!Array.isArray(props.places) || props.places.length === 0) return [];
     const groups: Array<{
       startAngle: number;
       endAngle: number;
@@ -95,7 +95,7 @@ export default function PieChart(props: PieChartProps) {
     return groups;
   }, [placeDirections, props.angleRange, props.categoryConfigs]);
 
-  if (safePlaces.length === 0) return null;
+  if (!Array.isArray(props.places) || props.places.length === 0) return null;
 
   return (
     <>

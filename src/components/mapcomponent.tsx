@@ -4,9 +4,9 @@ import { useEffect, useState, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, useMap, Circle, Polyline, Tooltip } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import React from 'react';
 import PieChart from './piechart';
 import SettingsMenu from './settingsmenu';
-import React from 'react';
 
 interface Position {
   lat: number;
@@ -67,11 +67,9 @@ function MapController({
   categoryFilters, 
   categoryConfigs, 
   shouldScan,
-  onPlacesChange,
   angleRange,
   showMarkers,
   isLiveMode = false,
-  onLiveModeChange,
   onLoadingChange,
   mode = 'aware', // <-- NY
 }: { 
@@ -81,11 +79,9 @@ function MapController({
   categoryFilters: CategoryFilter;
   categoryConfigs: Record<keyof CategoryFilter, CategoryConfig>;
   shouldScan?: boolean;
-  onPlacesChange?: (places: PlaceData[]) => void;
   angleRange?: number;
   showMarkers?: boolean;
   isLiveMode?: boolean;
-  onLiveModeChange?: (isLive: boolean) => void;
   onLoadingChange?: (loading: boolean) => void;
   mode?: 'aware' | 'track'; // <-- NY
 }) {
@@ -254,7 +250,6 @@ function MapController({
           console.log('Places:', result.data?.map((p: PlaceData) => ({ name: p.name, category: p.category })) || []);
           const newPlaces = Array.isArray(result.data) ? result.data : [];
           setPlaces(newPlaces);
-          onPlacesChange?.(newPlaces);
         } else {
           console.error('Failed to fetch places');
           setPlaces([]);
@@ -269,7 +264,7 @@ function MapController({
     };
 
     fetchPlaces();
-  }, [shouldScan, radius, currentPosition, categoryFilters, onPlacesChange]);
+  }, [shouldScan, radius, currentPosition, categoryFilters, onLoadingChange]);
 
   // Don't render anything if L is not available
   if (typeof L === 'undefined') {
@@ -595,7 +590,7 @@ export default function MapComponent({
   };
 
   // Defensive guards i toppen av renderblokken
-  const safePlaces = Array.isArray(places) ? places : [];
+  const safePlaces: PlaceData[] = Array.isArray(places) ? places : [];
   const hasSafePlaces = safePlaces.length > 0;
   const safeSavedPairs = Array.isArray(savedPairs) ? savedPairs : [];
   const hasSavedPairs = safeSavedPairs.length > 0;
@@ -618,10 +613,7 @@ export default function MapComponent({
         />
         
         <MapController 
-          onPositionChange={(pos) => {
-            setCurrentPosition(pos);
-            onPositionChange?.(pos);
-          }} 
+          onPositionChange={setCurrentPosition} 
           radius={radius}
           onError={() => {
             setHasError(true);
@@ -630,11 +622,9 @@ export default function MapComponent({
           categoryFilters={categoryFilters}
           categoryConfigs={categoryConfigs}
           shouldScan={shouldScan}
-          onPlacesChange={setPlaces}
           angleRange={angleRange}
           showMarkers={showMarkers}
           isLiveMode={isLiveMode}
-          onLiveModeChange={onLiveModeChange}
           onLoadingChange={setIsScanning}
           mode={mode}
         />
@@ -796,31 +786,31 @@ export default function MapComponent({
       {/* Settings Menu */}
       {isSettingsExpanded && (
         <div className="fixed top-20 right-4 z-[1002]">
-          <SettingsMenu
-            categoryConfigs={categoryConfigs}
-            onCategoryConfigChange={onCategoryConfigChange || (() => {})}
-            angleRange={angleRange}
-            onAngleRangeChange={onAngleRangeChange || (() => {})}
-          />
+      <SettingsMenu 
+        categoryConfigs={categoryConfigs}
+        onCategoryConfigChange={onCategoryConfigChange || (() => {})}
+        angleRange={angleRange}
+        onAngleRangeChange={onAngleRangeChange || (() => {})}
+      />
         </div>
       )}
 
       {/* Filter Menu */}
       {isFilterExpanded && (
         <div ref={filterMenuRef} className="fixed top-36 right-4 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg z-[1000] max-w-xs">
-          {/* Filter Header with Expand/Collapse */}
-          <div className="p-3 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <div className="text-sm font-medium text-gray-700">Filtrer & Kontroller</div>
-              <button
+        {/* Filter Header with Expand/Collapse */}
+        <div className="p-3 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <div className="text-sm font-medium text-gray-700">Filtrer & Kontroller</div>
+            <button
                 onClick={() => setIsFilterExpanded(false)}
-                className="text-gray-500 hover:text-gray-700 transition-colors"
-              >
+              className="text-gray-500 hover:text-gray-700 transition-colors"
+            >
                 ✕
-              </button>
-            </div>
+            </button>
           </div>
-          {/* Expandable Filter Content */}
+        </div>
+        {/* Expandable Filter Content */}
           <div className="p-3 border-b border-gray-200">
             {/* Radius Control */}
             <div className="mb-3">
@@ -872,48 +862,48 @@ export default function MapComponent({
               />
             </div>
 
-            {/* Category Filters */}
-            <div className="mb-3">
-              <div className="text-xs font-medium text-gray-700 mb-2">Filtrer:</div>
-              <div className="space-y-1">
-                {Object.entries(categoryConfigs).map(([category, config]) => (
-                  <label key={category} className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
-                    <input
-                      type="checkbox"
-                      checked={categoryFilters[category as keyof CategoryFilter]}
-                      onChange={() => onCategoryChange?.(category as keyof CategoryFilter)}
-                      className="w-3 h-3 text-blue-600 rounded focus:ring-blue-500"
-                    />
-                    <span 
-                      className="font-medium"
-                      style={{ color: config.color }}
-                    >
-                      {category === 'city' && 'By'}
-                      {category === 'town' && 'Tettsted'}
-                      {category === 'village' && 'Landsby'}
-                      {category === 'hamlet' && 'Grend'}
-                      {category === 'farm' && 'Gård'}
-                      {category === 'isolated_dwelling' && 'Enkeltbolig'}
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </div>
+                         {/* Category Filters */}
+             <div className="mb-3">
+               <div className="text-xs font-medium text-gray-700 mb-2">Filtrer:</div>
+               <div className="space-y-1">
+                 {Object.entries(categoryConfigs).map(([category, config]) => (
+                   <label key={category} className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+                     <input
+                       type="checkbox"
+                       checked={categoryFilters[category as keyof CategoryFilter]}
+                       onChange={() => onCategoryChange?.(category as keyof CategoryFilter)}
+                       className="w-3 h-3 text-blue-600 rounded focus:ring-blue-500"
+                     />
+                     <span 
+                       className="font-medium"
+                       style={{ color: config.color }}
+                     >
+                       {category === 'city' && 'By'}
+                       {category === 'town' && 'Tettsted'}
+                       {category === 'village' && 'Landsby'}
+                       {category === 'hamlet' && 'Grend'}
+                       {category === 'farm' && 'Gård'}
+                       {category === 'isolated_dwelling' && 'Enkeltbolig'}
+                     </span>
+                   </label>
+                 ))}
+               </div>
+             </div>
 
-            {/* Show Markers Setting */}
-            <div className="mb-3">
-              <div className="text-xs font-medium text-gray-700 mb-2">Visning:</div>
-              <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
-                <input
-                  type="checkbox"
-                  checked={showMarkers}
-                  onChange={(e) => onShowMarkersChange?.(e.target.checked)}
-                  className="w-3 h-3 text-blue-600 rounded focus:ring-blue-500"
-                />
-                <span className="font-medium text-gray-700">
-                  Vis treff i kart
-                </span>
-              </label>
+             {/* Show Markers Setting */}
+             <div className="mb-3">
+               <div className="text-xs font-medium text-gray-700 mb-2">Visning:</div>
+               <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+                 <input
+                   type="checkbox"
+                   checked={showMarkers}
+                   onChange={(e) => onShowMarkersChange?.(e.target.checked)}
+                   className="w-3 h-3 text-blue-600 rounded focus:ring-blue-500"
+                 />
+                 <span className="font-medium text-gray-700">
+                   Vis treff i kart
+                 </span>
+               </label>
             </div>
 
             {/* Live Position Setting */}
@@ -946,9 +936,9 @@ export default function MapComponent({
                 </span>
               </label>
             </div>
+             </div>
           </div>
-        </div>
-      )}
+        )}
 
       {/* --- PATCH FOR BEDRE KNAPPEPLASSERING --- */}
       {/* Track-mode: Knapper for lagring av posisjoner */}
