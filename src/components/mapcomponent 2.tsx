@@ -366,6 +366,7 @@ export default function MapComponent({
             centerLat={currentPosition.lat}
             centerLng={currentPosition.lng}
             angleRange={angleRange}
+            radius={radius}
           />
         </div>
       )}
