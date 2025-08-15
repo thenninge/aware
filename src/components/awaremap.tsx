@@ -54,28 +54,6 @@ interface AwareMapProps {
   mode?: 'aware' | 'track'; // <-- NY
 }
 
-function ErrorBoundary({ children }: { children: React.ReactNode }) {
-  const [error, setError] = React.useState<Error | null>(null);
-  // @ts-ignore
-  if (error) {
-    return (
-      <div className="w-full h-screen bg-red-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-lg text-red-600 mb-2">Feil i kartet: {error.message}</div>
-          <button
-            onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
-            Prøv igjen
-          </button>
-        </div>
-      </div>
-    );
-  }
-  // @ts-ignore
-  return React.cloneElement(children, { onError: (e: Error) => setError(e) });
-}
-
 export default function AwareMap({ 
   radius, 
   onPositionChange, 
@@ -127,27 +105,25 @@ export default function AwareMap({
 
   return (
     <div className="w-full h-screen">
-      <ErrorBoundary>
-        <MapComponent 
-          radius={radius} 
-          onPositionChange={onPositionChange}
-          categoryFilters={categoryFilters}
-          categoryConfigs={categoryConfigs}
-          shouldScan={shouldScan}
-          onError={() => setHasError(true)}
-          onCategoryChange={onCategoryChange}
-          onScanArea={onScanArea}
-          onRadiusChange={onRadiusChange}
-          onCategoryConfigChange={onCategoryConfigChange}
-                angleRange={angleRange}
+      <MapComponent 
+        radius={radius} 
+        onPositionChange={onPositionChange}
+        categoryFilters={categoryFilters}
+        categoryConfigs={categoryConfigs}
+        shouldScan={shouldScan}
+        onError={() => setHasError(true)}
+        onCategoryChange={onCategoryChange}
+        onScanArea={onScanArea}
+        onRadiusChange={onRadiusChange}
+        onCategoryConfigChange={onCategoryConfigChange}
+        angleRange={angleRange}
         onAngleRangeChange={onAngleRangeChange}
         showMarkers={showMarkers}
         onShowMarkersChange={onShowMarkersChange}
         isLiveMode={isLiveMode}
         onLiveModeChange={onLiveModeChange}
-        mode={mode} // <-- NY
+        mode={mode}
       />
-      </ErrorBoundary>
     </div>
   );
 }

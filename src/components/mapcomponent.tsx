@@ -100,7 +100,7 @@ function MapController({
   useEffect(() => {
     if (typeof window !== 'undefined' && typeof L !== 'undefined') {
       try {
-        delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
+        delete (L.Icon.Default.prototype as any)._getIconUrl;
         L.Icon.Default.mergeOptions({
           iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
           iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
@@ -249,9 +249,9 @@ function MapController({
         
         if (response.ok) {
           const result = await response.json();
-          console.log('Found places:', result.data?.length || 0);
+          console.log('Found places:', Array.isArray(result.data) ? result.data.length : 0);
           console.log('Places:', result.data?.map((p: PlaceData) => ({ name: p.name, category: p.category })) || []);
-          const newPlaces = result.data || [];
+          const newPlaces = Array.isArray(result.data) ? result.data : [];
           setPlaces(newPlaces);
           onPlacesChange?.(newPlaces);
         } else {
@@ -361,7 +361,7 @@ function MapController({
       )}
 
       {/* Pie Chart slices - only show when there's data */}
-      {places.length > 0 && (
+      {Array.isArray(places) && places.length > 0 && (
         <PieChart 
           places={places.filter(place => {
             // Filter based on category filters for pie chart too
@@ -473,12 +473,13 @@ export default function MapComponent({
 
   // Oppdater previewTarget når range eller direction endres
   useEffect(() => {
-    if (!showTargetDirectionUI || savedPairs.length === 0) {
+    const hasSavedPairs = Array.isArray(savedPairs) && savedPairs.length > 0;
+    const lastPair = hasSavedPairs ? savedPairs[savedPairs.length - 1] : undefined;
+    if (!showTargetDirectionUI || !hasSavedPairs) {
       setPreviewTarget(null);
       return;
     }
-    const lastPair = savedPairs[savedPairs.length - 1];
-    if (!lastPair.current) return;
+    if (!lastPair || !lastPair.current) return;
     // 0° = nord, positiv = med klokka, negativ = mot klokka
     // Kompassgrad: -90 => 270, 90 => 90, -180/180 => 180
     const compassDeg = ((targetDirection + 360) % 360);
@@ -574,7 +575,16 @@ export default function MapComponent({
     setShowTargetDirectionUI(true);
   };
   const handleTargetModalSave = () => {
-    if (savedPairs.length === 0 || !previewTarget) return;
+    const hasSavedPairs = Array.isArray(savedPairs) && savedPairs.length > 0;
+    const lastPair = hasSavedPairs ? savedPairs[savedPairs.length - 1] : undefined;
+    if (!hasSavedPairs || !lastPair) return;
+    const previewTarget = destinationPoint(
+      lastPair.current.lat,
+      lastPair.current.lng,
+      targetRange,
+      ((targetDirection + 360) % 360)
+    );
+    if (!previewTarget) return;
     setSavedPairs((prev) =>
       prev.map((pair, idx) =>
         idx === prev.length - 1 ? { ...pair, target: previewTarget } : pair
@@ -582,6 +592,13 @@ export default function MapComponent({
     );
     setShowTargetDirectionUI(false);
   };
+
+  // Defensive guards i toppen av renderblokken
+  const safePlaces = Array.isArray(places) ? places : [];
+  const hasSafePlaces = safePlaces.length > 0;
+  const safeSavedPairs = Array.isArray(savedPairs) ? savedPairs : [];
+  const hasSavedPairs = safeSavedPairs.length > 0;
+  const lastPair = hasSavedPairs ? safeSavedPairs[safeSavedPairs.length - 1] : undefined;
 
   return (
     <div className="w-full h-screen relative">
@@ -624,8 +641,8 @@ export default function MapComponent({
         {mode === 'aware' && currentPosition && (
           <Circle
             key={`radius-${radius}-${currentPosition.lat}-${currentPosition.lng}`}
-            center={currentPosition}
-            radius={radius}
+            center={Array.isArray(currentPosition) && currentPosition.length === 2 ? currentPosition : [0,0]}
+            radius={radius ?? 0}
             pathOptions={{
               color: '#3b82f6',
               fillColor: '#3b82f6',
@@ -635,7 +652,7 @@ export default function MapComponent({
           />
         )}
         {/* Place markers: kun i aware-mode */}
-        {mode === 'aware' && showMarkers && places
+        {mode === 'aware' && showMarkers && hasSafePlaces && safePlaces
           .filter(place => {
             // Filter based on category filters
             if (place.category === 'city' && !categoryFilters.city) return false;
@@ -647,11 +664,11 @@ export default function MapComponent({
             return true;
           })
           .map((place) => {
-            let config = categoryConfigs[place.category as keyof CategoryFilter] || { color: '#999', opacity: 0.8, icon: '' };
+            const config = categoryConfigs[place.category as keyof CategoryFilter] || { color: '#999', opacity: 0.8, icon: '' };
             return (
               <Marker
                 key={`${place.type}-${place.id}`}
-                position={[place.lat, place.lng]}
+                position={Array.isArray(place) && place.length === 2 ? place : [0,0]}
                 icon={L.divIcon({
                   className: 'custom-marker place-marker',
                   html: `<div style="width: 12px; height: 12px; background-color: ${config.color}; opacity: ${config.opacity}; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 4px rgba(0,0,0,0.5);"></div>`,
@@ -663,12 +680,12 @@ export default function MapComponent({
           })}
 
         {/* Saved points: vis blå X for hver current-posisjon i track-mode */}
-        {mode === 'track' && savedPairs.map((pair, idx) => (
+        {mode === 'track' && hasSavedPairs && safeSavedPairs.map((pair, idx) => (
           <React.Fragment key={`pair-${idx}`}>
             {/* Current pos: blå dot */}
             {pair.current && (
               <Marker
-                position={pair.current}
+                position={Array.isArray(pair.current) && pair.current.length === 2 ? pair.current : [0,0]}
                 icon={L.divIcon({
                   className: 'custom-marker saved-point',
                   html: '<div style="width: 18px; height: 18px; background-color: #2563eb; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 4px rgba(0,0,0,0.5);"></div>',
@@ -682,7 +699,7 @@ export default function MapComponent({
               <>
                 {/* Sirkel rundt target-pos */}
                 <Circle
-                  center={pair.target}
+                  center={Array.isArray(pair.target) && pair.target.length === 2 ? pair.target : [0,0]}
                   radius={15}
                   pathOptions={{
                     color: '#dc2626',
@@ -693,7 +710,7 @@ export default function MapComponent({
                 />
                 {/* Stiplet linje mellom current og target */}
                 <Polyline
-                  positions={[[pair.current.lat, pair.current.lng], [pair.target.lat, pair.target.lng]]}
+                  positions={Array.isArray(pair.current) && pair.current.length === 2 ? [pair.current, pair.target] : []}
                   pathOptions={{ color: '#dc2626', weight: 2, dashArray: '6 6' }}
                 />
               </>
@@ -701,11 +718,11 @@ export default function MapComponent({
           </React.Fragment>
         ))}
         {/* Interaktiv preview for target-posisjon i retning-UI */}
-        {showTargetDirectionUI && savedPairs.length > 0 && (
+        {showTargetDirectionUI && hasSavedPairs && lastPair && (
           <>
             {/* Sirkel for valgt radius */}
             <Circle
-              center={savedPairs[savedPairs.length - 1].current}
+              center={Array.isArray(lastPair.current) && lastPair.current.length === 2 ? lastPair.current : [0,0]}
               radius={targetRange}
               pathOptions={{
                 color: '#2563eb',
@@ -719,15 +736,12 @@ export default function MapComponent({
             {previewTarget && (
               <>
                 <Polyline
-                  positions={[[
-                    savedPairs[savedPairs.length - 1].current.lat,
-                    savedPairs[savedPairs.length - 1].current.lng
-                  ], [previewTarget.lat, previewTarget.lng]]}
+                  positions={Array.isArray(lastPair.current) && lastPair.current.length === 2 ? [lastPair.current, previewTarget] : []}
                   pathOptions={{ color: '#2563eb', weight: 2 }}
                 />
                 {/* Markør på sirkelen med grad-tall */}
                 <Marker
-                  position={previewTarget}
+                  position={Array.isArray(previewTarget) && previewTarget.length === 2 ? previewTarget : [0,0]}
                   icon={L.divIcon({
                     className: 'custom-marker preview-target',
                     html: '<div style="font-size: 20px; color: #2563eb; font-weight: bold;">•</div>',

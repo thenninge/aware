@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useState } from 'react';
 
 interface CategoryConfig {
   color: string;
@@ -15,16 +15,22 @@ interface SettingsMenuProps {
   onCategoryConfigChange: (category: string, config: CategoryConfig) => void;
 }
 
-const predefinedColors = [
-  '#1e40af', '#7c3aed', '#dc2626', '#ea580c', '#16a34a', '#0891b2',
-  '#9333ea', '#e11d48', '#059669', '#d97706', '#2563eb', '#be185d',
-  '#15803d', '#0e7490', '#a16207', '#1d4ed8', '#b91c1c', '#047857'
-];
-
 export default function SettingsMenu({ categoryConfigs, onCategoryConfigChange, angleRange, onAngleRangeChange }: SettingsMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Ingen isExpanded eller knapp, menyen vises alltid når komponenten rendres
+  // Finn felles opasitet (hvis alle like, ellers bruk første)
+  const allOpacities = Object.values(categoryConfigs).map(c => c.opacity);
+  const [globalOpacity, setGlobalOpacity] = useState(allOpacities.every(o => o === allOpacities[0]) ? allOpacities[0] : 0.5);
+
+  // Oppdater alle categoryConfigs når globalOpacity endres
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useState(() => {
+    Object.entries(categoryConfigs).forEach(([category, config]) => {
+      if (config.opacity !== globalOpacity) {
+        onCategoryConfigChange(category, { ...config, opacity: globalOpacity });
+      }
+    });
+  });
 
   const handleColorChange = (category: string, color: string) => {
     const currentConfig = categoryConfigs[category];
@@ -46,7 +52,6 @@ export default function SettingsMenu({ categoryConfigs, onCategoryConfigChange, 
     <div ref={menuRef} className="bg-white/95 backdrop-blur-sm p-4 rounded-lg shadow-lg min-w-[280px] max-h-[80vh] overflow-y-auto">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-gray-800">Innstillinger</h3>
-        {/* Lukkeknapp kan beholdes hvis ønskelig, ellers fjern */}
       </div>
       {/* Angle Range Setting */}
       <div className="mb-4">
@@ -60,6 +65,20 @@ export default function SettingsMenu({ categoryConfigs, onCategoryConfigChange, 
           className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
         />
         <div className="text-xs text-gray-600 mt-1">±{angleRange}°</div>
+      </div>
+      {/* Global Opacity Slider */}
+      <div className="mb-4">
+        <label className="block text-xs font-medium text-gray-700 mb-1">Opasitet (alle kategorier):</label>
+        <input
+          type="range"
+          min={0.1}
+          max={1}
+          step={0.05}
+          value={globalOpacity}
+          onChange={e => setGlobalOpacity(Number(e.target.value))}
+          className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+        />
+        <div className="text-xs text-gray-600 mt-1">{Math.round(globalOpacity * 100)}%</div>
       </div>
       {/* Kategori-farger og opasitet */}
       <div>

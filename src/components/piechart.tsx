@@ -92,7 +92,8 @@ export default function PieChart(props: PieChartProps) {
     return groups;
   }, [placeDirections, props.angleRange, props.categoryConfigs]);
 
-  if (props.places.length === 0) return null;
+  const safePlaces = Array.isArray(props.places) ? props.places : [];
+  if (safePlaces.length === 0) return null;
 
   return (
     <>
