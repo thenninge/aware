@@ -411,8 +411,10 @@ function destinationPoint(lat: number, lng: number, distance: number, bearing: n
 
 // Ny type for punktpar
 interface PointPair {
-  current: Position;
+  current?: Position;
   target?: Position;
+  category: string;
+  id: number;
 }
 
 export default function MapComponent({ 
