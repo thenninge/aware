@@ -113,7 +113,7 @@ export default function PieChart(props: PieChartProps) {
 
         const catCfg = cfg[p.category];
         const color = catCfg?.color ?? '#999999';
-        const baseOpacity = catCfg?.opacity ?? 0.6;
+        const baseOpacity = catCfg?.opacity ?? 0.3;
         const fillOpacity = clampOpacity(
           (globalOpacity ?? 1) * baseOpacity
         );

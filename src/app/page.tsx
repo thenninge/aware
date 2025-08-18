@@ -54,32 +54,32 @@ export default function Home() {
   const [categoryConfigs, setCategoryConfigs] = useState<Record<keyof CategoryFilter, CategoryConfig>>({
     city: {
       color: '#1e40af', // Dark blue
-      opacity: 0.5,
+      opacity: 0.3,
       icon: '🏙️'
     },
     town: {
       color: '#7c3aed', // Dark purple
-      opacity: 0.5,
+      opacity: 0.3,
       icon: '🏙️'
     },
     village: {
       color: '#dc2626', // Dark red
-      opacity: 0.5,
+      opacity: 0.3,
       icon: '🏘️'
     },
     hamlet: {
       color: '#ea580c', // Dark orange
-      opacity: 0.5,
+      opacity: 0.3,
       icon: '🏘️'
     },
     farm: {
       color: '#16a34a', // Dark green
-      opacity: 0.5,
+      opacity: 0.3,
       icon: '🏡'
     },
     isolated_dwelling: {
       color: '#0891b2', // Dark cyan
-      opacity: 0.5,
+      opacity: 0.3,
       icon: '🏠'
     }
   });
