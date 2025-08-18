@@ -616,7 +616,7 @@ export default function MapComponent({
   const handleTargetModalSave = () => {
     const hasSavedPairs = Array.isArray(savedPairs) && savedPairs.length > 0;
     const lastPair = hasSavedPairs ? savedPairs[savedPairs.length - 1] : undefined;
-    if (!hasSavedPairs || !lastPair) return;
+    if (!hasSavedPairs || !lastPair || !lastPair.current) return;
     const previewTarget = destinationPoint(
       lastPair.current.lat,
       lastPair.current.lng,
