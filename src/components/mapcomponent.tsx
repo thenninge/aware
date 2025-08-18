@@ -642,13 +642,14 @@ export default function MapComponent({
           name: newPostName.trim(),
           current_lat: newPostPosition.lat,
           current_lng: newPostPosition.lng,
+          category: 'Skyteplass',
         })
       })
         .then(res => res.json())
         .then(data => {
           setSavedPairs(prev => [...prev, {
             current: { ...newPostPosition },
-            name: newPostName.trim(),
+            category: 'Skyteplass',
             id: data.id,
           }]);
           setShowNewPostDialog(false);
