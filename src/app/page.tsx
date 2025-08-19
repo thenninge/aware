@@ -35,6 +35,7 @@ export default function Home() {
   const [mode, setMode] = useState<'aware' | 'track'>('aware');
   const [radius, setRadius] = useState(3000); // Default 3000m
   const [, setCurrentPosition] = useState<Position | null>(null);
+  const [currentCenter, setCurrentCenter] = useState<Position | null>(null);
   const [categoryFilters, setCategoryFilters] = useState<CategoryFilter>({
     city: true,
     town: true,
@@ -129,6 +130,7 @@ export default function Home() {
 
   const handlePositionChange = (position: Position) => {
     setCurrentPosition(position);
+    setCurrentCenter(position);
   };
 
   const handleCategoryChange = (category: keyof CategoryFilter) => {
@@ -223,6 +225,7 @@ export default function Home() {
             angleRange={angleRange}
             onAngleRangeChange={handleAngleRangeChange}
             onDeleteAllShots={handleDeleteAllShots}
+            currentCenter={currentCenter || undefined}
           />
         </div>
       )}

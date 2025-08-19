@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 interface CategoryConfig {
   color: string;
@@ -16,8 +17,10 @@ interface SettingsMenuProps {
   onDeleteAllShots?: () => void;
 }
 
-export default function SettingsMenu({ categoryConfigs, onCategoryConfigChange, angleRange, onAngleRangeChange, onDeleteAllShots }: SettingsMenuProps) {
+export default function SettingsMenu({ categoryConfigs, onCategoryConfigChange, angleRange, onAngleRangeChange, onDeleteAllShots, currentCenter }: SettingsMenuProps & { currentCenter?: { lat: number, lng: number } }) {
   const menuRef = useRef<HTMLDivElement>(null);
+  const [showHomeSaved, setShowHomeSaved] = useState(false);
+  const [showHomeError, setShowHomeError] = useState(false);
 
   // Fjernet allOpacities/globalOpacity og tilhørende useState/hook
 
@@ -48,6 +51,36 @@ export default function SettingsMenu({ categoryConfigs, onCategoryConfigChange, 
 
   return (
     <div ref={menuRef} className="bg-white/95 backdrop-blur-sm p-4 rounded-lg shadow-lg min-w-[280px] max-h-[80vh] overflow-y-auto">
+      {/* Set as home position knapp */}
+      <button
+        type="button"
+        className={`mb-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded shadow-lg text-sm ${!currentCenter ? 'opacity-50 cursor-not-allowed' : ''}`}
+        disabled={!currentCenter}
+        onClick={() => {
+          if (currentCenter) {
+            localStorage.setItem('aware_default_position', JSON.stringify(currentCenter));
+            setShowHomeSaved(true);
+            setTimeout(() => setShowHomeSaved(false), 1200);
+          } else {
+            setShowHomeError(true);
+            setTimeout(() => setShowHomeError(false), 1200);
+          }
+        }}
+      >
+        Set as home position
+      </button>
+      {showHomeSaved && typeof window !== 'undefined' && createPortal(
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[3000] bg-gray-700 text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-2 animate-bounce">
+          <span className="font-semibold text-lg">Home position saved!</span>
+        </div>,
+        document.body
+      )}
+      {showHomeError && typeof window !== 'undefined' && createPortal(
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[3000] bg-gray-500 text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-2 animate-bounce">
+          <span className="font-semibold text-lg">Kartposisjon ikke klar</span>
+        </div>,
+        document.body
+      )}
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-gray-800">Innstillinger</h3>
       </div>

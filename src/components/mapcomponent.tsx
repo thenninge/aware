@@ -494,7 +494,7 @@ export default function MapComponent({
   const [isLeafletLoaded, setIsLeafletLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [places, setPlaces] = useState<PlaceData[]>([]);
-  const [currentPosition, setCurrentPosition] = useState<Position>({ lat: 60.424834440433045, lng: 12.408766398367092 });
+  const [currentPosition, setCurrentPosition] = useState<Position | undefined>(undefined);
   const [isSettingsExpanded, setIsSettingsExpanded] = useState(false);
   const [isFilterExpanded, setIsFilterExpanded] = useState(false);
   const [rotateMap, setRotateMap] = useState(false); // Ny state
@@ -819,6 +819,34 @@ export default function MapComponent({
     setShowTargetDirectionUI(false);
     setCanAddTreff(false); // Deaktiver Treff-knappen
   };
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('aware_default_position');
+      if (saved) {
+        try {
+          const pos = JSON.parse(saved);
+          if (pos && typeof pos.lat === 'number' && typeof pos.lng === 'number') {
+            setCurrentPosition({ lat: pos.lat, lng: pos.lng });
+            return;
+          }
+        } catch {}
+      }
+      // fallback hvis ikke lagret
+      setCurrentPosition({ lat: 60.424834440433045, lng: 12.408766398367092 });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (currentPosition && onPositionChange) {
+      onPositionChange(currentPosition);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPosition]);
+
+  if (!currentPosition) {
+    return <div className="w-full h-screen flex items-center justify-center text-lg text-gray-500">Laster posisjon...</div>;
+  }
 
   return (
     <div className="w-full h-screen relative">
