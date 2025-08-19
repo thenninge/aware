@@ -934,7 +934,7 @@ export default function MapComponent({
         {/* Saved points: vis blå X for hver current-posisjon i track-mode */}
         {mode === 'track' && hasSavedPairs && (
           <>
-            {(showOnlyLastShot
+            {showOnlyLastShot
               ? (() => {
                   // Finn nyeste skyteplass
                   const skyteplasser = [...safeSavedPairs]
@@ -947,29 +947,28 @@ export default function MapComponent({
                     .filter(p => p.category === 'Treffpunkt' && p.created_at && p.created_at > sisteSkyteplass.created_at!)
                     .sort((a, b) => (a.created_at! < b.created_at! ? 1 : -1)); // nyest først
                   const sisteTreffpunkt = treffpunkter[0];
-                  if (!sisteTreffpunkt) return null;
-                  // Vis kun disse to markørene
                   return (
                     <>
                       {sisteSkyteplass.current && (
-                        <Marker
-                          position={[sisteSkyteplass.current.lat, sisteSkyteplass.current.lng]}
-                          icon={L.divIcon({
-                            className: 'custom-marker saved-point',
-                            html: '<div style="width: 18px; height: 18px; background-color: #2563eb; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 4px rgba(0,0,0,0.5);"></div>',
-                            iconSize: [18, 18],
-                            iconAnchor: [9, 9],
-                          })}
+                        <Circle
+                          center={[sisteSkyteplass.current.lat, sisteSkyteplass.current.lng]}
+                          radius={5}
+                          pathOptions={{
+                            color: '#2563eb',
+                            weight: 1.5,
+                            fillColor: '#2563eb',
+                            fillOpacity: 0.5,
+                          }}
                         />
                       )}
-                      {sisteTreffpunkt.target && (
+                      {sisteTreffpunkt?.target && (
                         <Circle
                           center={[sisteTreffpunkt.target.lat, sisteTreffpunkt.target.lng]}
                           radius={15}
                           pathOptions={{
-                            color: 'rgba(220,38,38,0.8)', // rød kant, 80% opacity
+                            color: 'rgba(220,38,38,0.8)',
                             weight: 2,
-                            fillColor: 'rgba(220,38,38,0.4)', // rød fyll, 40% opacity
+                            fillColor: 'rgba(220,38,38,0.4)',
                             fillOpacity: 0.4,
                           }}
                         />
@@ -978,49 +977,49 @@ export default function MapComponent({
                   );
                 })()
               : safeSavedPairs.filter(Boolean).map((pair, idx) => (
-                <React.Fragment key={pair.id ?? idx}>
-                  {pair && pair.current && (
-                    <Marker
-                      position={[pair.current.lat, pair.current.lng]}
-                      icon={L.divIcon({
-                        className: 'custom-marker saved-point',
-                        html: '<div style="width: 18px; height: 18px; background-color: #2563eb; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 4px rgba(0,0,0,0.5);"></div>',
-                        iconSize: [18, 18],
-                        iconAnchor: [9, 9],
-                      })}
-                    />
-                  )}
-                  {pair && pair.target && (
-                    <Circle
-                      center={[pair.target.lat, pair.target.lng]}
-                      radius={15}
-                      pathOptions={{
-                        color: 'rgba(220,38,38,0.8)', // rød kant, 80% opacity
-                        weight: 2,
-                        fillColor: 'rgba(220,38,38,0.4)', // rød fyll, 40% opacity
-                        fillOpacity: 0.4,
-                      }}
-                    />
-                  )}
-                  {pair && pair.current && pair.target && (pair.current.lat !== pair.target.lat || pair.current.lng !== pair.target.lng) && (
-                (() => {
-                  const positions: [number, number][] = [
-                    [pair.current.lat, pair.current.lng],
-                    [pair.target.lat, pair.target.lng],
-                  ];
-                  const polyKey = `polyline-${pair.id ?? idx}`;
-                  return (
-                    <Polyline
-                      key={polyKey}
-                      positions={positions}
-                      pathOptions={{ color: '#ff00ff', weight: 4, dashArray: '8 12' }}
-                    />
-                  );
-                })()
-              )}
-                </React.Fragment>
-              ))
-            )}
+                  <React.Fragment key={pair.id ?? idx}>
+                    {pair && pair.current && (
+                      <Circle
+                        center={[pair.current.lat, pair.current.lng]}
+                        radius={5}
+                        pathOptions={{
+                          color: '#2563eb',
+                          weight: 1.5,
+                          fillColor: '#2563eb',
+                          fillOpacity: 0.5,
+                        }}
+                      />
+                    )}
+                    {pair && pair.target && (
+                      <Circle
+                        center={[pair.target.lat, pair.target.lng]}
+                        radius={15}
+                        pathOptions={{
+                          color: 'rgba(220,38,38,0.8)',
+                          weight: 2,
+                          fillColor: 'rgba(220,38,38,0.4)',
+                          fillOpacity: 0.4,
+                        }}
+                      />
+                    )}
+                    {pair && pair.current && pair.target && (pair.current.lat !== pair.target.lat || pair.current.lng !== pair.target.lng) && (
+                      (() => {
+                        const positions: [number, number][] = [
+                          [pair.current.lat, pair.current.lng],
+                          [pair.target.lat, pair.target.lng],
+                        ];
+                        const polyKey = `polyline-${pair.id ?? idx}`;
+                        return (
+                          <Polyline
+                            key={polyKey}
+                            positions={positions}
+                            pathOptions={{ color: '#ff00ff', weight: 4, dashArray: '8 12' }}
+                          />
+                        );
+                      })()
+                    )}
+                  </React.Fragment>
+                ))}
           </>
         )}
         {/* Interaktiv preview for target-posisjon i retning-UI */}
