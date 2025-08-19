@@ -1,4 +1,2 @@
-// Snapshot av mapcomponent.tsx per dagens fungerende layout og responsivitet
-// Dette er en kopi for fallback og backup.
-
-// ... eksisterende kode fra mapcomponent.tsx ...
+// Snapshot av fungerende mapcomponent.tsx etter robust dialog med portal og korrekt par-matching for stiplede linjer
+// Ta backup av hele filen for rollback

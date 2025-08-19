@@ -52,6 +52,7 @@ interface AwareMapProps {
   isLiveMode?: boolean;
   onLiveModeChange?: (isLive: boolean) => void;
   mode?: 'aware' | 'track'; // <-- NY
+  showOnlyLastShot?: boolean;
 }
 
 export default function AwareMap({ 
@@ -71,6 +72,7 @@ export default function AwareMap({
   isLiveMode,
   onLiveModeChange,
   mode = 'aware', // <-- NY
+  showOnlyLastShot,
 }: AwareMapProps) {
   const [isClient, setIsClient] = useState(false);
   const [hasError, setHasError] = useState(false);
@@ -123,6 +125,7 @@ export default function AwareMap({
         isLiveMode={isLiveMode}
         onLiveModeChange={onLiveModeChange}
         mode={mode}
+        showOnlyLastShot={showOnlyLastShot}
       />
     </div>
   );

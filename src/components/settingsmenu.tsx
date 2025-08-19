@@ -13,9 +13,10 @@ interface SettingsMenuProps {
   angleRange: number;
   onAngleRangeChange: (angleRange: number) => void;
   onCategoryConfigChange: (category: string, config: CategoryConfig) => void;
+  onDeleteAllShots?: () => void;
 }
 
-export default function SettingsMenu({ categoryConfigs, onCategoryConfigChange, angleRange, onAngleRangeChange }: SettingsMenuProps) {
+export default function SettingsMenu({ categoryConfigs, onCategoryConfigChange, angleRange, onAngleRangeChange, onDeleteAllShots }: SettingsMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Fjernet allOpacities/globalOpacity og tilhørende useState/hook
@@ -69,7 +70,7 @@ export default function SettingsMenu({ categoryConfigs, onCategoryConfigChange, 
         <input
           type="range"
           min={0.1}
-          max={1}
+          max={0.7}
           step={0.05}
           value={(() => {
             const opacities = Object.values(categoryConfigs).map(c => c.opacity);
@@ -126,7 +127,7 @@ export default function SettingsMenu({ categoryConfigs, onCategoryConfigChange, 
             <input
               type="range"
               min={0.1}
-              max={1}
+              max={0.7}
               step={0.05}
               value={config.opacity}
               onChange={e => handleOpacityChange(category, Number(e.target.value))}
@@ -136,6 +137,15 @@ export default function SettingsMenu({ categoryConfigs, onCategoryConfigChange, 
           </div>
         ))}
       </div>
+      {onDeleteAllShots && (
+        <button
+          type="button"
+          className="mt-4 w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded shadow-lg text-sm"
+          onClick={onDeleteAllShots}
+        >
+          Slett alle skuddpar
+        </button>
+      )}
     </div>
   );
 }
