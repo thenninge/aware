@@ -862,7 +862,7 @@ export default function MapComponent({
             pathOptions={{
               color: '#3b82f6',
               fillColor: '#3b82f6',
-              fillOpacity: 0.1,
+              fillOpacity: 0.0,
               weight: 2,
             }}
           />
