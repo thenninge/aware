@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, useMap, Circle, Polyline, Tooltip } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMap, Circle, Polyline, Tooltip, LayersControl } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import React from 'react';
@@ -414,6 +414,21 @@ function destinationPoint(lat: number, lng: number, distance: number, bearing: n
   };
 }
 
+// Hjelpefunksjon for å finne punkt X meter fra A mot B
+function pointTowards(from: Position, to: Position, distanceFromTo: number) {
+  const R = 6371000;
+  const d = Math.sqrt(
+    Math.pow((to.lat - from.lat) * Math.PI / 180 * R, 2) +
+    Math.pow((to.lng - from.lng) * Math.PI / 180 * R * Math.cos((from.lat + to.lat) * Math.PI / 360), 2)
+  );
+  if (d === 0 || distanceFromTo >= d) return { ...to };
+  const ratio = (d - distanceFromTo) / d;
+  return {
+    lat: from.lat + (to.lat - from.lat) * ratio,
+    lng: from.lng + (to.lng - from.lng) * ratio,
+  };
+}
+
 // Ny type for punktpar
 interface PointPair {
   current?: Position;
@@ -421,6 +436,37 @@ interface PointPair {
   category: string;
   id: number;
   created_at?: string;
+}
+
+const LAYER_CONFIGS = [
+  {
+    name: 'Flyfoto',
+    key: 'esri',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attribution: 'Tiles © Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+    icon: '🛰️',
+  },
+  {
+    name: 'OpenTopo',
+    key: 'opentopo',
+    url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+    attribution: 'Map data: © OpenTopoMap (CC-BY-SA)',
+    icon: '⛰️',
+  },
+  {
+    name: 'Standard',
+    key: 'osm',
+    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    icon: '🗺️',
+  },
+];
+
+// Legg til en SVG-komponent for layers-ikonet
+function LayersIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2" fill="#fff"/><polyline points="2 17 12 22 22 17" fill="#fff"/><polyline points="2 12 12 17 22 12" fill="#fff"/></svg>
+  );
 }
 
 export default function MapComponent({ 
@@ -735,6 +781,8 @@ export default function MapComponent({
     setSavedPairs(prev => prev.filter(pair => pair.category !== 'Skyteplass' && pair.category !== 'Treffpunkt'));
   };
 
+  const [layerIdx, setLayerIdx] = useState(0); // 0 = Flyfoto
+
   return (
     <div className="w-full h-screen relative">
       {/* Rett før <MapContainer ...> i render: */}
@@ -745,10 +793,9 @@ export default function MapComponent({
         zoomControl={true}
         attributionControl={true}
       >
-        {/* OpenStreetMap tiles for testing */}
         <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url={LAYER_CONFIGS[layerIdx].url}
+          attribution={LAYER_CONFIGS[layerIdx].attribution}
           maxZoom={18}
         />
         
@@ -954,11 +1001,16 @@ export default function MapComponent({
                   .sort((a, b) => (a.created_at! < b.created_at! ? 1 : -1));
                 const førsteTreffpunkt = treffpunkter.find(t => sisteSkyteplass && t.created_at !== undefined && t.created_at > sisteSkyteplass.created_at!);
                 if (sisteSkyteplass && førsteTreffpunkt && sisteSkyteplass.current && førsteTreffpunkt.target) {
+                  const end = pointTowards(sisteSkyteplass.current, førsteTreffpunkt.target, 15);
+                  const positions: [number, number][] = [
+                    [sisteSkyteplass.current.lat, sisteSkyteplass.current.lng],
+                    [end.lat, end.lng],
+                  ];
                   return (
                     <Polyline
                       key={`polyline-${sisteSkyteplass.id}-${førsteTreffpunkt.id}`}
-                      positions={[[sisteSkyteplass.current.lat, sisteSkyteplass.current.lng], [førsteTreffpunkt.target.lat, førsteTreffpunkt.target.lng]]}
-                      pathOptions={{ color: '#ff00ff', weight: 4, dashArray: '8 12' }}
+                      positions={positions}
+                      pathOptions={{ color: '#888', weight: 2, dashArray: '4 8' }}
                     />
                   );
                 }
@@ -970,15 +1022,16 @@ export default function MapComponent({
                 return skyteplasser.map((skyteplass, idx) => {
                   const treff = treffpunkter.find(t => t.created_at !== undefined && t.created_at > skyteplass.created_at!);
                   if (skyteplass.current && treff && treff.target) {
+                    const end = pointTowards(skyteplass.current, treff.target, 15);
                     const positions: [number, number][] = [
                       [skyteplass.current.lat, skyteplass.current.lng],
-                      [treff.target.lat, treff.target.lng],
+                      [end.lat, end.lng],
                     ];
                     return (
                       <Polyline
                         key={`polyline-${skyteplass.id}-${treff.id}`}
                         positions={positions}
-                        pathOptions={{ color: '#ff00ff', weight: 4, dashArray: '8 12' }}
+                        pathOptions={{ color: '#888', weight: 2, dashArray: '4 8' }}
                       />
                     );
                   }
@@ -1189,30 +1242,40 @@ export default function MapComponent({
       )}
       {/* Scan & Live Buttons - Bottom Right */}
       <div className="fixed bottom-4 right-4 sm:bottom-4 sm:right-4 bottom-2 right-2 z-[1000] flex flex-col gap-2">
+          {/* Scan-knapp kun i aware-mode */}
+          {mode === 'aware' && (
+            <button
+              onClick={onScanArea}
+              className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
+                isScanning 
+                  ? 'bg-gray-400 cursor-not-allowed text-white' 
+                  : 'bg-blue-600 hover:bg-blue-700 text-white'
+              }`}
+              title={isScanning ? 'Scanning...' : 'Scan område'}
+            >
+              {isScanning ? '⏳' : '🔍'}
+            </button>
+          )}
+          {/* Layer-knapp */}
           <button
-            onClick={onScanArea}
-          disabled={mode === 'track'}
-          className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
-            mode === 'track'
-              ? 'bg-gray-400 cursor-not-allowed text-white'
-              : isScanning 
-                ? 'bg-gray-400 cursor-not-allowed text-white' 
-                : 'bg-blue-600 hover:bg-blue-700 text-white'
-          }`}
-          title={mode === 'track' ? 'Scan disabled in Track-mode' : (isScanning ? 'Scanning...' : 'Scan område')}
-        >
-          {isScanning ? '⏳' : '🔍'}
-        </button>
-        <button
-          onClick={() => onLiveModeChange?.(!isLiveMode)}
-          className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
-            isLiveMode 
-              ? 'bg-green-600 hover:bg-green-700 text-white' 
-              : 'bg-gray-600 hover:bg-gray-700 text-white'
-          }`}
-          title={isLiveMode ? 'Live GPS ON' : 'Live GPS'}
-        >
-          📍
+            className="w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center bg-white/90 border border-gray-300 hover:bg-gray-100"
+            onClick={() => setLayerIdx((layerIdx + 1) % LAYER_CONFIGS.length)}
+            title={`Bytt kartlag (${LAYER_CONFIGS[layerIdx].name})`}
+            style={{ zIndex: 2002 }}
+          >
+            <span className="w-7 h-7 flex items-center justify-center"><LayersIcon /></span>
+          </button>
+          {/* Live-posisjon-knapp */}
+          <button
+            onClick={() => onLiveModeChange?.(!isLiveMode)}
+            className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
+              isLiveMode 
+                ? 'bg-green-600 hover:bg-green-700 text-white' 
+                : 'bg-gray-600 hover:bg-gray-700 text-white'
+            }`}
+            title={isLiveMode ? 'Live GPS ON' : 'Live GPS'}
+          >
+            📍
           </button>
         </div>
 
