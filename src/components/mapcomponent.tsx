@@ -7,6 +7,7 @@ import 'leaflet/dist/leaflet.css';
 import React from 'react';
 import PieChart from './piechart';
 import SettingsMenu from './settingsmenu';
+import { supabase } from '../lib/supabaseClient';
 
 interface Position {
   lat: number;
@@ -531,70 +532,70 @@ export default function MapComponent({
   // Sett base-URL for backend
   const BACKEND_URL = 'http://localhost:5000/api/posts';
 
-  // 1. Hent alle poster fra backend ved mount
+  // 1. Hent alle poster fra Supabase ved mount
   useEffect(() => {
-    fetch(BACKEND_URL)
-      .then(res => res.json())
-      .then(data => {
-        console.log('Fetched posts:', data);
-        if (Array.isArray(data)) {
-          setSavedPairs(data.map(post => ({
-            current: post.current_lat && post.current_lng ? { lat: post.current_lat, lng: post.current_lng } : undefined,
-            target: post.target_lat && post.target_lng ? { lat: post.target_lat, lng: post.target_lng } : undefined,
-            category: post.category,
-            id: post.id,
-          })));
-        }
-      })
-      .catch(err => {
-        console.error('Error fetching posts:', err);
+    async function fetchPosts() {
+      const { data, error } = await supabase.from('posts').select('*');
+      if (error) {
+        console.error('Error fetching posts:', error);
         alert('Kunne ikke hente poster fra backend.');
-      });
+        return;
+      }
+      if (Array.isArray(data)) {
+        setSavedPairs(data.map(post => ({
+          current: post.current_lat && post.current_lng ? { lat: post.current_lat, lng: post.current_lng } : undefined,
+          target: post.target_lat && post.target_lng ? { lat: post.target_lat, lng: post.target_lng } : undefined,
+          category: post.category,
+          id: post.id,
+        })));
+      }
+    }
+    fetchPosts();
   }, []);
 
-  // 2. Lagre current-posisjon til backend
-  const handleSaveCurrentPos = () => {
+  // 2. Lagre current-posisjon til Supabase
+  const handleSaveCurrentPos = async () => {
     if (currentPosition) {
-      fetch(BACKEND_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const { data, error } = await supabase.from('posts').insert([
+        {
           current_lat: currentPosition.lat,
           current_lng: currentPosition.lng,
           category: 'Skyteplass',
-        })
-      })
-        .then(res => res.json())
-        .then(data => {
-          console.log('POST Skyteplass response:', data);
-          setSavedPairs(prev => [...prev, { current: { ...currentPosition }, category: 'Skyteplass', id: data.id }]);
-          setShowCurrentFeedback(true);
-          setTimeout(() => setShowCurrentFeedback(false), 700);
-        })
-        .catch(error => { console.error('Failed to save current pos:', error); alert('Feil ved lagring av Skyteplass: ' + error.message); });
+        },
+      ]).select();
+      if (error) {
+        console.error('Failed to save current pos:', error);
+        alert('Feil ved lagring av Skyteplass: ' + error.message);
+        return;
+      }
+      if (data && data[0]) {
+        setSavedPairs(prev => [...prev, { current: { ...currentPosition }, category: 'Skyteplass', id: data[0].id }]);
+        setShowCurrentFeedback(true);
+        setTimeout(() => setShowCurrentFeedback(false), 700);
+      }
     }
   };
 
-  // 3. Lagre target-posisjon til backend
-  const handleSaveTargetPos = () => {
+  // 3. Lagre target-posisjon til Supabase
+  const handleSaveTargetPos = async () => {
     if (currentPosition) {
-      fetch(BACKEND_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const { data, error } = await supabase.from('posts').insert([
+        {
           target_lat: currentPosition.lat,
           target_lng: currentPosition.lng,
           category: 'Treffpunkt',
-        })
-      })
-        .then(res => res.json())
-        .then(data => {
-          console.log('POST Treffpunkt response:', data);
-          setSavedPairs(prev => [...prev, { target: { ...currentPosition }, category: 'Treffpunkt', id: data.id }]);
-          setShowCurrentFeedback(true);
-          setTimeout(() => setShowCurrentFeedback(false), 700);
-        })
-        .catch(error => { console.error('Failed to save target pos:', error); alert('Feil ved lagring av Treffpunkt: ' + error.message); });
+        },
+      ]).select();
+      if (error) {
+        console.error('Failed to save target pos:', error);
+        alert('Feil ved lagring av Treffpunkt: ' + error.message);
+        return;
+      }
+      if (data && data[0]) {
+        setSavedPairs(prev => [...prev, { target: { ...currentPosition }, category: 'Treffpunkt', id: data[0].id }]);
+        setShowCurrentFeedback(true);
+        setTimeout(() => setShowCurrentFeedback(false), 700);
+      }
     }
   };
   const handleTargetRadiusOk = () => {
@@ -620,27 +621,28 @@ export default function MapComponent({
     setShowTargetDirectionUI(false);
   };
 
-  // 2. Når bruker lagrer ny post, send POST til backend
-  const handleSaveNewPost = () => {
+  // 2. Når bruker lagrer ny post, send insert til Supabase
+  const handleSaveNewPost = async () => {
     if (newPostPosition && newPostName.trim()) {
-      fetch(BACKEND_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const { data, error } = await supabase.from('posts').insert([
+        {
           name: newPostName.trim(),
           current_lat: newPostPosition.lat,
           current_lng: newPostPosition.lng,
           category: 'Post',
-        })
-      })
-        .then(res => res.json())
-        .then(data => {
-          setSavedPairs(prev => [...prev, { current: { ...newPostPosition }, category: 'Post', id: data.id }]);
-          setShowNewPostDialog(false);
-          setNewPostName('');
-          setNewPostPosition(null);
-        })
-        .catch(error => { console.error('Failed to save new post:', error); alert('Feil ved lagring av post: ' + error.message); });
+        },
+      ]).select();
+      if (error) {
+        console.error('Failed to save new post:', error);
+        alert('Feil ved lagring av post: ' + error.message);
+        return;
+      }
+      if (data && data[0]) {
+        setSavedPairs(prev => [...prev, { current: { ...newPostPosition }, category: 'Post', id: data[0].id }]);
+        setShowNewPostDialog(false);
+        setNewPostName('');
+        setNewPostPosition(null);
+      }
     }
   };
 
@@ -908,8 +910,8 @@ export default function MapComponent({
                       onCategoryConfigChange(key as keyof CategoryFilter, {
                         ...categoryConfigs[key as keyof CategoryFilter],
                         opacity: newOpacity,
-                      });
                     });
+                  });
                   }
                 }}
                 className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer hover:bg-gray-300 transition-colors"
