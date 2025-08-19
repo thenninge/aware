@@ -905,11 +905,11 @@ export default function MapComponent({
                   const newOpacity = parseFloat(e.target.value);
                   if (onCategoryConfigChange) {
                     Object.keys(categoryConfigs).forEach((key) => {
-                      onCategoryConfigChange(key, {
-                        ...categoryConfigs[key],
+                      onCategoryConfigChange(key as keyof CategoryFilter, {
+                        ...categoryConfigs[key as keyof CategoryFilter],
                         opacity: newOpacity,
+                      });
                     });
-                  });
                   }
                 }}
                 className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer hover:bg-gray-300 transition-colors"
