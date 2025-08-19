@@ -914,22 +914,24 @@ export default function MapComponent({
                 type="range"
                 min="0"
                 max="1"
-                step="0.1"
-                value={categoryConfigs.city?.opacity || 1.0}
+                step="0.05"
+                value={categoryConfigs.city?.opacity || 0.3}
                 onChange={(e) => {
                   const newOpacity = parseFloat(e.target.value);
-                  // Apply to all categories
-                  Object.keys(categoryConfigs).forEach(category => {
-                    const currentConfig = categoryConfigs[category as keyof CategoryFilter];
-                    onCategoryConfigChange?.(category as keyof CategoryFilter, {
-                      ...currentConfig,
-                      opacity: newOpacity
+                  setCategoryConfigs((prev) => {
+                    const updated = { ...prev };
+                    Object.keys(updated).forEach((key) => {
+                      updated[key as keyof CategoryFilter] = {
+                        ...updated[key as keyof CategoryFilter],
+                        opacity: newOpacity,
+                      };
                     });
+                    return updated;
                   });
                 }}
                 className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer hover:bg-gray-300 transition-colors"
                 style={{
-                  background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${(categoryConfigs.city?.opacity || 1.0) * 100}%, #e5e7eb ${(categoryConfigs.city?.opacity || 1.0) * 100}%, #e5e7eb 100%)`
+                  background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${(categoryConfigs.city?.opacity || 0.3) * 100}%, #e5e7eb ${(categoryConfigs.city?.opacity || 0.3) * 100}%, #e5e7eb 100%)`
                 }}
               />
             </div>

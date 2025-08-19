@@ -68,17 +68,17 @@ export default function SettingsMenu({ categoryConfigs, onCategoryConfigChange, 
       </div>
       {/* Global Opacity Slider */}
       <div className="mb-4">
-        <label className="block text-xs font-medium text-gray-700 mb-1">Opasitet (alle kategorier):</label>
+        <label className="block text-xs font-medium text-gray-700 mb-1">Opasitet alle kakestykker:</label>
         <input
           type="range"
           min={0.1}
           max={1}
           step={0.05}
-          value={globalOpacity}
-          onChange={e => setGlobalOpacity(Number(e.target.value))}
+          value={categoryConfigs.city.opacity}
+          onChange={e => onCategoryConfigChange('city', { ...categoryConfigs.city, opacity: Number(e.target.value) })}
           className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
         />
-        <div className="text-xs text-gray-600 mt-1">{Math.round(globalOpacity * 100)}%</div>
+        <div className="text-xs text-gray-600 mt-1">{Math.round(categoryConfigs.city.opacity * 100)}%</div>
       </div>
       {/* Kategori-farger og opasitet */}
       <div>
