@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Aware – Jaktkart og posisjoner",
-  description: "Jaktlagets kart, posisjoner og vær – robust og offline-vennlig.",
+  title: "be AWARE of your shots",
+  description: "by toppjakt.no & coldbarreladjacent",
 };
 
 export default function RootLayout({
