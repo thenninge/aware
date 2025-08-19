@@ -95,6 +95,21 @@ export default function SettingsMenu({ categoryConfigs, onCategoryConfigChange, 
             }
           })()}
         </div>
+        {/* Reset-knapp for opasitet */}
+        <button
+          type="button"
+          className="mt-2 mb-2 px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 text-xs font-medium text-gray-700 transition-colors"
+          onClick={() => {
+            Object.keys(categoryConfigs).forEach((key) => {
+              onCategoryConfigChange(key, {
+                ...categoryConfigs[key],
+                opacity: 0.5,
+              });
+            });
+          }}
+        >
+          Tilbakestill opasitet til 50%
+        </button>
       </div>
       {/* Kategori-farger og opasitet */}
       <div>
