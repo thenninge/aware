@@ -656,7 +656,7 @@ export default function MapComponent({
       }
       if (data && data[0]) {
         setSavedPairs(prev => [...prev, { current: { ...currentPosition }, category: 'Skyteplass', id: data[0].id }]);
-        setFeedbackText('Skyteplass lagret!');
+        setFeedbackText('lagret');
         setShowCurrentFeedback(true);
         setTimeout(() => setShowCurrentFeedback(false), 1000);
         fetchPosts();
@@ -757,7 +757,7 @@ export default function MapComponent({
     }
     if (data && data[0]) {
       setSavedPairs(prev => [...prev, { target: { ...pos }, category: 'Treffpunkt', id: data[0].id }]);
-      setFeedbackText('Treffpunkt lagret!');
+      setFeedbackText('lagret');
       setShowCurrentFeedback(true);
       setTimeout(() => setShowCurrentFeedback(false), 1000);
       fetchPosts();
@@ -811,7 +811,7 @@ export default function MapComponent({
     }
     if (data && data[0]) {
       setSavedPairs(prev => [...prev, { target: { ...pos }, category: 'Treffpunkt', id: data[0].id }]);
-      setFeedbackText('Treffpunkt lagret!');
+      setFeedbackText('lagret');
       setShowCurrentFeedback(true);
       setTimeout(() => setShowCurrentFeedback(false), 1000);
       fetchPosts();
@@ -1407,9 +1407,8 @@ export default function MapComponent({
       )}
       {/* Feedback for current-pos lagring */}
       {showCurrentFeedback && (
-        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[3000] bg-green-500 text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-2 animate-bounce">
-          <span className="text-2xl">✅</span>
-          <span className="font-semibold text-lg">{feedbackText}</span>
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[3000] bg-gray-500 text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-2 animate-bounce">
+          <span className="font-semibold text-lg">lagret</span>
         </div>
       )}
       {/* Slider og lagre-knapp for retning (andre steg) */}
