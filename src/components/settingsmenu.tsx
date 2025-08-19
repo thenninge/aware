@@ -18,19 +18,7 @@ interface SettingsMenuProps {
 export default function SettingsMenu({ categoryConfigs, onCategoryConfigChange, angleRange, onAngleRangeChange }: SettingsMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Finn felles opasitet (hvis alle like, ellers bruk første)
-  const allOpacities = Object.values(categoryConfigs).map(c => c.opacity);
-  const [globalOpacity, setGlobalOpacity] = useState(allOpacities.every(o => o === allOpacities[0]) ? allOpacities[0] : 0.5);
-
-  // Oppdater alle categoryConfigs når globalOpacity endres
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useState(() => {
-    Object.entries(categoryConfigs).forEach(([category, config]) => {
-      if (config.opacity !== globalOpacity) {
-        onCategoryConfigChange(category, { ...config, opacity: globalOpacity });
-      }
-    });
-  });
+  // Fjernet allOpacities/globalOpacity og tilhørende useState/hook
 
   const handleColorChange = (category: string, color: string) => {
     const currentConfig = categoryConfigs[category];
@@ -45,6 +33,15 @@ export default function SettingsMenu({ categoryConfigs, onCategoryConfigChange, 
     onCategoryConfigChange(category, {
       ...currentConfig,
       opacity
+    });
+  };
+
+  // Ny funksjon: Sett opacity for alle kategorier
+  const handleGlobalOpacityChange = (opacity: number) => {
+    Object.entries(categoryConfigs).forEach(([category, config]) => {
+      if (config.opacity !== opacity) {
+        onCategoryConfigChange(category, { ...config, opacity });
+      }
     });
   };
 
@@ -74,11 +71,30 @@ export default function SettingsMenu({ categoryConfigs, onCategoryConfigChange, 
           min={0.1}
           max={1}
           step={0.05}
-          value={categoryConfigs.city.opacity}
-          onChange={e => onCategoryConfigChange('city', { ...categoryConfigs.city, opacity: Number(e.target.value) })}
-          className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+          value={(() => {
+            const opacities = Object.values(categoryConfigs).map(c => c.opacity);
+            return opacities.every(o => o === opacities[0]) ? opacities[0] : opacities[0];
+          })()}
+          onChange={e => handleGlobalOpacityChange(Number(e.target.value))}
+          className={`w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer ${(() => {
+            const opacities = Object.values(categoryConfigs).map(c => c.opacity);
+            return opacities.every(o => o === opacities[0]) ? '' : 'opacity-50 pointer-events-none';
+          })()}`}
+          disabled={(() => {
+            const opacities = Object.values(categoryConfigs).map(c => c.opacity);
+            return !opacities.every(o => o === opacities[0]);
+          })()}
         />
-        <div className="text-xs text-gray-600 mt-1">{Math.round(categoryConfigs.city.opacity * 100)}%</div>
+        <div className="text-xs text-gray-600 mt-1">
+          {(() => {
+            const opacities = Object.values(categoryConfigs).map(c => c.opacity);
+            if (opacities.every(o => o === opacities[0])) {
+              return Math.round(opacities[0] * 100) + '%';
+            } else {
+              return Math.round(opacities[0] * 100) + '% (blandet)';
+            }
+          })()}
+        </div>
       </div>
       {/* Kategori-farger og opasitet */}
       <div>

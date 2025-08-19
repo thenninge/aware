@@ -359,7 +359,6 @@ function MapController({
           centerLng={currentPosition.lng}
           angleRange={angleRange ?? 5}
           radius={radius}
-          globalOpacity={categoryConfigs.city?.opacity ?? 1}
         />
       )}
     </>
@@ -529,9 +528,12 @@ export default function MapComponent({
     });
   }, []);
 
+  // Sett base-URL for backend
+  const BACKEND_URL = 'http://localhost:5000/api/posts';
+
   // 1. Hent alle poster fra backend ved mount
   useEffect(() => {
-    fetch('/api/posts')
+    fetch(BACKEND_URL)
       .then(res => res.json())
       .then(data => {
         console.log('Fetched posts:', data);
@@ -553,7 +555,7 @@ export default function MapComponent({
   // 2. Lagre current-posisjon til backend
   const handleSaveCurrentPos = () => {
     if (currentPosition) {
-      fetch('/api/posts', {
+      fetch(BACKEND_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -564,26 +566,19 @@ export default function MapComponent({
       })
         .then(res => res.json())
         .then(data => {
-          console.log('POST response (current):', data);
-          setSavedPairs(prev => [...prev, {
-            current: { ...currentPosition },
-            category: 'Skyteplass',
-            id: data.id,
-          }]);
+          console.log('POST Skyteplass response:', data);
+          setSavedPairs(prev => [...prev, { current: { ...currentPosition }, category: 'Skyteplass', id: data.id }]);
           setShowCurrentFeedback(true);
           setTimeout(() => setShowCurrentFeedback(false), 700);
         })
-        .catch(err => {
-          console.error('Error saving current:', err);
-          alert('Kunne ikke lagre Skyteplass.');
-        });
+        .catch(error => { console.error('Failed to save current pos:', error); alert('Feil ved lagring av Skyteplass: ' + error.message); });
     }
   };
 
   // 3. Lagre target-posisjon til backend
   const handleSaveTargetPos = () => {
     if (currentPosition) {
-      fetch('/api/posts', {
+      fetch(BACKEND_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -594,19 +589,12 @@ export default function MapComponent({
       })
         .then(res => res.json())
         .then(data => {
-          console.log('POST response (target):', data);
-          setSavedPairs(prev => [...prev, {
-            target: { ...currentPosition },
-            category: 'Treffpunkt',
-            id: data.id,
-          }]);
+          console.log('POST Treffpunkt response:', data);
+          setSavedPairs(prev => [...prev, { target: { ...currentPosition }, category: 'Treffpunkt', id: data.id }]);
           setShowCurrentFeedback(true);
           setTimeout(() => setShowCurrentFeedback(false), 700);
         })
-        .catch(err => {
-          console.error('Error saving target:', err);
-          alert('Kunne ikke lagre Treffpunkt.');
-        });
+        .catch(error => { console.error('Failed to save target pos:', error); alert('Feil ved lagring av Treffpunkt: ' + error.message); });
     }
   };
   const handleTargetRadiusOk = () => {
@@ -635,27 +623,24 @@ export default function MapComponent({
   // 2. Når bruker lagrer ny post, send POST til backend
   const handleSaveNewPost = () => {
     if (newPostPosition && newPostName.trim()) {
-      fetch('/api/posts', {
+      fetch(BACKEND_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: newPostName.trim(),
           current_lat: newPostPosition.lat,
           current_lng: newPostPosition.lng,
-          category: 'Skyteplass',
+          category: 'Post',
         })
       })
         .then(res => res.json())
         .then(data => {
-          setSavedPairs(prev => [...prev, {
-            current: { ...newPostPosition },
-            category: 'Skyteplass',
-            id: data.id,
-          }]);
+          setSavedPairs(prev => [...prev, { current: { ...newPostPosition }, category: 'Post', id: data.id }]);
           setShowNewPostDialog(false);
           setNewPostName('');
           setNewPostPosition(null);
-        });
+        })
+        .catch(error => { console.error('Failed to save new post:', error); alert('Feil ved lagring av post: ' + error.message); });
     }
   };
 
