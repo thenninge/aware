@@ -25,6 +25,8 @@ interface FilterMenuProps {
   orientationMode: 'north' | 'heading';
   onOrientationModeChange: (mode: 'north' | 'heading') => void;
   categoryConfigs: Record<keyof CategoryFilter, CategoryConfig>;
+  showOnlyLastShot?: boolean;
+  onShowOnlyLastShotChange?: (v: boolean) => void;
 }
 
 const categoryLabels: Record<keyof CategoryFilter, string> = {
@@ -36,7 +38,7 @@ const categoryLabels: Record<keyof CategoryFilter, string> = {
   isolated_dwelling: 'Enkeltbolig',
 };
 
-export default function FilterMenu({ categoryFilters, onCategoryChange, radius, onRadiusChange, showMarkers, onShowMarkersChange, orientationMode, onOrientationModeChange, categoryConfigs }: FilterMenuProps) {
+export default function FilterMenu({ categoryFilters, onCategoryChange, radius, onRadiusChange, showMarkers, onShowMarkersChange, orientationMode, onOrientationModeChange, categoryConfigs, showOnlyLastShot, onShowOnlyLastShotChange }: FilterMenuProps) {
   return (
     <div className="bg-white rounded-lg shadow-lg p-4 min-w-[220px] max-w-xs">
       <div className="flex items-center justify-between mb-2">
@@ -70,10 +72,25 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
             className="w-3 h-3 text-blue-600 rounded focus:ring-blue-500"
           />
           <span className="font-medium text-gray-700">
-            Vis treff i kart
+            Vis bebyggelse
           </span>
         </label>
       </div>
+      {onShowOnlyLastShotChange && (
+        <div className="mb-3">
+          <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+            <input
+              type="checkbox"
+              checked={!!showOnlyLastShot}
+              onChange={e => onShowOnlyLastShotChange(e.target.checked)}
+              className="w-3 h-3 text-blue-600 rounded focus:ring-blue-500"
+            />
+            <span className="font-medium text-gray-700">
+              Vis kun siste skuddpar
+            </span>
+          </label>
+        </div>
+      )}
       {/* Kategori-filter */}
       <div className="mb-3">
         <div className="text-xs font-medium text-gray-700 mb-2">Filtrer:</div>

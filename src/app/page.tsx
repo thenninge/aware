@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import AwareMap from '@/components/awaremap';
 import SettingsMenu from '@/components/settingsmenu';
 import FilterMenu from '@/components/filtermenu';
@@ -50,6 +50,7 @@ export default function Home() {
   const [isSettingsExpanded, setIsSettingsExpanded] = useState(false);
   const [isFilterExpanded, setIsFilterExpanded] = useState(false);
   const [orientationMode, setOrientationMode] = useState<'north' | 'heading'>('north');
+  const [showOnlyLastShot, setShowOnlyLastShot] = useState(true);
  
   const [categoryConfigs, setCategoryConfigs] = useState<Record<keyof CategoryFilter, CategoryConfig>>({
     city: {
@@ -84,6 +85,9 @@ export default function Home() {
     }
   });
 
+  const settingsMenuRef = useRef<HTMLDivElement>(null);
+  const filterMenuRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (mode === 'track') {
       setShowMarkers(false);
@@ -91,6 +95,37 @@ export default function Home() {
       setShowMarkers(true);
     }
   }, [mode]);
+
+  // Lukker settings-meny ved klikk utenfor
+  useEffect(() => {
+    if (!isSettingsExpanded) return;
+    function handleClick(event: MouseEvent | TouchEvent) {
+      if (settingsMenuRef.current && !settingsMenuRef.current.contains(event.target as Node)) {
+        setIsSettingsExpanded(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    document.addEventListener('touchstart', handleClick);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('touchstart', handleClick);
+    };
+  }, [isSettingsExpanded]);
+  // Lukker filter-meny ved klikk utenfor
+  useEffect(() => {
+    if (!isFilterExpanded) return;
+    function handleClick(event: MouseEvent | TouchEvent) {
+      if (filterMenuRef.current && !filterMenuRef.current.contains(event.target as Node)) {
+        setIsFilterExpanded(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    document.addEventListener('touchstart', handleClick);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('touchstart', handleClick);
+    };
+  }, [isFilterExpanded]);
 
   const handlePositionChange = (position: Position) => {
     setCurrentPosition(position);
@@ -132,6 +167,18 @@ export default function Home() {
     setIsLiveMode(isLive);
   };
 
+  const handleDeleteAllShots = async () => {
+    if (!window.confirm('Er du sikker på at du vil slette alle skuddpar?')) return;
+    // Slett fra Supabase
+    const res = await fetch('/api/delete-shots', { method: 'POST' });
+    if (!res.ok) {
+      alert('Feil ved sletting!');
+      return;
+    }
+    // Oppdater lokal visning hvis ønskelig
+    window.location.reload();
+  };
+
  
 
   return (
@@ -169,18 +216,18 @@ export default function Home() {
       </div>
       {/* Settings Menu */}
       {isSettingsExpanded && (
-        <div className="fixed top-14 left-1/2 -translate-x-1/2 z-[2002]">
+        <div ref={settingsMenuRef} className="fixed top-14 left-1/2 -translate-x-1/2 z-[2002]">
           <SettingsMenu
             categoryConfigs={categoryConfigs}
             onCategoryConfigChange={handleCategoryConfigChange}
             angleRange={angleRange}
             onAngleRangeChange={handleAngleRangeChange}
+            onDeleteAllShots={handleDeleteAllShots}
           />
         </div>
       )}
-      {/* Filter Menu */}
       {isFilterExpanded && (
-        <div className="fixed top-14 left-1/2 -translate-x-1/2 z-[2002]">
+        <div ref={filterMenuRef} className="fixed top-14 left-1/2 -translate-x-1/2 z-[2002]">
           <FilterMenu
             categoryFilters={categoryFilters}
             onCategoryChange={handleCategoryChange}
@@ -191,6 +238,8 @@ export default function Home() {
             orientationMode={orientationMode}
             onOrientationModeChange={setOrientationMode}
             categoryConfigs={categoryConfigs}
+            showOnlyLastShot={showOnlyLastShot}
+            onShowOnlyLastShotChange={setShowOnlyLastShot}
           />
         </div>
       )}
@@ -212,6 +261,7 @@ export default function Home() {
         isLiveMode={isLiveMode}
         onLiveModeChange={handleLiveModeChange}
         mode={mode}
+        showOnlyLastShot={showOnlyLastShot}
       />
     </div>
   );

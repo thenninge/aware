@@ -1,15 +1,13 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, useMap, Circle, Polyline, Tooltip, LayersControl } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMap, Circle, Polyline, Tooltip } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import React from 'react';
 import PieChart from './piechart';
 import SettingsMenu from './settingsmenu';
 import { supabase } from '../lib/supabaseClient';
-import { Dialog } from '@headlessui/react';
-import { createPortal } from 'react-dom';
 
 interface Position {
   lat: number;
@@ -45,7 +43,6 @@ interface MapComponentProps {
   isLiveMode?: boolean;
   onLiveModeChange?: (isLive: boolean) => void;
   mode?: 'aware' | 'track'; // <-- NY
-  showOnlyLastShot?: boolean;
 }
 
 interface CategoryFilter {
@@ -76,7 +73,6 @@ function MapController({
   isLiveMode = false,
   onLoadingChange,
   mode = 'aware', // <-- NY
-  showOnlyLastShot = false,
 }: { 
   onPositionChange?: (position: Position) => void; 
   radius: number;
@@ -89,7 +85,6 @@ function MapController({
   isLiveMode?: boolean;
   onLoadingChange?: (loading: boolean) => void;
   mode?: 'aware' | 'track'; // <-- NY
-  showOnlyLastShot?: boolean;
 }) {
   const map = useMap();
   const [currentPosition, setCurrentPosition] = useState<Position>({ lat: 60.424834440433045, lng: 12.408766398367092 });
@@ -414,59 +409,12 @@ function destinationPoint(lat: number, lng: number, distance: number, bearing: n
   };
 }
 
-// Hjelpefunksjon for å finne punkt X meter fra A mot B
-function pointTowards(from: Position, to: Position, distanceFromTo: number) {
-  const R = 6371000;
-  const d = Math.sqrt(
-    Math.pow((to.lat - from.lat) * Math.PI / 180 * R, 2) +
-    Math.pow((to.lng - from.lng) * Math.PI / 180 * R * Math.cos((from.lat + to.lat) * Math.PI / 360), 2)
-  );
-  if (d === 0 || distanceFromTo >= d) return { ...to };
-  const ratio = (d - distanceFromTo) / d;
-  return {
-    lat: from.lat + (to.lat - from.lat) * ratio,
-    lng: from.lng + (to.lng - from.lng) * ratio,
-  };
-}
-
 // Ny type for punktpar
 interface PointPair {
   current?: Position;
   target?: Position;
   category: string;
   id: number;
-  created_at?: string;
-}
-
-const LAYER_CONFIGS = [
-  {
-    name: 'Flyfoto',
-    key: 'esri',
-    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    attribution: 'Tiles © Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
-    icon: '🛰️',
-  },
-  {
-    name: 'OpenTopo',
-    key: 'opentopo',
-    url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
-    attribution: 'Map data: © OpenTopoMap (CC-BY-SA)',
-    icon: '⛰️',
-  },
-  {
-    name: 'Standard',
-    key: 'osm',
-    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    icon: '🗺️',
-  },
-];
-
-// Legg til en SVG-komponent for layers-ikonet
-function LayersIcon() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2" fill="#fff"/><polyline points="2 17 12 22 22 17" fill="#fff"/><polyline points="2 12 12 17 22 12" fill="#fff"/></svg>
-  );
 }
 
 export default function MapComponent({ 
@@ -487,10 +435,7 @@ export default function MapComponent({
   isLiveMode = false,
   onLiveModeChange,
   mode = 'aware', // <-- NY
-  showOnlyLastShot = false,
 }: MapComponentProps) {
-  const [showTargetDialog, setShowTargetDialog] = useState(false);
-  const instanceId = useRef(Math.random());
   const [isLeafletLoaded, setIsLeafletLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [places, setPlaces] = useState<PlaceData[]>([]);
@@ -499,7 +444,6 @@ export default function MapComponent({
   const [isFilterExpanded, setIsFilterExpanded] = useState(false);
   const [rotateMap, setRotateMap] = useState(false); // Ny state
   const filterMenuRef = useRef<HTMLDivElement>(null);
-  const settingsMenuRef = useRef<HTMLDivElement>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [savedPairs, setSavedPairs] = useState<PointPair[]>([]);
   // --- For interaktiv target-pos modal ---
@@ -509,21 +453,10 @@ export default function MapComponent({
   const [targetDirection, setTargetDirection] = useState(0); // Startverdi 0 (nord)
   const [previewTarget, setPreviewTarget] = useState<Position | null>(null);
   const [showCurrentFeedback, setShowCurrentFeedback] = useState(false);
-  const [feedbackText, setFeedbackText] = useState('');
   // State for ny post-dialog
   const [showNewPostDialog, setShowNewPostDialog] = useState(false);
   const [newPostPosition, setNewPostPosition] = useState<Position | null>(null);
   const [newPostName, setNewPostName] = useState('');
-  // State for Target-dialog
-  const [targetDistance, setTargetDistance] = useState(250);
-  // Legg til state for "vis kun siste skudd"
-  // Åpne dialog når Target trykkes
-  const openTargetDialog = () => {
-    setTargetRange(250);
-    setShowTargetRadiusModal(true);
-    setShowTargetDirectionUI(false);
-    setShowTargetDialog(false); // Skjul gammel dialog
-  };
 
   // Oppdater previewTarget når range eller direction endres
   useEffect(() => {
@@ -547,37 +480,24 @@ export default function MapComponent({
     );
   }, [showTargetDirectionUI, targetRange, targetDirection, savedPairs]);
 
-  // Lukker filter-expander ved klikk utenfor
+  // Close filter menu when clicking outside
   useEffect(() => {
-    if (!isFilterExpanded) return;
-    function handleClick(event: MouseEvent | TouchEvent) {
+    const handleClickOutside = (event: Event) => {
       if (filterMenuRef.current && !filterMenuRef.current.contains(event.target as Node)) {
         setIsFilterExpanded(false);
       }
+    };
+
+    if (isFilterExpanded) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
     }
-    document.addEventListener('mousedown', handleClick);
-    document.addEventListener('touchstart', handleClick);
+
     return () => {
-      document.removeEventListener('mousedown', handleClick);
-      document.removeEventListener('touchstart', handleClick);
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
     };
   }, [isFilterExpanded]);
-
-  // Lukker settings-expander ved klikk utenfor
-  useEffect(() => {
-    if (!isSettingsExpanded) return;
-    function handleClick(event: MouseEvent | TouchEvent) {
-      if (settingsMenuRef.current && !settingsMenuRef.current.contains(event.target as Node)) {
-        setIsSettingsExpanded(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClick);
-    document.addEventListener('touchstart', handleClick);
-    return () => {
-      document.removeEventListener('mousedown', handleClick);
-      document.removeEventListener('touchstart', handleClick);
-    };
-  }, [isSettingsExpanded]);
 
   useEffect(() => {
     // Ensure Leaflet is loaded
@@ -612,34 +532,28 @@ export default function MapComponent({
   // Sett base-URL for backend
   const BACKEND_URL = 'http://localhost:5000/api/posts';
 
-  // Hent alle poster fra Supabase
-  const fetchPosts = async () => {
-    const { data, error } = await supabase.from('posts').select('*').order('created_at', { ascending: true });
-    if (error) {
-      console.error('Error fetching posts:', error);
-      alert('Kunne ikke hente poster fra backend.');
-      return;
-    }
-    if (Array.isArray(data)) {
-      setSavedPairs(data.map(post => ({
-        current: post.current_lat && post.current_lng ? { lat: post.current_lat, lng: post.current_lng } : undefined,
-        target: post.target_lat && post.target_lng ? { lat: post.target_lat, lng: post.target_lng } : undefined,
-        category: post.category,
-        id: post.id,
-        created_at: post.created_at,
-      })));
-    }
-  };
-
-  // Hent alle poster ved mount
+  // 1. Hent alle poster fra Supabase ved mount
   useEffect(() => {
+    async function fetchPosts() {
+      const { data, error } = await supabase.from('posts').select('*');
+      if (error) {
+        console.error('Error fetching posts:', error);
+        alert('Kunne ikke hente poster fra backend.');
+        return;
+      }
+      if (Array.isArray(data)) {
+        setSavedPairs(data.map(post => ({
+          current: post.current_lat && post.current_lng ? { lat: post.current_lat, lng: post.current_lng } : undefined,
+          target: post.target_lat && post.target_lng ? { lat: post.target_lat, lng: post.target_lng } : undefined,
+          category: post.category,
+          id: post.id,
+        })));
+      }
+    }
     fetchPosts();
   }, []);
 
-  // Legg til state for å styre om Treff-knappen er aktiv
-  const [canAddTreff, setCanAddTreff] = useState(false);
-
-  // Oppdater canAddTreff til true når Skudd lagres
+  // 2. Lagre current-posisjon til Supabase
   const handleSaveCurrentPos = async () => {
     if (currentPosition) {
       const { data, error } = await supabase.from('posts').insert([
@@ -656,11 +570,8 @@ export default function MapComponent({
       }
       if (data && data[0]) {
         setSavedPairs(prev => [...prev, { current: { ...currentPosition }, category: 'Skyteplass', id: data[0].id }]);
-        setFeedbackText('lagret');
         setShowCurrentFeedback(true);
-        setTimeout(() => setShowCurrentFeedback(false), 1000);
-        fetchPosts();
-        setCanAddTreff(true); // Aktiver Treff-knappen
+        setTimeout(() => setShowCurrentFeedback(false), 700);
       }
     }
   };
@@ -684,7 +595,6 @@ export default function MapComponent({
         setSavedPairs(prev => [...prev, { target: { ...currentPosition }, category: 'Treffpunkt', id: data[0].id }]);
         setShowCurrentFeedback(true);
         setTimeout(() => setShowCurrentFeedback(false), 700);
-        fetchPosts();
       }
     }
   };
@@ -736,89 +646,12 @@ export default function MapComponent({
     }
   };
 
-  // Bekreft lagring av treffpunkt
-  const handleConfirmTarget = async () => {
-    if (!savedPairs.length || !savedPairs[savedPairs.length - 1].current) return;
-    const base = savedPairs[savedPairs.length - 1].current;
-    if (!base) return; // Guard mot undefined
-    const bearing = (targetDirection + 360) % 360;
-    const pos = destinationPoint(base.lat, base.lng, targetDistance, bearing);
-    const { data, error } = await supabase.from('posts').insert([
-      {
-        target_lat: pos.lat,
-        target_lng: pos.lng,
-        category: 'Treffpunkt',
-      },
-    ]).select();
-    if (error) {
-      alert('Feil ved lagring av Treffpunkt: ' + error.message);
-      setShowTargetDialog(false);
-      return;
-    }
-    if (data && data[0]) {
-      setSavedPairs(prev => [...prev, { target: { ...pos }, category: 'Treffpunkt', id: data[0].id }]);
-      setFeedbackText('lagret');
-      setShowCurrentFeedback(true);
-      setTimeout(() => setShowCurrentFeedback(false), 1000);
-      fetchPosts();
-    }
-    setShowTargetDialog(false);
-  };
-
   // Defensive guards i toppen av renderblokken
   const safePlaces: PlaceData[] = Array.isArray(places) ? places : [];
   const hasSafePlaces = safePlaces.length > 0;
   const safeSavedPairs = Array.isArray(savedPairs) ? savedPairs : [];
   const hasSavedPairs = safeSavedPairs.length > 0;
   const lastPair = hasSavedPairs ? safeSavedPairs[safeSavedPairs.length - 1] : undefined;
-
-  // Legg til funksjon for å slette alle skuddpar
-  type ShotCategory = 'Skyteplass' | 'Treffpunkt';
-  const handleDeleteAllShots = async () => {
-    if (!window.confirm('Er du sikker på at du vil slette alle skuddpar?')) return;
-    // Slett fra Supabase
-    const { error } = await supabase.from('posts').delete().in('category', ['Skyteplass', 'Treffpunkt']);
-    if (error) {
-      alert('Feil ved sletting: ' + error.message);
-      return;
-    }
-    // Oppdater lokal state
-    setSavedPairs(prev => prev.filter(pair => pair.category !== 'Skyteplass' && pair.category !== 'Treffpunkt'));
-  };
-
-  const [layerIdx, setLayerIdx] = useState(0); // 0 = Flyfoto
-
-  // Ny funksjon for å lagre treffpunkt med valgt retning og avstand
-  const handleSaveTargetWithDirection = async () => {
-    if (!currentPosition) return;
-    const pos = destinationPoint(
-      currentPosition.lat,
-      currentPosition.lng,
-      targetRange,
-      targetDirection
-    );
-    const { data, error } = await supabase.from('posts').insert([
-      {
-        target_lat: pos.lat,
-        target_lng: pos.lng,
-        category: 'Treffpunkt',
-      },
-    ]).select();
-    if (error) {
-      alert('Feil ved lagring av Treffpunkt: ' + error.message);
-      setShowTargetDirectionUI(false);
-      return;
-    }
-    if (data && data[0]) {
-      setSavedPairs(prev => [...prev, { target: { ...pos }, category: 'Treffpunkt', id: data[0].id }]);
-      setFeedbackText('lagret');
-      setShowCurrentFeedback(true);
-      setTimeout(() => setShowCurrentFeedback(false), 1000);
-      fetchPosts();
-    }
-    setShowTargetDirectionUI(false);
-    setCanAddTreff(false); // Deaktiver Treff-knappen
-  };
 
   return (
     <div className="w-full h-screen relative">
@@ -830,9 +663,10 @@ export default function MapComponent({
         zoomControl={true}
         attributionControl={true}
       >
+        {/* OpenStreetMap tiles for testing */}
         <TileLayer
-          url={LAYER_CONFIGS[layerIdx].url}
-          attribution={LAYER_CONFIGS[layerIdx].attribution}
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           maxZoom={18}
         />
         
@@ -851,7 +685,6 @@ export default function MapComponent({
           isLiveMode={isLiveMode}
           onLoadingChange={setIsScanning}
           mode={mode}
-          showOnlyLastShot={showOnlyLastShot}
         />
         {/* Radius circle: kun i aware-mode */}
         {mode === 'aware' && currentPosition && (
@@ -862,46 +695,10 @@ export default function MapComponent({
             pathOptions={{
               color: '#3b82f6',
               fillColor: '#3b82f6',
-              fillOpacity: 0.0,
+              fillOpacity: 0.1,
               weight: 2,
             }}
           />
-        )}
-        {showTargetDirectionUI && currentPosition && (
-          <>
-            <Circle
-              key={`target-radius-${targetRange}-${currentPosition.lat}-${currentPosition.lng}`}
-              center={[currentPosition.lat, currentPosition.lng]}
-              radius={targetRange}
-              pathOptions={{
-                color: '#2563eb',
-                fillColor: '#2563eb',
-                fillOpacity: 0.1,
-                weight: 2,
-              }}
-            />
-            {/* Linje fra senter ut til sirkelen i valgt retning */}
-            <Polyline
-              positions={[
-                [currentPosition.lat, currentPosition.lng],
-                [
-                  destinationPoint(
-                    currentPosition.lat,
-                    currentPosition.lng,
-                    targetRange,
-                    targetDirection
-                  ).lat,
-                  destinationPoint(
-                    currentPosition.lat,
-                    currentPosition.lng,
-                    targetRange,
-                    targetDirection
-                  ).lng,
-                ],
-              ]}
-              pathOptions={{ color: '#2563eb', weight: 3 }}
-            />
-          </>
         )}
         {/* Place markers: kun i aware-mode */}
         {mode === 'aware' && showMarkers && hasSafePlaces && safePlaces
@@ -934,92 +731,40 @@ export default function MapComponent({
         {/* Saved points: vis blå X for hver current-posisjon i track-mode */}
         {mode === 'track' && hasSavedPairs && (
           <>
-            {showOnlyLastShot
-              ? (() => {
-                  // Finn nyeste skyteplass
-                  const skyteplasser = [...safeSavedPairs]
-                    .filter(p => p.category === 'Skyteplass' && p.created_at)
-                    .sort((a, b) => (a.created_at! < b.created_at! ? 1 : -1)); // nyest først
-                  const sisteSkyteplass = skyteplasser[0];
-                  if (!sisteSkyteplass) return null;
-                  // Finn nyeste treffpunkt etter denne skyteplass
-                  const treffpunkter = [...safeSavedPairs]
-                    .filter(p => p.category === 'Treffpunkt' && p.created_at && p.created_at > sisteSkyteplass.created_at!)
-                    .sort((a, b) => (a.created_at! < b.created_at! ? 1 : -1)); // nyest først
-                  const sisteTreffpunkt = treffpunkter[0];
-                  return (
-                    <>
-                      {sisteSkyteplass.current && (
-                        <Circle
-                          center={[sisteSkyteplass.current.lat, sisteSkyteplass.current.lng]}
-                          radius={5}
-                          pathOptions={{
-                            color: '#2563eb',
-                            weight: 1.5,
-                            fillColor: '#2563eb',
-                            fillOpacity: 0.5,
-                          }}
-                        />
-                      )}
-                      {sisteTreffpunkt?.target && (
-                        <Circle
-                          center={[sisteTreffpunkt.target.lat, sisteTreffpunkt.target.lng]}
-                          radius={15}
-                          pathOptions={{
-                            color: 'rgba(220,38,38,0.8)',
-                            weight: 2,
-                            fillColor: 'rgba(220,38,38,0.4)',
-                            fillOpacity: 0.4,
-                          }}
-                        />
-                      )}
-                    </>
-                  );
-                })()
-              : safeSavedPairs.filter(Boolean).map((pair, idx) => (
-                  <React.Fragment key={pair.id ?? idx}>
-                    {pair && pair.current && (
-                      <Circle
-                        center={[pair.current.lat, pair.current.lng]}
-                        radius={5}
-                        pathOptions={{
-                          color: '#2563eb',
-                          weight: 1.5,
-                          fillColor: '#2563eb',
-                          fillOpacity: 0.5,
-                        }}
-                      />
-                    )}
-                    {pair && pair.target && (
-                      <Circle
-                        center={[pair.target.lat, pair.target.lng]}
-                        radius={15}
-                        pathOptions={{
-                          color: 'rgba(220,38,38,0.8)',
-                          weight: 2,
-                          fillColor: 'rgba(220,38,38,0.4)',
-                          fillOpacity: 0.4,
-                        }}
-                      />
-                    )}
-                    {pair && pair.current && pair.target && (pair.current.lat !== pair.target.lat || pair.current.lng !== pair.target.lng) && (
-                      (() => {
-                        const positions: [number, number][] = [
-                          [pair.current.lat, pair.current.lng],
-                          [pair.target.lat, pair.target.lng],
-                        ];
-                        const polyKey = `polyline-${pair.id ?? idx}`;
-                        return (
-                          <Polyline
-                            key={polyKey}
-                            positions={positions}
-                            pathOptions={{ color: '#ff00ff', weight: 4, dashArray: '8 12' }}
-                          />
-                        );
-                      })()
-                    )}
-                  </React.Fragment>
-                ))}
+            {safeSavedPairs.map((pair, idx) => (
+              <React.Fragment key={`pair-current-${idx}`}>
+                {pair.current && (
+                  <Marker
+                    position={[pair.current.lat, pair.current.lng]}
+                    icon={L.divIcon({
+                      className: 'custom-marker saved-point',
+                      html: '<div style="width: 18px; height: 18px; background-color: #2563eb; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 4px rgba(0,0,0,0.5);"></div>',
+                      iconSize: [18, 18],
+                      iconAnchor: [9, 9],
+                    })}
+                  >
+                    <Tooltip direction="top" offset={[0, -10]} permanent>{pair.category}</Tooltip>
+                  </Marker>
+                )}
+              </React.Fragment>
+            ))}
+            {safeSavedPairs.map((pair, idx) => (
+              <React.Fragment key={`pair-target-${idx}`}>
+                {pair.target && (
+                  <Marker
+                    position={[pair.target.lat, pair.target.lng]}
+                    icon={L.divIcon({
+                      className: 'custom-marker saved-point',
+                      html: '<div style="width: 18px; height: 18px; background-color: #dc2626; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 4px rgba(0,0,0,0.5);"></div>',
+                      iconSize: [18, 18],
+                      iconAnchor: [9, 9],
+                    })}
+                  >
+                    <Tooltip direction="top" offset={[0, -10]} permanent>{pair.category}</Tooltip>
+                  </Marker>
+                )}
+              </React.Fragment>
+            ))}
           </>
         )}
         {/* Interaktiv preview for target-posisjon i retning-UI */}
@@ -1062,55 +807,6 @@ export default function MapComponent({
             )}
           </>
         )}
-        {/* Tegn stiplede linjer mellom alle gyldige par */}
-        {mode === 'track' && (
-          showOnlyLastShot
-            ? (() => {
-                const skyteplasser = safeSavedPairs.filter(p => p.category === 'Skyteplass' && p.current && p.created_at !== undefined)
-                  .sort((a, b) => (a.created_at! < b.created_at! ? 1 : -1));
-                const sisteSkyteplass = skyteplasser[0];
-                const treffpunkter = safeSavedPairs.filter(p => p.category === 'Treffpunkt' && p.target && p.created_at !== undefined)
-                  .sort((a, b) => (a.created_at! < b.created_at! ? 1 : -1));
-                const førsteTreffpunkt = treffpunkter.find(t => sisteSkyteplass && t.created_at !== undefined && t.created_at > sisteSkyteplass.created_at!);
-                if (sisteSkyteplass && førsteTreffpunkt && sisteSkyteplass.current && førsteTreffpunkt.target) {
-                  const end = pointTowards(sisteSkyteplass.current, førsteTreffpunkt.target, 15);
-                  const positions: [number, number][] = [
-                    [sisteSkyteplass.current.lat, sisteSkyteplass.current.lng],
-                    [end.lat, end.lng],
-                  ];
-                  return (
-                    <Polyline
-                      key={`polyline-${sisteSkyteplass.id}-${førsteTreffpunkt.id}`}
-                      positions={positions}
-                      pathOptions={{ color: '#888', weight: 2, dashArray: '4 8' }}
-                    />
-                  );
-                }
-                return null;
-              })()
-            : (() => {
-                const skyteplasser = safeSavedPairs.filter(p => p.category === 'Skyteplass' && p.current && p.created_at !== undefined);
-                const treffpunkter = safeSavedPairs.filter(p => p.category === 'Treffpunkt' && p.target && p.created_at !== undefined);
-                return skyteplasser.map((skyteplass, idx) => {
-                  const treff = treffpunkter.find(t => t.created_at !== undefined && t.created_at > skyteplass.created_at!);
-                  if (skyteplass.current && treff && treff.target) {
-                    const end = pointTowards(skyteplass.current, treff.target, 15);
-                    const positions: [number, number][] = [
-                      [skyteplass.current.lat, skyteplass.current.lng],
-                      [end.lat, end.lng],
-                    ];
-                    return (
-                      <Polyline
-                        key={`polyline-${skyteplass.id}-${treff.id}`}
-                        positions={positions}
-                        pathOptions={{ color: '#888', weight: 2, dashArray: '4 8' }}
-                      />
-                    );
-                  }
-                  return null;
-                });
-              })()
-        )}
         {/* TODO: Tegn linje og target-pos senere */}
       </MapContainer>
 
@@ -1127,23 +823,34 @@ export default function MapComponent({
       )}
 
       {/* Settings & Filter Buttons - Top Right */}
-      {/* Fjern hele blokken for Settings & Filter Buttons - Top Right */}
+      {false && (
+        <div className="fixed top-4 right-4 z-[1001] flex flex-col gap-2">
+          <button
+            onClick={() => setIsSettingsExpanded((v) => !v)}
+            className="bg-white/90 backdrop-blur-sm w-12 h-12 rounded-lg shadow-lg flex items-center justify-center hover:bg-white transition-colors border border-gray-200"
+            title="Innstillinger"
+          >
+            <span className="text-2xl">⚙️</span>
+          </button>
+          <button
+            onClick={() => setIsFilterExpanded((v) => !v)}
+            className="bg-white/90 backdrop-blur-sm w-12 h-12 rounded-lg shadow-lg flex items-center justify-center hover:bg-white transition-colors border border-gray-200"
+            title="Filter"
+          >
+            <span className="text-2xl">🧩</span>
+          </button>
+        </div>
+      )}
 
       {/* Settings Menu */}
       {isSettingsExpanded && (
-        <div ref={settingsMenuRef} className="fixed top-20 right-4 z-[1002]">
+        <div className="fixed top-20 right-4 z-[1002]">
       <SettingsMenu 
         categoryConfigs={categoryConfigs}
         onCategoryConfigChange={onCategoryConfigChange || (() => {})}
         angleRange={angleRange}
         onAngleRangeChange={onAngleRangeChange || (() => {})}
-          />
-          <button
-            onClick={handleDeleteAllShots}
-            className="mt-4 w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded shadow-lg text-sm"
-          >
-            Slett alle skuddpar
-          </button>
+      />
         </div>
       )}
 
@@ -1155,10 +862,10 @@ export default function MapComponent({
           <div className="flex items-center justify-between">
             <div className="text-sm font-medium text-gray-700">Filtrer & Kontroller</div>
             <button
-                  onClick={() => setIsFilterExpanded(false)}
+                onClick={() => setIsFilterExpanded(false)}
               className="text-gray-500 hover:text-gray-700 transition-colors"
             >
-                  ✕
+                ✕
             </button>
           </div>
         </div>
@@ -1192,8 +899,8 @@ export default function MapComponent({
               </label>
               <input
                 type="range"
-                min="0.1"
-                max="0.7"
+                min="0"
+                max="1"
                 step="0.05"
                 value={categoryConfigs.city?.opacity || 0.3}
                 onChange={(e) => {
@@ -1297,62 +1004,47 @@ export default function MapComponent({
       {mode === 'track' && (
         <div className="fixed bottom-4 inset-x-0 z-[2001] flex flex-wrap justify-center items-center gap-2 px-2">
           <button
-            onClick={openTargetDialog}
-            disabled={!canAddTreff}
-            className={`flex-1 min-w-[60px] max-w-[110px] w-auto h-9 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex flex-col items-center justify-center px-[0.375em] py-[0.375em] ${
-              canAddTreff
-                ? 'bg-red-600 hover:bg-red-700 text-white border-red-700'
-                : 'bg-gray-300 text-gray-400 border-gray-400 cursor-not-allowed opacity-60'
-            }`}
-            title="Du må først markere Skyteplass med Skudd-knappen"
+            onClick={handleSaveTargetPos}
+            className="flex-1 min-w-[60px] max-w-[110px] w-auto h-9 rounded-full shadow-lg bg-red-600 hover:bg-red-700 text-white font-semibold text-[0.75rem] transition-colors border border-red-700 flex flex-col items-center justify-center px-[0.375em] py-[0.375em]"
+            title="Save target pos"
           >
-            <span className="text-[10px] mt-0.5">Treff</span>
+            <span className="text-[10px] mt-0.5">Target</span>
           </button>
           <button
             onClick={handleSaveCurrentPos}
             className="flex-1 min-w-[60px] max-w-[110px] w-auto h-9 rounded-full shadow-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-[0.75rem] transition-colors border border-blue-700 flex flex-col items-center justify-center px-[0.375em] py-[0.375em]"
             title="Save current pos"
           >
-            <span className="text-[10px] mt-0.5">Skudd</span>
+            <span className="text-[10px] mt-0.5">Current</span>
           </button>
         </div>
       )}
       {/* Scan & Live Buttons - Bottom Right */}
       <div className="fixed bottom-4 right-4 sm:bottom-4 sm:right-4 bottom-2 right-2 z-[1000] flex flex-col gap-2">
-          {/* Scan-knapp kun i aware-mode */}
-          {mode === 'aware' && (
           <button
             onClick={onScanArea}
-              className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
-                isScanning 
-                  ? 'bg-gray-400 cursor-not-allowed text-white' 
-                  : 'bg-blue-600 hover:bg-blue-700 text-white'
-              }`}
-              title={isScanning ? 'Scanning...' : 'Scan område'}
-            >
-              {isScanning ? '⏳' : '🔍'}
-            </button>
-          )}
-          {/* Layer-knapp */}
-          <button
-            className="w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center bg-white/90 border border-gray-300 hover:bg-gray-100"
-            onClick={() => setLayerIdx((layerIdx + 1) % LAYER_CONFIGS.length)}
-            title={`Bytt kartlag (${LAYER_CONFIGS[layerIdx].name})`}
-            style={{ zIndex: 2002 }}
-          >
-            <span className="w-7 h-7 flex items-center justify-center"><LayersIcon /></span>
-          </button>
-          {/* Live-posisjon-knapp */}
-          <button
-            onClick={() => onLiveModeChange?.(!isLiveMode)}
-            className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
-              isLiveMode 
-                ? 'bg-green-600 hover:bg-green-700 text-white' 
-                : 'bg-gray-600 hover:bg-gray-700 text-white'
-            }`}
-            title={isLiveMode ? 'Live GPS ON' : 'Live GPS'}
-          >
-            📍
+          disabled={mode === 'track'}
+          className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
+            mode === 'track'
+              ? 'bg-gray-400 cursor-not-allowed text-white'
+              : isScanning 
+                ? 'bg-gray-400 cursor-not-allowed text-white' 
+                : 'bg-blue-600 hover:bg-blue-700 text-white'
+          }`}
+          title={mode === 'track' ? 'Scan disabled in Track-mode' : (isScanning ? 'Scanning...' : 'Scan område')}
+        >
+          {isScanning ? '⏳' : '🔍'}
+        </button>
+        <button
+          onClick={() => onLiveModeChange?.(!isLiveMode)}
+          className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
+            isLiveMode 
+              ? 'bg-green-600 hover:bg-green-700 text-white' 
+              : 'bg-gray-600 hover:bg-gray-700 text-white'
+          }`}
+          title={isLiveMode ? 'Live GPS ON' : 'Live GPS'}
+        >
+          📍
           </button>
         </div>
 
@@ -1366,74 +1058,62 @@ export default function MapComponent({
 
       {/* Modal for target-radius (første steg) */}
       {showTargetRadiusModal && (
-        <div className="fixed bottom-0 left-0 w-full z-[2002] flex justify-center items-end pointer-events-none">
-          <div className="bg-white rounded-t-lg shadow-lg p-4 w-full max-w-xs mx-auto mb-2 flex flex-col gap-2 pointer-events-auto">
-            <div className="text-base font-semibold text-black mb-1">Velg avstand til treffpunkt</div>
-            <div className="flex items-center gap-2">
-              <input
-                type="range"
-                min={50}
-                max={500}
-                step={5}
-                value={targetRange}
-                onChange={e => setTargetRange(Number(e.target.value))}
-                className="flex-1"
-              />
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[2000]">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-80 flex flex-col gap-4">
+            <div className="text-xl font-bold mb-2 text-gray-800">Velg avstand</div>
+            <label className="text-base font-semibold text-gray-700">Range (meter):
               <input
                 type="number"
-                min={50}
-                max={500}
-                step={5}
+                min={1}
+                max={999}
+                value={targetRange}
+                onChange={e => setTargetRange(Math.max(1, Math.min(999, Number(e.target.value))))}
+                className="w-full border rounded px-2 py-1 mt-1 mb-2 text-lg text-gray-900"
+                maxLength={3}
+              />
+              <input
+                type="range"
+                min={1}
+                max={999}
                 value={targetRange}
                 onChange={e => setTargetRange(Number(e.target.value))}
-                className="w-16 border rounded px-2 py-1 text-xs text-black"
+                className="w-full mt-1"
               />
-              <span className="text-xs text-black">m</span>
-      </div>
-            <div className="text-xs text-black text-center">Velg avstand med slider eller skriv inn manuelt.</div>
+              <div className="text-base text-gray-800 text-center font-semibold">{targetRange} meter</div>
+            </label>
             <div className="flex gap-2 justify-end mt-2">
               <button
                 onClick={() => setShowTargetRadiusModal(false)}
-                className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 text-xs text-black"
+                className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold"
               >Avbryt</button>
               <button
-                onClick={() => { setShowTargetRadiusModal(false); setShowTargetDirectionUI(true); }}
-                className="px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 text-xs"
+                onClick={handleTargetRadiusOk}
+                className="px-3 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white font-bold"
               >OK</button>
-            </div>
+      </div>
           </div>
         </div>
       )}
       {/* Feedback for current-pos lagring */}
       {showCurrentFeedback && (
-        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[3000] bg-gray-500 text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-2 animate-bounce">
-          <span className="font-semibold text-lg">lagret</span>
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[3000] bg-green-500 text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-2 animate-bounce">
+          <span className="text-2xl">✅</span>
+          <span className="font-semibold text-lg">Punkt lagret!</span>
         </div>
       )}
       {/* Slider og lagre-knapp for retning (andre steg) */}
       {showTargetDirectionUI && (
         <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[2002] bg-white rounded-lg shadow-lg px-4 py-3 flex flex-col items-center gap-2 w-[90vw] max-w-xs">
-          <label className="text-sm font-medium w-full text-black">Retning (grader):
-            <div className="flex items-center gap-2 w-full mt-1">
-              <input
-                type="range"
-                min={-180}
-                max={180}
-                value={targetDirection}
-                onChange={e => setTargetDirection(Number(e.target.value))}
-                className="flex-1"
-              />
-              <input
-                type="number"
-                min={-180}
-                max={180}
-                value={targetDirection}
-                onChange={e => setTargetDirection(Number(e.target.value))}
-                className="w-16 border rounded px-2 py-1 text-xs text-black"
-              />
-              <span className="text-xs text-black">°</span>
-            </div>
-            <div className="text-base text-black text-center font-semibold mt-1">
+          <label className="text-sm font-medium w-full">Retning (grader):
+            <input
+              type="range"
+              min={-180}
+              max={180}
+              value={targetDirection}
+              onChange={e => setTargetDirection(Number(e.target.value))}
+              className="w-full mt-1"
+            />
+            <div className="text-base text-gray-800 text-center font-semibold">
               {((targetDirection + 360) % 360)}° {
                 ((targetDirection + 360) % 360) === 0 ? '(nord)' :
                 ((targetDirection + 360) % 360) === 180 ? '(sør)' :
@@ -1443,7 +1123,7 @@ export default function MapComponent({
             </div>
           </label>
           <button
-            onClick={handleSaveTargetWithDirection}
+            onClick={handleTargetModalSave}
             className="px-4 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white font-semibold mt-1"
           >Lagre</button>
         </div>
@@ -1472,45 +1152,6 @@ export default function MapComponent({
             </div>
           </div>
         </div>
-      )}
-      {showTargetDialog && createPortal(
-        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/40" onClick={() => setShowTargetDialog(false)}>
-          <div className="bg-white p-8 rounded max-w-xs w-full" onClick={e => e.stopPropagation()}>
-            <div className="text-lg font-semibold mb-2">Velg avstand og retning</div>
-            <div className="mb-4">
-              <label htmlFor="target-distance" className="block text-xs font-medium text-gray-700 mb-1">Avstand (meter):</label>
-              <input type="range" id="target-distance" name="target-distance" min={50} max={1000} step={5} value={targetDistance} onChange={e => setTargetDistance(Number(e.target.value))} className="w-full" />
-              <input type="number" id="target-distance-number" name="target-distance-number" min={50} max={1000} step={5} value={targetDistance} onChange={e => setTargetDistance(Number(e.target.value))} className="w-full border rounded px-2 py-1 mt-1 text-xs text-black" />
-            </div>
-            <div className="mb-4 flex flex-col items-center">
-              <svg width="120" height="120" viewBox="0 0 120 120">
-                <circle cx="60" cy="60" r="55" fill="#f3f4f6" stroke="#d1d5db" strokeWidth="2" />
-                <line x1="60" y1="60" x2={60 + 50 * Math.sin((isNaN(targetDirection) ? 0 : targetDirection) * Math.PI / 180)} y2={60 - 50 * Math.cos((isNaN(targetDirection) ? 0 : targetDirection) * Math.PI / 180)} stroke="#2563eb" strokeWidth="4" markerEnd="url(#arrow)" />
-                <circle cx={60 + 50 * Math.sin((isNaN(targetDirection) ? 0 : targetDirection) * Math.PI / 180)} cy={60 - 50 * Math.cos((isNaN(targetDirection) ? 0 : targetDirection) * Math.PI / 180)} r="5" fill="#2563eb" />
-                <defs>
-                  <marker id="arrow" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto" markerUnits="strokeWidth">
-                    <path d="M0,0 L10,5 L0,10 L3,5 Z" fill="#2563eb" />
-                  </marker>
-                </defs>
-              </svg>
-              <div className="w-full mt-2 flex flex-col items-center">
-                <label htmlFor="target-direction" className="block text-xs font-medium text-gray-700 mb-1 text-center">Retning:</label>
-                <input type="range" id="target-direction" name="target-direction" min={-180} max={180} step={1} value={targetDirection} onChange={e => setTargetDirection(Number(e.target.value))} className="w-full max-w-xs" style={{margin:'0 auto'}} />
-                <div className="text-xs text-center mt-1 font-semibold">Retning: {targetDirection}° {
-                  targetDirection === 0 ? '(nord)' :
-                  targetDirection === 180 || targetDirection === -180 ? '(sør)' :
-                  targetDirection === 90 ? '(øst)' :
-                  targetDirection === -90 ? '(vest)' : ''
-                }</div>
-              </div>
-            </div>
-            <div className="flex gap-2 justify-end mt-4">
-              <button onClick={() => setShowTargetDialog(false)} className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 text-xs">Avbryt</button>
-              <button onClick={async () => { await handleConfirmTarget(); setShowTargetDialog(false); }} className="px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 text-xs">Lagre treffpunkt</button>
-            </div>
-          </div>
-        </div>,
-        typeof window !== 'undefined' ? document.body : (null as any)
       )}
     </div>
   );
