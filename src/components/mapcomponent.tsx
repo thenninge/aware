@@ -494,7 +494,7 @@ export default function MapComponent({
   const [isLeafletLoaded, setIsLeafletLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [places, setPlaces] = useState<PlaceData[]>([]);
-  const [currentPosition, setCurrentPosition] = useState<Position>({ lat: 60.424834440433045, lng: 12.408766398367092 });
+  const [currentPosition, setCurrentPosition] = useState<Position | undefined>(undefined);
   const [isSettingsExpanded, setIsSettingsExpanded] = useState(false);
   const [isFilterExpanded, setIsFilterExpanded] = useState(false);
   const [rotateMap, setRotateMap] = useState(false); // Ny state
@@ -819,6 +819,34 @@ export default function MapComponent({
     setShowTargetDirectionUI(false);
     setCanAddTreff(false); // Deaktiver Treff-knappen
   };
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('aware_default_position');
+      if (saved) {
+        try {
+          const pos = JSON.parse(saved);
+          if (pos && typeof pos.lat === 'number' && typeof pos.lng === 'number') {
+            setCurrentPosition({ lat: pos.lat, lng: pos.lng });
+            return;
+          }
+        } catch {}
+      }
+      // fallback hvis ikke lagret
+      setCurrentPosition({ lat: 60.424834440433045, lng: 12.408766398367092 });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (currentPosition && onPositionChange) {
+      onPositionChange(currentPosition);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPosition]);
+
+  if (!currentPosition) {
+    return <div className="w-full h-screen flex items-center justify-center text-lg text-gray-500">Laster posisjon...</div>;
+  }
 
   return (
     <div className="w-full h-screen relative">
@@ -1386,7 +1414,7 @@ export default function MapComponent({
                 step={5}
                 value={targetRange}
                 onChange={e => setTargetRange(Number(e.target.value))}
-                className="w-16 border rounded px-2 py-1 text-xs text-black"
+                className="w-16 border rounded px-2 py-1 text-[16px] text-black"
               />
               <span className="text-xs text-black">m</span>
       </div>
@@ -1429,7 +1457,7 @@ export default function MapComponent({
                 max={180}
                 value={targetDirection}
                 onChange={e => setTargetDirection(Number(e.target.value))}
-                className="w-16 border rounded px-2 py-1 text-xs text-black"
+                className="w-16 border rounded px-2 py-1 text-[16px] text-black"
               />
               <span className="text-xs text-black">°</span>
             </div>
@@ -1457,7 +1485,7 @@ export default function MapComponent({
                 type="text"
                 value={newPostName}
                 onChange={e => setNewPostName(e.target.value)}
-                className="w-full border rounded px-2 py-1 mt-1 mb-2 text-lg text-gray-900"
+                className="w-full border rounded px-2 py-1 mt-1 mb-2 text-lg text-[16px] text-gray-900"
               />
             </label>
             <div className="flex gap-2 justify-end mt-2">
@@ -1480,7 +1508,7 @@ export default function MapComponent({
             <div className="mb-4">
               <label htmlFor="target-distance" className="block text-xs font-medium text-gray-700 mb-1">Avstand (meter):</label>
               <input type="range" id="target-distance" name="target-distance" min={50} max={1000} step={5} value={targetDistance} onChange={e => setTargetDistance(Number(e.target.value))} className="w-full" />
-              <input type="number" id="target-distance-number" name="target-distance-number" min={50} max={1000} step={5} value={targetDistance} onChange={e => setTargetDistance(Number(e.target.value))} className="w-full border rounded px-2 py-1 mt-1 text-xs text-black" />
+              <input type="number" id="target-distance-number" name="target-distance-number" min={50} max={1000} step={5} value={targetDistance} onChange={e => setTargetDistance(Number(e.target.value))} className="w-full border rounded px-2 py-1 mt-1 text-[16px] text-black" />
             </div>
             <div className="mb-4 flex flex-col items-center">
               <svg width="120" height="120" viewBox="0 0 120 120">
