@@ -519,9 +519,10 @@ export default function MapComponent({
   // Legg til state for "vis kun siste skudd"
   // Åpne dialog når Target trykkes
   const openTargetDialog = () => {
-    setTargetDistance(250);
-    setTargetDirection(0);
-    setShowTargetDialog(true);
+    setTargetRange(250);
+    setShowTargetRadiusModal(true);
+    setShowTargetDirectionUI(false);
+    setShowTargetDialog(false); // Skjul gammel dialog
   };
 
   // Oppdater previewTarget når range eller direction endres
@@ -783,6 +784,37 @@ export default function MapComponent({
 
   const [layerIdx, setLayerIdx] = useState(0); // 0 = Flyfoto
 
+  // Ny funksjon for å lagre treffpunkt med valgt retning og avstand
+  const handleSaveTargetWithDirection = async () => {
+    if (!currentPosition) return;
+    const pos = destinationPoint(
+      currentPosition.lat,
+      currentPosition.lng,
+      targetRange,
+      targetDirection
+    );
+    const { data, error } = await supabase.from('posts').insert([
+      {
+        target_lat: pos.lat,
+        target_lng: pos.lng,
+        category: 'Treffpunkt',
+      },
+    ]).select();
+    if (error) {
+      alert('Feil ved lagring av Treffpunkt: ' + error.message);
+      setShowTargetDirectionUI(false);
+      return;
+    }
+    if (data && data[0]) {
+      setSavedPairs(prev => [...prev, { target: { ...pos }, category: 'Treffpunkt', id: data[0].id }]);
+      setFeedbackText('Treffpunkt lagret!');
+      setShowCurrentFeedback(true);
+      setTimeout(() => setShowCurrentFeedback(false), 1000);
+      fetchPosts();
+    }
+    setShowTargetDirectionUI(false);
+  };
+
   return (
     <div className="w-full h-screen relative">
       {/* Rett før <MapContainer ...> i render: */}
@@ -829,6 +861,42 @@ export default function MapComponent({
               weight: 2,
             }}
           />
+        )}
+        {showTargetDirectionUI && currentPosition && (
+          <>
+            <Circle
+              key={`target-radius-${targetRange}-${currentPosition.lat}-${currentPosition.lng}`}
+              center={[currentPosition.lat, currentPosition.lng]}
+              radius={targetRange}
+              pathOptions={{
+                color: '#2563eb',
+                fillColor: '#2563eb',
+                fillOpacity: 0.1,
+                weight: 2,
+              }}
+            />
+            {/* Linje fra senter ut til sirkelen i valgt retning */}
+            <Polyline
+              positions={[
+                [currentPosition.lat, currentPosition.lng],
+                [
+                  destinationPoint(
+                    currentPosition.lat,
+                    currentPosition.lng,
+                    targetRange,
+                    targetDirection
+                  ).lat,
+                  destinationPoint(
+                    currentPosition.lat,
+                    currentPosition.lng,
+                    targetRange,
+                    targetDirection
+                  ).lng,
+                ],
+              ]}
+              pathOptions={{ color: '#2563eb', weight: 3 }}
+            />
+          </>
         )}
         {/* Place markers: kun i aware-mode */}
         {mode === 'aware' && showMarkers && hasSafePlaces && safePlaces
@@ -1229,7 +1297,7 @@ export default function MapComponent({
             className="flex-1 min-w-[60px] max-w-[110px] w-auto h-9 rounded-full shadow-lg bg-red-600 hover:bg-red-700 text-white font-semibold text-[0.75rem] transition-colors border border-red-700 flex flex-col items-center justify-center px-[0.375em] py-[0.375em]"
             title="Save target pos"
           >
-            <span className="text-[10px] mt-0.5">Mål</span>
+            <span className="text-[10px] mt-0.5">Treff</span>
           </button>
           <button
             onClick={handleSaveCurrentPos}
@@ -1244,8 +1312,8 @@ export default function MapComponent({
       <div className="fixed bottom-4 right-4 sm:bottom-4 sm:right-4 bottom-2 right-2 z-[1000] flex flex-col gap-2">
           {/* Scan-knapp kun i aware-mode */}
           {mode === 'aware' && (
-            <button
-              onClick={onScanArea}
+          <button
+            onClick={onScanArea}
               className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
                 isScanning 
                   ? 'bg-gray-400 cursor-not-allowed text-white' 
@@ -1289,39 +1357,41 @@ export default function MapComponent({
 
       {/* Modal for target-radius (første steg) */}
       {showTargetRadiusModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[2000]">
-          <div className="bg-white rounded-lg shadow-lg p-6 w-80 flex flex-col gap-4">
-            <div className="text-xl font-bold mb-2 text-gray-800">Velg avstand</div>
-            <label className="text-base font-semibold text-gray-700">Range (meter):
-              <input
-                type="number"
-                min={1}
-                max={999}
-                value={targetRange}
-                onChange={e => setTargetRange(Math.max(1, Math.min(999, Number(e.target.value))))}
-                className="w-full border rounded px-2 py-1 mt-1 mb-2 text-lg text-gray-900"
-                maxLength={3}
-              />
+        <div className="fixed bottom-0 left-0 w-full z-[2002] flex justify-center items-end pointer-events-none">
+          <div className="bg-white rounded-t-lg shadow-lg p-4 w-full max-w-xs mx-auto mb-2 flex flex-col gap-2 pointer-events-auto">
+            <div className="text-base font-semibold text-black mb-1">Velg avstand til treffpunkt</div>
+            <div className="flex items-center gap-2">
               <input
                 type="range"
-                min={1}
-                max={999}
+                min={50}
+                max={500}
+                step={5}
                 value={targetRange}
                 onChange={e => setTargetRange(Number(e.target.value))}
-                className="w-full mt-1"
+                className="flex-1"
               />
-              <div className="text-base text-gray-800 text-center font-semibold">{targetRange} meter</div>
-            </label>
+              <input
+                type="number"
+                min={50}
+                max={500}
+                step={5}
+                value={targetRange}
+                onChange={e => setTargetRange(Number(e.target.value))}
+                className="w-16 border rounded px-2 py-1 text-xs text-black"
+              />
+              <span className="text-xs text-black">m</span>
+      </div>
+            <div className="text-xs text-black text-center">Velg avstand med slider eller skriv inn manuelt.</div>
             <div className="flex gap-2 justify-end mt-2">
               <button
                 onClick={() => setShowTargetRadiusModal(false)}
-                className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold"
+                className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 text-xs text-black"
               >Avbryt</button>
               <button
-                onClick={handleTargetRadiusOk}
-                className="px-3 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white font-bold"
+                onClick={() => { setShowTargetRadiusModal(false); setShowTargetDirectionUI(true); }}
+                className="px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 text-xs"
               >OK</button>
-      </div>
+            </div>
           </div>
         </div>
       )}
@@ -1335,16 +1405,27 @@ export default function MapComponent({
       {/* Slider og lagre-knapp for retning (andre steg) */}
       {showTargetDirectionUI && (
         <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[2002] bg-white rounded-lg shadow-lg px-4 py-3 flex flex-col items-center gap-2 w-[90vw] max-w-xs">
-          <label className="text-sm font-medium w-full">Retning (grader):
-            <input
-              type="range"
-              min={-180}
-              max={180}
-              value={targetDirection}
-              onChange={e => setTargetDirection(Number(e.target.value))}
-              className="w-full mt-1"
-            />
-            <div className="text-base text-gray-800 text-center font-semibold">
+          <label className="text-sm font-medium w-full text-black">Retning (grader):
+            <div className="flex items-center gap-2 w-full mt-1">
+              <input
+                type="range"
+                min={-180}
+                max={180}
+                value={targetDirection}
+                onChange={e => setTargetDirection(Number(e.target.value))}
+                className="flex-1"
+              />
+              <input
+                type="number"
+                min={-180}
+                max={180}
+                value={targetDirection}
+                onChange={e => setTargetDirection(Number(e.target.value))}
+                className="w-16 border rounded px-2 py-1 text-xs text-black"
+              />
+              <span className="text-xs text-black">°</span>
+            </div>
+            <div className="text-base text-black text-center font-semibold mt-1">
               {((targetDirection + 360) % 360)}° {
                 ((targetDirection + 360) % 360) === 0 ? '(nord)' :
                 ((targetDirection + 360) % 360) === 180 ? '(sør)' :
@@ -1354,7 +1435,7 @@ export default function MapComponent({
             </div>
           </label>
           <button
-            onClick={handleTargetModalSave}
+            onClick={handleSaveTargetWithDirection}
             className="px-4 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white font-semibold mt-1"
           >Lagre</button>
         </div>
@@ -1391,7 +1472,7 @@ export default function MapComponent({
             <div className="mb-4">
               <label htmlFor="target-distance" className="block text-xs font-medium text-gray-700 mb-1">Avstand (meter):</label>
               <input type="range" id="target-distance" name="target-distance" min={50} max={1000} step={5} value={targetDistance} onChange={e => setTargetDistance(Number(e.target.value))} className="w-full" />
-              <input type="number" id="target-distance-number" name="target-distance-number" min={50} max={1000} step={5} value={targetDistance} onChange={e => setTargetDistance(Number(e.target.value))} className="w-full border rounded px-2 py-1 mt-1 text-xs" />
+              <input type="number" id="target-distance-number" name="target-distance-number" min={50} max={1000} step={5} value={targetDistance} onChange={e => setTargetDistance(Number(e.target.value))} className="w-full border rounded px-2 py-1 mt-1 text-xs text-black" />
             </div>
             <div className="mb-4 flex flex-col items-center">
               <svg width="120" height="120" viewBox="0 0 120 120">
