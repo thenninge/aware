@@ -903,15 +903,11 @@ export default function MapComponent({
                 value={categoryConfigs.city?.opacity || 0.3}
                 onChange={(e) => {
                   const newOpacity = parseFloat(e.target.value);
-                  setCategoryConfigs((prev) => {
-                    const updated = { ...prev };
-                    Object.keys(updated).forEach((key) => {
-                      updated[key as keyof CategoryFilter] = {
-                        ...updated[key as keyof CategoryFilter],
-                        opacity: newOpacity,
-                      };
+                  Object.keys(categoryConfigs).forEach((key) => {
+                    onCategoryConfigChange(key, {
+                      ...categoryConfigs[key],
+                      opacity: newOpacity,
                     });
-                    return updated;
                   });
                 }}
                 className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer hover:bg-gray-300 transition-colors"
