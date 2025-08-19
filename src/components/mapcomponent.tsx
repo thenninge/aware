@@ -636,10 +636,7 @@ export default function MapComponent({
     fetchPosts();
   }, []);
 
-  // Legg til state for å styre om Treff-knappen er aktiv
-  const [canAddTreff, setCanAddTreff] = useState(false);
-
-  // Oppdater canAddTreff til true når Skudd lagres
+  // 2. Lagre current-posisjon til Supabase
   const handleSaveCurrentPos = async () => {
     if (currentPosition) {
       const { data, error } = await supabase.from('posts').insert([
@@ -660,7 +657,6 @@ export default function MapComponent({
         setShowCurrentFeedback(true);
         setTimeout(() => setShowCurrentFeedback(false), 1000);
         fetchPosts();
-        setCanAddTreff(true); // Aktiver Treff-knappen
       }
     }
   };
@@ -817,7 +813,6 @@ export default function MapComponent({
       fetchPosts();
     }
     setShowTargetDirectionUI(false);
-    setCanAddTreff(false); // Deaktiver Treff-knappen
   };
 
   return (
@@ -1299,13 +1294,8 @@ export default function MapComponent({
         <div className="fixed bottom-4 inset-x-0 z-[2001] flex flex-wrap justify-center items-center gap-2 px-2">
           <button
             onClick={openTargetDialog}
-            disabled={!canAddTreff}
-            className={`flex-1 min-w-[60px] max-w-[110px] w-auto h-9 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex flex-col items-center justify-center px-[0.375em] py-[0.375em] ${
-              canAddTreff
-                ? 'bg-red-600 hover:bg-red-700 text-white border-red-700'
-                : 'bg-gray-300 text-gray-400 border-gray-400 cursor-not-allowed opacity-60'
-            }`}
-            title="Du må først markere Skyteplass med Skudd-knappen"
+            className="flex-1 min-w-[60px] max-w-[110px] w-auto h-9 rounded-full shadow-lg bg-red-600 hover:bg-red-700 text-white font-semibold text-[0.75rem] transition-colors border border-red-700 flex flex-col items-center justify-center px-[0.375em] py-[0.375em]"
+            title="Save target pos"
           >
             <span className="text-[10px] mt-0.5">Treff</span>
           </button>
