@@ -519,10 +519,9 @@ export default function MapComponent({
   // Legg til state for "vis kun siste skudd"
   // Åpne dialog når Target trykkes
   const openTargetDialog = () => {
-    setTargetRange(250);
-    setShowTargetRadiusModal(true);
-    setShowTargetDirectionUI(false);
-    setShowTargetDialog(false); // Skjul gammel dialog
+    setTargetRange(250); // default 250m
+    setTargetDirection(0);
+    setShowTargetDirectionUI(true);
   };
 
   // Oppdater previewTarget når range eller direction endres
@@ -1415,6 +1414,29 @@ export default function MapComponent({
       {/* Slider og lagre-knapp for retning (andre steg) */}
       {showTargetDirectionUI && (
         <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[2002] bg-white rounded-lg shadow-lg px-4 py-3 flex flex-col items-center gap-2 w-[90vw] max-w-xs">
+          <label className="text-sm font-medium w-full text-black">Avstand (meter):
+            <div className="flex items-center gap-2 w-full mt-1">
+              <input
+                type="range"
+                min={50}
+                max={500}
+                step={5}
+                value={targetRange}
+                onChange={e => setTargetRange(Number(e.target.value))}
+                className="flex-1"
+              />
+              <input
+                type="number"
+                min={50}
+                max={500}
+                step={5}
+                value={targetRange}
+                onChange={e => setTargetRange(Number(e.target.value))}
+                className="w-16 border rounded px-2 py-1 text-xs text-black"
+              />
+              <span className="text-xs text-black">m</span>
+            </div>
+          </label>
           <label className="text-sm font-medium w-full text-black">Retning (grader):
             <div className="flex items-center gap-2 w-full mt-1">
               <input
