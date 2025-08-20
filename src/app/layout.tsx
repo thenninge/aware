@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "be AWARE of your shots (force redeploy)",
+  title: "be AWARE of your shots",
   description: "by toppjakt.no & coldbarreladjacent",
 };
 
