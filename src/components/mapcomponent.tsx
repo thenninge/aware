@@ -157,6 +157,8 @@ function MapController({
   useEffect(() => {
     // Start compass watching
     const handleCompass = (event: DeviceOrientationEvent) => {
+      alert('Compass event mottatt! Alpha: ' + event.alpha + ', Webkit: ' + (event as any).webkitCompassHeading);
+      
       // Lagre siste verdier for debugging
       (window as any).lastAlpha = event.alpha;
       (window as any).lastWebkit = (event as any).webkitCompassHeading;
@@ -226,23 +228,28 @@ function MapController({
 
     if ('DeviceOrientationEvent' in window && !compassPermissionRequested) {
       setCompassPermissionRequested(true);
+      alert('Starter kompass-oppsett...');
+      
       // Be om tillatelse til Device Orientation API
       if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
+        alert('Be om tillatelse...');
         (DeviceOrientationEvent as any).requestPermission().then((permission: string) => {
           if (permission === 'granted') {
             window.addEventListener('deviceorientation', handleCompass);
             setCompassId(1);
-            alert('Compass tillatelse gitt!');
+            alert('Compass tillatelse gitt! Event listener lagt til.');
           } else {
             alert('Compass tillatelse avvist. Kompass vil ikke fungere.');
           }
-        }).catch(() => {
-          alert('Kunne ikke be om compass tillatelse.');
+        }).catch((error: any) => {
+          alert('Kunne ikke be om compass tillatelse: ' + error.message);
         });
       } else {
         // Fallback for eldre nettlesere som ikke krever tillatelse
+        alert('Ingen tillatelse kreves, legger til event listener...');
         window.addEventListener('deviceorientation', handleCompass);
         setCompassId(1);
+        alert('Event listener lagt til uten tillatelse.');
       }
     }
 
