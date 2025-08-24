@@ -168,8 +168,8 @@ function MapController({
         heading = webkitHeading; // 0 = nord
         console.log('Using webkitHeading:', heading);
       } else if (event.alpha !== null && !isNaN(event.alpha)) {
-        // fallback: bruk alpha
-        heading = 360 - event.alpha; // juster for retning på rotasjonen
+        // fallback: bruk alpha - juster for 90 graders feil
+        heading = (360 - event.alpha + 90) % 360; // juster for retning og 90 graders feil
         console.log('Using alpha:', event.alpha, '-> heading:', heading);
       }
 
@@ -1219,7 +1219,7 @@ export default function MapComponent({
         {/* Vanlig prikk alltid synlig */}
         <div className="w-4 h-4 bg-red-600 border-2 border-white rounded-full shadow-lg"></div>
         
-        {/* Retningsstrek i live mode */}
+        {/* Retningskakestykke i live mode */}
         {isLiveMode && currentPosition?.heading !== undefined && (
           <div 
             className="absolute top-1/2 left-1/2 w-0 h-0"
@@ -1227,12 +1227,31 @@ export default function MapComponent({
               transform: `translate(-50%, -50%) rotate(${currentPosition.heading}deg)`,
             }}
           >
-            <div 
-              className="w-0 h-0 border-l-[100px] border-l-red-600 border-t-[3px] border-t-transparent border-b-[3px] border-b-transparent"
+            {/* Kakestykke med 3 grader bredde og 100m lengde */}
+            <svg 
+              width="200" 
+              height="200" 
+              viewBox="0 0 200 200"
               style={{
-                transform: 'translateX(2px)' // Juster litt for å starte fra prikken
+                transform: 'translateX(-100px) translateY(-100px)'
               }}
-            ></div>
+            >
+              {/* Definer gradient for kakestykket */}
+              <defs>
+                <linearGradient id="sectorGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="rgba(220, 38, 38, 0.2)" />
+                  <stop offset="100%" stopColor="rgba(220, 38, 38, 0.2)" />
+                </linearGradient>
+              </defs>
+              
+              {/* Kakestykke: 3 grader bredde, 100m lengde */}
+              <path
+                d="M 100 100 L 100 0 A 100 100 0 0 1 102.6 0 L 100 100 Z"
+                fill="url(#sectorGradient)"
+                stroke="rgba(220, 38, 38, 0.8)"
+                strokeWidth="1"
+              />
+            </svg>
           </div>
         )}
       </div>
