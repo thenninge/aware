@@ -77,6 +77,7 @@ function MapController({
   onLoadingChange,
   mode = 'aware', // <-- NY
   showOnlyLastShot = false,
+  compassStarted = false,
 }: { 
   onPositionChange?: (position: Position) => void; 
   radius: number;
@@ -90,6 +91,7 @@ function MapController({
   onLoadingChange?: (loading: boolean) => void;
   mode?: 'aware' | 'track'; // <-- NY
   showOnlyLastShot?: boolean;
+  compassStarted?: boolean;
 }) {
   const map = useMap();
   const [currentPosition, setCurrentPosition] = useState<Position>({ lat: 60.424834440433045, lng: 12.408766398367092 });
@@ -97,7 +99,6 @@ function MapController({
   const [loading, setLoading] = useState(false);
   const [watchId, setWatchId] = useState<number | null>(null);
   const [compassId, setCompassId] = useState<number | null>(null);
-  const [compassPermissionRequested, setCompassPermissionRequested] = useState(false);
 
   // Fix Leaflet icons when component mounts
   useEffect(() => {
@@ -157,44 +158,48 @@ function MapController({
   useEffect(() => {
     // Start compass watching
     const handleCompass = (event: DeviceOrientationEvent) => {
-      // Lagre siste verdier for debugging
-      (window as any).lastAlpha = event.alpha;
-      (window as any).lastWebkit = (event as any).webkitCompassHeading;
-      
-      // Beregn heading fra alpha, beta, gamma (standard tilnærming)
-      let heading = 0;
-      
-      if (event.alpha !== null && event.beta !== null && event.gamma !== null) {
-        // Konverter til grader og beregn heading
-        const alpha = event.alpha;
-        const beta = event.beta;
-        const gamma = event.gamma;
-        
-        // Beregn heading basert på device orientation
-        heading = alpha;
-        
-        // Juster for device orientering
-        if (beta > 90) {
-          heading = 180 - alpha;
-        } else if (beta < -90) {
-          heading = 180 + alpha;
-        }
-        
-        // Normaliser til 0-360
-        heading = (heading + 360) % 360;
+      let heading: number | null = null;
+
+      // iOS Safari har dette feltet
+      const webkitHeading = (event as any).webkitCompassHeading;
+      if (typeof webkitHeading === 'number') {
+        heading = webkitHeading; // 0 = nord
+      } else if (event.alpha !== null) {
+        // fallback: bruk alpha
+        heading = 360 - event.alpha; // juster for retning på rotasjonen
       }
-      
-      if (heading !== null && heading !== undefined) {
-        alert('Setting heading to: ' + heading);
+
+      if (heading !== null) {
+        heading = (heading + 360) % 360;
+        
         setCurrentPosition(prev => {
           const newPos = {
             ...prev,
-            heading
+            heading: heading as number
           };
           onPositionChange?.(newPos);
           return newPos;
         });
       }
+    };
+
+    const startCompass = async () => {
+      if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
+        try {
+          const response = await (DeviceOrientationEvent as any).requestPermission();
+          if (response !== 'granted') {
+            alert('Ingen tilgang til kompass');
+            return;
+          }
+        } catch (err) {
+          console.error(err);
+          alert('Kunne ikke be om kompass-tillatelse');
+          return;
+        }
+      }
+
+      window.addEventListener('deviceorientation', handleCompass, true);
+      alert('Kompass startet!');
     };
 
     if (!isLiveMode) {
@@ -243,26 +248,10 @@ function MapController({
       setWatchId(id);
     }
 
-    if ('DeviceOrientationEvent' in window && !compassPermissionRequested) {
-      setCompassPermissionRequested(true);
-      
-      // Be om tillatelse til Device Orientation API
-      if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
-        (DeviceOrientationEvent as any).requestPermission().then((permission: string) => {
-          if (permission === 'granted') {
-            window.addEventListener('deviceorientation', handleCompass);
-            setCompassId(1);
-          } else {
-            alert('Compass tillatelse avvist. Kompass vil ikke fungere.');
-          }
-        }).catch((error: any) => {
-          alert('Kunne ikke be om compass tillatelse: ' + error.message);
-        });
-      } else {
-        // Fallback for eldre nettlesere som ikke krever tillatelse
-        window.addEventListener('deviceorientation', handleCompass);
-        setCompassId(1);
-      }
+    // Start kompass hvis compassStarted er true
+    if (compassStarted && !compassId) {
+      window.addEventListener('deviceorientation', handleCompass, true);
+      setCompassId(1);
     }
 
     // Cleanup function
@@ -529,6 +518,26 @@ export default function MapComponent({
   const settingsMenuRef = useRef<HTMLDivElement>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [savedPairs, setSavedPairs] = useState<PointPair[]>([]);
+  const [compassStarted, setCompassStarted] = useState(false);
+  
+  const startCompass = async () => {
+    if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
+      try {
+        const response = await (DeviceOrientationEvent as any).requestPermission();
+        if (response !== 'granted') {
+          alert('Ingen tilgang til kompass');
+          return;
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Kunne ikke be om kompass-tillatelse');
+        return;
+      }
+    }
+    setCompassStarted(true);
+    alert('Kompass startet!');
+  };
+  
   // --- For interaktiv target-pos modal ---
   const [showTargetRadiusModal, setShowTargetRadiusModal] = useState(false);
   const [showTargetDirectionUI, setShowTargetDirectionUI] = useState(false);
@@ -893,7 +902,6 @@ export default function MapComponent({
         
         <MapController 
           onPositionChange={(pos) => {
-            alert('onPositionChange called with heading: ' + (pos.heading || 'undefined'));
             setCurrentPosition(pos);
           }} 
           radius={radius}
@@ -910,6 +918,7 @@ export default function MapComponent({
           onLoadingChange={setIsScanning}
           mode={mode}
           showOnlyLastShot={showOnlyLastShot}
+          compassStarted={compassStarted}
         />
         {/* Radius circle: kun i aware-mode */}
         {mode === 'aware' && currentPosition && (
@@ -1419,18 +1428,24 @@ export default function MapComponent({
           >
             📍
           </button>
-          {/* Test kompass-knapp */}
-          {isLiveMode && (
+          {/* Kompass start-knapp */}
+          {isLiveMode && !compassStarted && (
+            <button
+              onClick={startCompass}
+              className="w-12 h-12 rounded-full shadow-lg bg-green-600 hover:bg-green-700 text-white flex items-center justify-center"
+              title="Start kompass"
+            >
+              🧭
+            </button>
+          )}
+          {/* Kompass status-knapp */}
+          {isLiveMode && compassStarted && (
             <button
               onClick={() => {
-                if ('DeviceOrientationEvent' in window) {
-                  alert(`Compass test:\nAlpha: ${(window as any).lastAlpha || 'N/A'}\nWebkit: ${(window as any).lastWebkit || 'N/A'}\nCurrent heading: ${currentPosition?.heading || 'N/A'}\nIs live mode: ${isLiveMode}`);
-                } else {
-                  alert('DeviceOrientationEvent ikke tilgjengelig');
-                }
+                alert(`Kompass status:\nHeading: ${currentPosition?.heading || 'N/A'}°\nKompass aktiv: ${compassStarted}`);
               }}
               className="w-12 h-12 rounded-full shadow-lg bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center"
-              title="Test kompass"
+              title="Kompass status"
             >
               🧭
             </button>
