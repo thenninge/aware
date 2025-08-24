@@ -371,25 +371,7 @@ function MapController({
   );
 }
 
-// Enkel SVG-kompassrose
-function CompassRose({ heading = 0 }: { heading?: number }) {
-  return (
-    <div
-      className="w-16 h-16 select-none pointer-events-none"
-      style={{ transform: `rotate(${heading}deg)` }}
-    >
-      <svg viewBox="0 0 64 64" width="64" height="64">
-        <circle cx="32" cy="32" r="30" fill="#fff" stroke="#333" strokeWidth="2" />
-        <polygon points="32,8 36,32 32,24 28,32" fill="#dc2626" />
-        <polygon points="32,56 36,32 32,40 28,32" fill="#2563eb" />
-        <text x="32" y="18" textAnchor="middle" fontSize="10" fill="#333" fontWeight="bold">N</text>
-        <text x="32" y="58" textAnchor="middle" fontSize="10" fill="#333">S</text>
-        <text x="54" y="36" textAnchor="middle" fontSize="10" fill="#333">E</text>
-        <text x="10" y="36" textAnchor="middle" fontSize="10" fill="#333">W</text>
-      </svg>
-    </div>
-  );
-}
+
 
 // Hjelpefunksjon for å kalkulere ny posisjon ut fra avstand og retning
 function destinationPoint(lat: number, lng: number, distance: number, bearing: number): Position {
@@ -1144,15 +1126,22 @@ export default function MapComponent({
 
       {/* Center marker overlay - always visible in center */}
       <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none z-[1000]">
-        <div className="w-4 h-4 bg-red-600 border-2 border-white rounded-full shadow-lg"></div>
+        {isLiveMode && currentPosition?.heading !== undefined ? (
+          // Pil i live mode som peker dit hvor mobilen peker
+          <div 
+            className="w-6 h-6 bg-red-600 border-2 border-white shadow-lg"
+            style={{ 
+              transform: `rotate(${currentPosition.heading}deg)`,
+              clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)'
+            }}
+          ></div>
+        ) : (
+          // Vanlig prikk når ikke i live mode
+          <div className="w-4 h-4 bg-red-600 border-2 border-white rounded-full shadow-lg"></div>
+        )}
       </div>
 
-      {/* Kompassrose overlay */}
-      {isLiveMode && (
-        <div className="absolute top-4 left-4 z-[1002]">
-          <CompassRose heading={rotateMap ? 0 : (currentPosition?.heading || 0)} />
-        </div>
-      )}
+
 
       {/* Settings & Filter Buttons - Top Right */}
       {/* Fjern hele blokken for Settings & Filter Buttons - Top Right */}
