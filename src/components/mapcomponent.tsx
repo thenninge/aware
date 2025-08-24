@@ -1183,18 +1183,24 @@ export default function MapComponent({
 
       {/* Center marker overlay - always visible in center */}
       <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none z-[1000]">
-        {isLiveMode ? (
-          // Pil i live mode som peker dit hvor mobilen peker
+        {/* Vanlig prikk alltid synlig */}
+        <div className="w-4 h-4 bg-red-600 border-2 border-white rounded-full shadow-lg"></div>
+        
+        {/* Retningsstrek i live mode */}
+        {isLiveMode && currentPosition?.heading !== undefined && (
           <div 
-            className="w-6 h-6 bg-red-600 border-2 border-white shadow-lg"
+            className="absolute top-1/2 left-1/2 w-0 h-0"
             style={{ 
-              transform: `rotate(${currentPosition?.heading || 0}deg)`,
-              clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)'
+              transform: `translate(-50%, -50%) rotate(${currentPosition.heading}deg)`,
             }}
-          ></div>
-        ) : (
-          // Vanlig prikk når ikke i live mode
-          <div className="w-4 h-4 bg-red-600 border-2 border-white rounded-full shadow-lg"></div>
+          >
+            <div 
+              className="w-0 h-0 border-l-[100px] border-l-red-600 border-t-[3px] border-t-transparent border-b-[3px] border-b-transparent"
+              style={{
+                transform: 'translateX(2px)' // Juster litt for å starte fra prikken
+              }}
+            ></div>
+          </div>
         )}
       </div>
 
