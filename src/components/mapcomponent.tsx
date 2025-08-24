@@ -220,8 +220,24 @@ function MapController({
     }
 
     if ('DeviceOrientationEvent' in window) {
-      window.addEventListener('deviceorientation', handleCompass);
-      setCompassId(1); // Just a flag to indicate compass is active
+      // Be om tillatelse til Device Orientation API
+      if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
+        (DeviceOrientationEvent as any).requestPermission().then((permission: string) => {
+          if (permission === 'granted') {
+            window.addEventListener('deviceorientation', handleCompass);
+            setCompassId(1);
+            alert('Compass tillatelse gitt!');
+          } else {
+            alert('Compass tillatelse avvist. Kompass vil ikke fungere.');
+          }
+        }).catch(() => {
+          alert('Kunne ikke be om compass tillatelse.');
+        });
+      } else {
+        // Fallback for eldre nettlesere som ikke krever tillatelse
+        window.addEventListener('deviceorientation', handleCompass);
+        setCompassId(1);
+      }
     }
 
     // Cleanup function
