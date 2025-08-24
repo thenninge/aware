@@ -97,6 +97,7 @@ function MapController({
   const [loading, setLoading] = useState(false);
   const [watchId, setWatchId] = useState<number | null>(null);
   const [compassId, setCompassId] = useState<number | null>(null);
+  const [compassPermissionRequested, setCompassPermissionRequested] = useState(false);
 
   // Fix Leaflet icons when component mounts
   useEffect(() => {
@@ -158,10 +159,6 @@ function MapController({
     const handleCompass = (event: DeviceOrientationEvent) => {
       if (event.alpha !== null) {
         const heading = event.alpha;
-        // Debug: Vis heading i alert
-        if (Math.abs(heading - (currentPosition.heading || 0)) > 10) {
-          alert(`Compass heading: ${heading}°`);
-        }
         setCurrentPosition(prev => ({
           ...prev,
           heading
@@ -219,7 +216,8 @@ function MapController({
       setWatchId(id);
     }
 
-    if ('DeviceOrientationEvent' in window) {
+    if ('DeviceOrientationEvent' in window && !compassPermissionRequested) {
+      setCompassPermissionRequested(true);
       // Be om tillatelse til Device Orientation API
       if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
         (DeviceOrientationEvent as any).requestPermission().then((permission: string) => {
@@ -842,10 +840,6 @@ export default function MapComponent({
   useEffect(() => {
     if (currentPosition && onPositionChange) {
       onPositionChange(currentPosition);
-    }
-    if (currentPosition?.heading !== undefined) {
-      // Debug: Vis når hovedkomponenten får heading
-      alert(`Main component heading: ${currentPosition.heading}°`);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPosition]);

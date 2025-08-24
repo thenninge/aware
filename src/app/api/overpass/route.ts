@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
     }
 
     const data: OverpassResponse = await response.json();
-    console.log('Overpass response count:', Array.isArray(data.elements) ? data.elements.length : 0);
+    console.log('Overpass response count:', data.elements.length);
 
     // Process and categorize the data using new categories
     const places: PlaceData[] = data.elements.map((element) => {
@@ -102,14 +102,14 @@ export async function GET(request: NextRequest) {
       ['city', 'town', 'village', 'hamlet', 'farm', 'isolated_dwelling'].includes(place.category)
     ).slice(0, 50); // Limit to 50 results for testing
 
-    console.log('Valid places found:', Array.isArray(validPlaces) ? validPlaces.length : 0);
+    console.log('Valid places found:', validPlaces.length);
     console.log('Categories found:', [...new Set(validPlaces.map(p => p.category))]);
     console.log('Sample places:', validPlaces.slice(0, 3).map(p => ({ name: p.name, category: p.category })));
 
     return NextResponse.json({
       success: true,
       data: validPlaces,
-      count: Array.isArray(validPlaces) ? validPlaces.length : 0,
+      count: validPlaces.length,
       query: {
         lat: parseFloat(lat),
         lng: parseFloat(lng),
