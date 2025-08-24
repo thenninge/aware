@@ -1126,12 +1126,12 @@ export default function MapComponent({
 
       {/* Center marker overlay - always visible in center */}
       <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none z-[1000]">
-        {isLiveMode && currentPosition?.heading !== undefined ? (
+        {isLiveMode ? (
           // Pil i live mode som peker dit hvor mobilen peker
           <div 
             className="w-6 h-6 bg-red-600 border-2 border-white shadow-lg"
             style={{ 
-              transform: `rotate(${currentPosition.heading}deg)`,
+              transform: `rotate(${currentPosition?.heading || 0}deg)`,
               clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)'
             }}
           ></div>
