@@ -157,16 +157,32 @@ function MapController({
   useEffect(() => {
     // Start compass watching
     const handleCompass = (event: DeviceOrientationEvent) => {
-      alert('Compass event mottatt! Alpha: ' + event.alpha + ', Webkit: ' + (event as any).webkitCompassHeading);
-      
       // Lagre siste verdier for debugging
       (window as any).lastAlpha = event.alpha;
       (window as any).lastWebkit = (event as any).webkitCompassHeading;
       
-      // Bruk webkitCompassHeading på iOS, fallback til alpha
-      const heading = (event as any).webkitCompassHeading !== undefined 
-        ? (event as any).webkitCompassHeading 
-        : event.alpha;
+      // Beregn heading fra alpha, beta, gamma (standard tilnærming)
+      let heading = 0;
+      
+      if (event.alpha !== null && event.beta !== null && event.gamma !== null) {
+        // Konverter til grader og beregn heading
+        const alpha = event.alpha;
+        const beta = event.beta;
+        const gamma = event.gamma;
+        
+        // Beregn heading basert på device orientation
+        heading = alpha;
+        
+        // Juster for device orientering
+        if (beta > 90) {
+          heading = 180 - alpha;
+        } else if (beta < -90) {
+          heading = 180 + alpha;
+        }
+        
+        // Normaliser til 0-360
+        heading = (heading + 360) % 360;
+      }
       
       if (heading !== null && heading !== undefined) {
         setCurrentPosition(prev => {
@@ -228,16 +244,13 @@ function MapController({
 
     if ('DeviceOrientationEvent' in window && !compassPermissionRequested) {
       setCompassPermissionRequested(true);
-      alert('Starter kompass-oppsett...');
       
       // Be om tillatelse til Device Orientation API
       if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
-        alert('Be om tillatelse...');
         (DeviceOrientationEvent as any).requestPermission().then((permission: string) => {
           if (permission === 'granted') {
             window.addEventListener('deviceorientation', handleCompass);
             setCompassId(1);
-            alert('Compass tillatelse gitt! Event listener lagt til.');
           } else {
             alert('Compass tillatelse avvist. Kompass vil ikke fungere.');
           }
@@ -246,10 +259,8 @@ function MapController({
         });
       } else {
         // Fallback for eldre nettlesere som ikke krever tillatelse
-        alert('Ingen tillatelse kreves, legger til event listener...');
         window.addEventListener('deviceorientation', handleCompass);
         setCompassId(1);
-        alert('Event listener lagt til uten tillatelse.');
       }
     }
 
