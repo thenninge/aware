@@ -99,6 +99,7 @@ function MapController({
   const [loading, setLoading] = useState(false);
   const [watchId, setWatchId] = useState<number | null>(null);
   const [compassId, setCompassId] = useState<number | null>(null);
+  const [headingHistory, setHeadingHistory] = useState<number[]>([]);
 
   // Fix Leaflet icons when component mounts
   useEffect(() => {
@@ -162,24 +163,43 @@ function MapController({
 
       // iOS Safari har dette feltet
       const webkitHeading = (event as any).webkitCompassHeading;
-      if (typeof webkitHeading === 'number') {
+      if (typeof webkitHeading === 'number' && !isNaN(webkitHeading)) {
         heading = webkitHeading; // 0 = nord
-      } else if (event.alpha !== null) {
+        console.log('Using webkitHeading:', heading);
+      } else if (event.alpha !== null && !isNaN(event.alpha)) {
         // fallback: bruk alpha
         heading = 360 - event.alpha; // juster for retning på rotasjonen
+        console.log('Using alpha:', event.alpha, '-> heading:', heading);
       }
 
-      if (heading !== null) {
+      if (heading !== null && !isNaN(heading)) {
         heading = (heading + 360) % 360;
+        
+        // Lagre siste gyldige heading for debugging
+        (window as any).lastValidHeading = heading;
+        
+        // Legg til i historikk for stabilisering
+        setHeadingHistory(prev => {
+          const newHistory = [...prev, heading as number];
+          // Behold kun siste 5 målinger
+          return newHistory.slice(-5);
+        });
+        
+        // Beregn gjennomsnitt for stabilisering
+        const avgHeading = headingHistory.length > 0 
+          ? headingHistory.reduce((sum, h) => sum + h, heading as number) / (headingHistory.length + 1)
+          : heading;
         
         setCurrentPosition(prev => {
           const newPos = {
             ...prev,
-            heading: heading as number
+            heading: avgHeading as number
           };
           onPositionChange?.(newPos);
           return newPos;
         });
+      } else {
+        console.log('Invalid compass data:', { webkitHeading, alpha: event.alpha });
       }
     };
 
@@ -1448,7 +1468,8 @@ export default function MapComponent({
           {isLiveMode && compassStarted && (
             <button
               onClick={() => {
-                alert(`Kompass status:\nHeading: ${currentPosition?.heading || 'N/A'}°\nKompass aktiv: ${compassStarted}`);
+                const lastHeading = (window as any).lastValidHeading;
+                alert(`Kompass status:\nCurrent heading: ${currentPosition?.heading || 'N/A'}°\nLast valid heading: ${lastHeading || 'N/A'}°\nKompass aktiv: ${compassStarted}\nDeviceOrientation: ${'DeviceOrientationEvent' in window ? 'Tilgjengelig' : 'Ikke tilgjengelig'}`);
               }}
               className="w-12 h-12 rounded-full shadow-lg bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center"
               title="Kompass status"
