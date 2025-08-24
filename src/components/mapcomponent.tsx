@@ -100,6 +100,7 @@ function MapController({
   const [watchId, setWatchId] = useState<number | null>(null);
   const [compassId, setCompassId] = useState<number | null>(null);
   const [headingHistory, setHeadingHistory] = useState<number[]>([]);
+  const [lastUpdateTime, setLastUpdateTime] = useState(0);
 
   // Fix Leaflet icons when component mounts
   useEffect(() => {
@@ -175,14 +176,21 @@ function MapController({
       if (heading !== null && !isNaN(heading)) {
         heading = (heading + 360) % 360;
         
+        // Throttle oppdateringer til maks 10 per sekund
+        const now = Date.now();
+        if (now - lastUpdateTime < 100) { // 100ms = 10 oppdateringer per sekund
+          return;
+        }
+        setLastUpdateTime(now);
+        
         // Lagre siste gyldige heading for debugging
         (window as any).lastValidHeading = heading;
         
         // Legg til i historikk for stabilisering
         setHeadingHistory(prev => {
           const newHistory = [...prev, heading as number];
-          // Behold kun siste 5 målinger
-          return newHistory.slice(-5);
+          // Behold kun siste 3 målinger (redusert fra 5)
+          return newHistory.slice(-3);
         });
         
         // Beregn gjennomsnitt for stabilisering
@@ -231,9 +239,11 @@ function MapController({
       if (compassId) {
         // Clean up compass if available
         if ('DeviceOrientationEvent' in window) {
-          window.removeEventListener('deviceorientation', handleCompass);
+          window.removeEventListener('deviceorientation', handleCompass, true);
         }
         setCompassId(null);
+        setHeadingHistory([]);
+        setLastUpdateTime(0);
       }
       return;
     }
@@ -270,6 +280,9 @@ function MapController({
 
     // Start kompass hvis compassStarted er true
     if (compassStarted && !compassId) {
+      // Fjern eksisterende listeners først
+      window.removeEventListener('deviceorientation', handleCompass, true);
+      // Legg til ny listener
       window.addEventListener('deviceorientation', handleCompass, true);
       setCompassId(1);
     }
