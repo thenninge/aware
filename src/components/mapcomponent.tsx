@@ -167,13 +167,13 @@ function MapController({
         : event.alpha;
       
       if (heading !== null && heading !== undefined) {
-        setCurrentPosition(prev => ({
-          ...prev,
-          heading
-        }));
-        onPositionChange?.({
-          ...currentPosition,
-          heading
+        setCurrentPosition(prev => {
+          const newPos = {
+            ...prev,
+            heading
+          };
+          onPositionChange?.(newPos);
+          return newPos;
         });
       }
     };
@@ -1402,7 +1402,7 @@ export default function MapComponent({
             <button
               onClick={() => {
                 if ('DeviceOrientationEvent' in window) {
-                  alert(`Compass test:\nAlpha: ${(window as any).lastAlpha || 'N/A'}\nWebkit: ${(window as any).lastWebkit || 'N/A'}\nCurrent heading: ${currentPosition?.heading || 'N/A'}`);
+                  alert(`Compass test:\nAlpha: ${(window as any).lastAlpha || 'N/A'}\nWebkit: ${(window as any).lastWebkit || 'N/A'}\nCurrent heading: ${currentPosition?.heading || 'N/A'}\nIs live mode: ${isLiveMode}`);
                 } else {
                   alert('DeviceOrientationEvent ikke tilgjengelig');
                 }
