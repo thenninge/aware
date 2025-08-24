@@ -157,8 +157,16 @@ function MapController({
   useEffect(() => {
     // Start compass watching
     const handleCompass = (event: DeviceOrientationEvent) => {
-      if (event.alpha !== null) {
-        const heading = event.alpha;
+      // Lagre siste verdier for debugging
+      (window as any).lastAlpha = event.alpha;
+      (window as any).lastWebkit = (event as any).webkitCompassHeading;
+      
+      // Bruk webkitCompassHeading på iOS, fallback til alpha
+      const heading = (event as any).webkitCompassHeading !== undefined 
+        ? (event as any).webkitCompassHeading 
+        : event.alpha;
+      
+      if (heading !== null && heading !== undefined) {
         setCurrentPosition(prev => ({
           ...prev,
           heading
@@ -1389,6 +1397,22 @@ export default function MapComponent({
           >
             📍
           </button>
+          {/* Test kompass-knapp */}
+          {isLiveMode && (
+            <button
+              onClick={() => {
+                if ('DeviceOrientationEvent' in window) {
+                  alert(`Compass test:\nAlpha: ${(window as any).lastAlpha || 'N/A'}\nWebkit: ${(window as any).lastWebkit || 'N/A'}\nCurrent heading: ${currentPosition?.heading || 'N/A'}`);
+                } else {
+                  alert('DeviceOrientationEvent ikke tilgjengelig');
+                }
+              }}
+              className="w-12 h-12 rounded-full shadow-lg bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center"
+              title="Test kompass"
+            >
+              🧭
+            </button>
+          )}
         </div>
 
       {/* Kartrotasjon (bare i live-mode og rotateMap) */}
