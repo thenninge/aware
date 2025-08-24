@@ -156,10 +156,12 @@ function MapController({
   useEffect(() => {
     // Start compass watching
     const handleCompass = (event: DeviceOrientationEvent) => {
-      console.log('Compass event:', event.alpha, event.beta, event.gamma);
       if (event.alpha !== null) {
         const heading = event.alpha;
-        console.log('Setting heading to:', heading);
+        // Debug: Vis heading i alert
+        if (Math.abs(heading - (currentPosition.heading || 0)) > 10) {
+          alert(`Compass heading: ${heading}°`);
+        }
         setCurrentPosition(prev => ({
           ...prev,
           heading
@@ -826,7 +828,8 @@ export default function MapComponent({
       onPositionChange(currentPosition);
     }
     if (currentPosition?.heading !== undefined) {
-      console.log('Main component received heading:', currentPosition.heading);
+      // Debug: Vis når hovedkomponenten får heading
+      alert(`Main component heading: ${currentPosition.heading}°`);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPosition]);
