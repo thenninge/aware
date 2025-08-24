@@ -185,6 +185,7 @@ function MapController({
       }
       
       if (heading !== null && heading !== undefined) {
+        alert('Setting heading to: ' + heading);
         setCurrentPosition(prev => {
           const newPos = {
             ...prev,
@@ -891,7 +892,10 @@ export default function MapComponent({
         />
         
         <MapController 
-          onPositionChange={setCurrentPosition} 
+          onPositionChange={(pos) => {
+            alert('onPositionChange called with heading: ' + (pos.heading || 'undefined'));
+            setCurrentPosition(pos);
+          }} 
           radius={radius}
           onError={() => {
             setHasError(true);
