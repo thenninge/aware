@@ -162,15 +162,16 @@ function MapController({
       alpha: event.alpha,
       beta: event.beta,
       gamma: event.gamma,
-      webkitCompassHeading: (event as any).webkitCompassHeading,
+      webkitCompassHeading: (event as DeviceOrientationEvent & { webkitCompassHeading?: number }).webkitCompassHeading,
       absolute: event.absolute
     });
     
     let heading: number | null = null;
 
     // iOS Safari har webkitCompassHeading (0 = nord, med klokka)
-    if ((event as any).webkitCompassHeading !== undefined) {
-      heading = (event as any).webkitCompassHeading;
+    const webkitHeading = (event as DeviceOrientationEvent & { webkitCompassHeading?: number }).webkitCompassHeading;
+    if (webkitHeading !== undefined) {
+      heading = webkitHeading;
       console.log('Using webkitCompassHeading:', heading);
     } else if (event.alpha !== null) {
       // Android / Chrome - inverter for å få med klokka
@@ -189,7 +190,7 @@ function MapController({
       setLastUpdateTime(now);
       
       // Lagre siste gyldige heading for debugging
-      (window as any).lastValidHeading = heading;
+      (window as Window & { lastValidHeading?: number }).lastValidHeading = heading;
       
       // Beregn gjennomsnitt for stabilisering - bruk nåværende historikk + ny heading
       const currentHistory = headingHistory;
@@ -215,7 +216,7 @@ function MapController({
       
       console.log('Heading updated successfully:', avgHeading);
     } else {
-      console.log('Invalid compass data:', { webkitCompassHeading: (event as any).webkitCompassHeading, alpha: event.alpha });
+      console.log('Invalid compass data:', { webkitCompassHeading: webkitHeading, alpha: event.alpha });
     }
   }, [lastUpdateTime, headingHistory, onPositionChange]);
 
@@ -246,11 +247,11 @@ function MapController({
     if ('geolocation' in navigator) {
       const id = navigator.geolocation.watchPosition(
         (position) => {
-          const newPosition: Position = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-            heading: currentPosition.heading // Keep existing heading
-          };
+                  const newPosition: Position = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          heading: currentPosition.heading || undefined // Keep existing heading
+        };
           setCurrentPosition(newPosition);
           onPositionChange?.(newPosition);
           
@@ -564,9 +565,10 @@ export default function MapComponent({
       }
 
       // Request permission on iOS 13+ - dette må trigges av brukerklikk
-      if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
+      const requestPermission = (DeviceOrientationEvent as typeof DeviceOrientationEvent & { requestPermission?: () => Promise<string> }).requestPermission;
+      if (typeof requestPermission === 'function') {
         try {
-          const response = await (DeviceOrientationEvent as any).requestPermission();
+          const response = await requestPermission();
           if (response === 'granted') {
             console.log('Compass permission granted');
             setCompassStarted(true);
@@ -1520,7 +1522,7 @@ export default function MapComponent({
           {isLiveMode && compassStarted && (
             <button
               onClick={() => {
-                const lastHeading = (window as any).lastValidHeading;
+                const lastHeading = (window as Window & { lastValidHeading?: number }).lastValidHeading;
                 alert(`Kompass status:\nCurrent heading: ${currentPosition?.heading || 'N/A'}°\nLast valid heading: ${lastHeading || 'N/A'}°\nKompass aktiv: ${compassStarted}\nDeviceOrientation: ${'DeviceOrientationEvent' in window ? 'Tilgjengelig' : 'Ikke tilgjengelig'}`);
               }}
               className="w-12 h-12 rounded-full shadow-lg bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center"
