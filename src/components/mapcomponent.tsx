@@ -158,7 +158,7 @@ function MapController({
 
   // GPS and Compass functionality
   useEffect(() => {
-    // Start compass watching
+    // Improved compass handler with better error handling and stability
     const handleCompass = (event: DeviceOrientationEvent) => {
       let heading: number | null = null;
 
@@ -187,7 +187,7 @@ function MapController({
         (window as any).lastValidHeading = heading;
         
         // Legg til i historikk for stabilisering
-        setHeadingHistory(prev => {
+        setHeadingHistory((prev: number[]) => {
           const newHistory = [...prev, heading as number];
           // Behold kun siste 3 målinger (redusert fra 5)
           return newHistory.slice(-3);
@@ -195,10 +195,10 @@ function MapController({
         
         // Beregn gjennomsnitt for stabilisering
         const avgHeading = headingHistory.length > 0 
-          ? headingHistory.reduce((sum, h) => sum + h, heading as number) / (headingHistory.length + 1)
+          ? headingHistory.reduce((sum: number, h: number) => sum + h, heading as number) / (headingHistory.length + 1)
           : heading;
         
-        setCurrentPosition(prev => {
+        setCurrentPosition((prev: Position) => {
           const newPos = {
             ...prev,
             heading: avgHeading as number
@@ -211,23 +211,41 @@ function MapController({
       }
     };
 
+    // Improved compass start function with better error handling
     const startCompass = async () => {
-      if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
-        try {
-          const response = await (DeviceOrientationEvent as any).requestPermission();
-          if (response !== 'granted') {
-            alert('Ingen tilgang til kompass');
-            return;
-          }
-        } catch (err) {
-          console.error(err);
-          alert('Kunne ikke be om kompass-tillatelse');
-          return;
+      try {
+        // Check if DeviceOrientationEvent is available
+        if (!('DeviceOrientationEvent' in window)) {
+          console.warn('DeviceOrientationEvent not available');
+          alert('Kompass ikke støttet på denne enheten');
+          return false;
         }
-      }
 
-      window.addEventListener('deviceorientation', handleCompass, true);
-      alert('Kompass startet!');
+        // Request permission on iOS
+        if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
+          try {
+            const response = await (DeviceOrientationEvent as any).requestPermission();
+            if (response !== 'granted') {
+              console.warn('Compass permission denied');
+              alert('Ingen tilgang til kompass');
+              return false;
+            }
+          } catch (err) {
+            console.error('Error requesting compass permission:', err);
+            alert('Kunne ikke be om kompass-tillatelse');
+            return false;
+          }
+        }
+
+        // Add event listener with better options for compatibility
+        window.addEventListener('deviceorientation', handleCompass, true);
+        console.log('Compass event listener added successfully');
+        return true;
+      } catch (error) {
+        console.error('Error starting compass:', error);
+        alert('Feil ved start av kompass');
+        return false;
+      }
     };
 
     if (!isLiveMode) {
@@ -236,7 +254,7 @@ function MapController({
         navigator.geolocation.clearWatch(watchId);
         setWatchId(null);
       }
-      if (compassId) {
+      if (compassStarted) {
         // Clean up compass if available
         if ('DeviceOrientationEvent' in window) {
           window.removeEventListener('deviceorientation', handleCompass, true);
@@ -280,11 +298,12 @@ function MapController({
 
     // Start kompass hvis compassStarted er true
     if (compassStarted && !compassId) {
-      // Fjern eksisterende listeners først
-      window.removeEventListener('deviceorientation', handleCompass, true);
-      // Legg til ny listener
-      window.addEventListener('deviceorientation', handleCompass, true);
-      setCompassId(1);
+      startCompass().then(success => {
+        if (success) {
+          setCompassId(1);
+          alert('Kompass startet!');
+        }
+      });
     }
 
     // Cleanup function
@@ -292,11 +311,11 @@ function MapController({
       if (watchId) {
         navigator.geolocation.clearWatch(watchId);
       }
-      if ('DeviceOrientationEvent' in window) {
-        window.removeEventListener('deviceorientation', handleCompass);
-      }
+              if ('DeviceOrientationEvent' in window) {
+          window.removeEventListener('deviceorientation', handleCompass, true);
+        }
     };
-  }, [isLiveMode, map, onPositionChange, onError, currentPosition]);
+  }, [isLiveMode, map, onPositionChange, onError, currentPosition, compassStarted, compassId]);
 
   // Fetch places when shouldScan is true or radius/category filters change
   useEffect(() => {
