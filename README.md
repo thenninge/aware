@@ -95,3 +95,4 @@ No environment variables are required for basic functionality. The app uses publ
 ## License
 
 This project is open source and available under the [MIT License](LICENSE).
+# Trigger Vercel rebuild
