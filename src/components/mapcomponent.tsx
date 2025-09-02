@@ -211,39 +211,15 @@ function MapController({
       }
     };
 
-    // Improved compass start function with better error handling
-    const startCompass = async () => {
+    // Compass event listener registration
+    const registerCompassListener = () => {
       try {
-        // Check if DeviceOrientationEvent is available
-        if (!('DeviceOrientationEvent' in window)) {
-          console.warn('DeviceOrientationEvent not available');
-          alert('Kompass ikke støttet på denne enheten');
-          return false;
-        }
-
-        // Request permission on iOS
-        if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
-          try {
-            const response = await (DeviceOrientationEvent as any).requestPermission();
-            if (response !== 'granted') {
-              console.warn('Compass permission denied');
-              alert('Ingen tilgang til kompass');
-              return false;
-            }
-          } catch (err) {
-            console.error('Error requesting compass permission:', err);
-            alert('Kunne ikke be om kompass-tillatelse');
-            return false;
-          }
-        }
-
         // Add event listener with better options for compatibility
         window.addEventListener('deviceorientation', handleCompass, true);
         console.log('Compass event listener added successfully');
         return true;
       } catch (error) {
-        console.error('Error starting compass:', error);
-        alert('Feil ved start av kompass');
+        console.error('Error registering compass listener:', error);
         return false;
       }
     };
@@ -258,8 +234,8 @@ function MapController({
         // Clean up compass if available
         if ('DeviceOrientationEvent' in window) {
           window.removeEventListener('deviceorientation', handleCompass, true);
+          setCompassId(null);
         }
-        setCompassId(null);
         setHeadingHistory([]);
         setLastUpdateTime(0);
       }
@@ -298,12 +274,11 @@ function MapController({
 
     // Start kompass hvis compassStarted er true
     if (compassStarted && !compassId) {
-      startCompass().then(success => {
-        if (success) {
-          setCompassId(1);
-          alert('Kompass startet!');
-        }
-      });
+      const success = registerCompassListener();
+      if (success) {
+        setCompassId(1);
+        console.log('Compass listener registered successfully');
+      }
     }
 
     // Cleanup function
@@ -311,9 +286,9 @@ function MapController({
       if (watchId) {
         navigator.geolocation.clearWatch(watchId);
       }
-              if ('DeviceOrientationEvent' in window) {
-          window.removeEventListener('deviceorientation', handleCompass, true);
-        }
+      if ('DeviceOrientationEvent' in window) {
+        window.removeEventListener('deviceorientation', handleCompass, true);
+      }
     };
   }, [isLiveMode, map, onPositionChange, onError, currentPosition, compassStarted, compassId]);
 
@@ -573,21 +548,36 @@ export default function MapComponent({
   const [compassStarted, setCompassStarted] = useState(false);
   
   const startCompass = async () => {
-    if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
-      try {
-        const response = await (DeviceOrientationEvent as any).requestPermission();
-        if (response !== 'granted') {
-          alert('Ingen tilgang til kompass');
-          return;
-        }
-      } catch (err) {
-        console.error(err);
-        alert('Kunne ikke be om kompass-tillatelse');
+    try {
+      // Check if DeviceOrientationEvent is available
+      if (!('DeviceOrientationEvent' in window)) {
+        console.warn('DeviceOrientationEvent not available');
+        alert('Kompass ikke støttet på denne enheten');
         return;
       }
+
+      // Request permission on iOS
+      if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
+        try {
+          const response = await (DeviceOrientationEvent as any).requestPermission();
+          if (response !== 'granted') {
+            console.warn('Compass permission denied');
+            alert('Ingen tilgang til kompass');
+            return;
+          }
+        } catch (err) {
+          console.error('Error requesting compass permission:', err);
+          alert('Kunne ikke be om kompass-tillatelse');
+          return;
+        }
+      }
+
+      setCompassStarted(true);
+      alert('Kompass startet!');
+    } catch (error) {
+      console.error('Error starting compass:', error);
+      alert('Feil ved start av kompass');
     }
-    setCompassStarted(true);
-    alert('Kompass startet!');
   };
   
   // --- For interaktiv target-pos modal ---
