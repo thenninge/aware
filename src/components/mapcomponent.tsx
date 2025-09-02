@@ -222,30 +222,7 @@ function MapController({
   // GPS and Compass functionality
   useEffect(() => {
 
-    // Compass event listener registration
-    const registerCompassListener = () => {
-      try {
-        // Add event listener with better options for compatibility
-        window.addEventListener('deviceorientation', handleCompass, true);
-        console.log('Compass event listener added successfully');
-        
-        // Test om event listener faktisk fungerer
-        setTimeout(() => {
-          console.log('Testing compass event listener...');
-          // Simuler en test-event for å verifisere at listener fungerer
-          const testEvent = new Event('deviceorientation') as any;
-          testEvent.alpha = 0;
-          testEvent.beta = 0;
-          testEvent.gamma = 0;
-          window.dispatchEvent(testEvent);
-        }, 1000);
-        
-        return true;
-      } catch (error) {
-        console.error('Error registering compass listener:', error);
-        return false;
-      }
-    };
+
 
     if (!isLiveMode) {
       // Clean up watchers when live mode is disabled
@@ -295,16 +272,14 @@ function MapController({
       setWatchId(id);
     }
 
-    // Start kompass hvis compassStarted er true
+    // Start kompass hvis compassStarted er true - enkel implementasjon som fungerte
     if (compassStarted && !compassId) {
-      console.log('Attempting to register compass listener...');
-      const success = registerCompassListener();
-      if (success) {
-        setCompassId(1);
-        console.log('Compass listener registered successfully');
-      } else {
-        console.error('Failed to register compass listener');
-      }
+      // Fjern eksisterende listeners først
+      window.removeEventListener('deviceorientation', handleCompass, true);
+      // Legg til ny listener
+      window.addEventListener('deviceorientation', handleCompass, true);
+      setCompassId(1);
+      console.log('Compass event listener added successfully');
     }
 
     // Cleanup function
