@@ -1650,7 +1650,7 @@ export default function MapComponent({
           </div>
         </div>
       )}
-      {showTargetDialog && createPortal(
+      {showTargetDialog && typeof window !== 'undefined' && createPortal(
         <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/40" onClick={() => setShowTargetDialog(false)}>
           <div className="bg-white p-8 rounded max-w-xs w-full" onClick={e => e.stopPropagation()}>
             <div className="text-lg font-semibold mb-2">Velg avstand og retning</div>
@@ -1687,7 +1687,7 @@ export default function MapComponent({
             </div>
           </div>
         </div>,
-        typeof window !== 'undefined' ? document.body : (null as any)
+        document.body
       )}
     </div>
   );
