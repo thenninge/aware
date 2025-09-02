@@ -156,7 +156,7 @@ function MapController({
     }
   }, [map, onError, onPositionChange]);
 
-  // Improved compass handler with better error handling and stability
+  // Improved compass handler with proper iOS and Android support
   const handleCompass = useCallback((event: DeviceOrientationEvent) => {
     console.log('Compass event received:', {
       alpha: event.alpha,
@@ -168,14 +168,13 @@ function MapController({
     
     let heading: number | null = null;
 
-    // iOS Safari har dette feltet
-    const webkitHeading = (event as any).webkitCompassHeading;
-    if (typeof webkitHeading === 'number' && !isNaN(webkitHeading)) {
-      heading = webkitHeading; // 0 = nord
-      console.log('Using webkitHeading:', heading);
-    } else if (event.alpha !== null && !isNaN(event.alpha)) {
-      // fallback: bruk alpha - juster for 90 graders feil
-      heading = (360 - event.alpha + 90) % 360; // juster for retning og 90 graders feil
+    // iOS Safari har webkitCompassHeading (0 = nord, med klokka)
+    if ((event as any).webkitCompassHeading !== undefined) {
+      heading = (event as any).webkitCompassHeading;
+      console.log('Using webkitCompassHeading:', heading);
+    } else if (event.alpha !== null) {
+      // Android / Chrome - inverter for å få med klokka
+      heading = 360 - event.alpha;
       console.log('Using alpha:', event.alpha, '-> heading:', heading);
     }
 
@@ -215,7 +214,7 @@ function MapController({
       
       console.log('Heading updated successfully:', avgHeading);
     } else {
-      console.log('Invalid compass data:', { webkitHeading, alpha: event.alpha });
+      console.log('Invalid compass data:', { webkitCompassHeading: (event as any).webkitCompassHeading, alpha: event.alpha });
     }
   }, [lastUpdateTime, headingHistory, onPositionChange]);
 
@@ -272,15 +271,7 @@ function MapController({
       setWatchId(id);
     }
 
-    // Start kompass hvis compassStarted er true - enkel implementasjon som fungerte
-    if (compassStarted && !compassId) {
-      // Fjern eksisterende listeners først
-      window.removeEventListener('deviceorientation', handleCompass, true);
-      // Legg til ny listener
-      window.addEventListener('deviceorientation', handleCompass, true);
-      setCompassId(1);
-      console.log('Compass event listener added successfully');
-    }
+
 
     // Cleanup function
     return () => {
@@ -291,7 +282,21 @@ function MapController({
         window.removeEventListener('deviceorientation', handleCompass, true);
       }
     };
-  }, [isLiveMode, map, onPositionChange, onError, currentPosition, compassStarted, compassId, handleCompass]);
+  }, [isLiveMode, map, onPositionChange, onError, currentPosition, handleCompass]);
+
+  // Separate useEffect for compass event listener management
+  useEffect(() => {
+    if (!compassStarted) return;
+
+    const listener = (e: DeviceOrientationEvent) => handleCompass(e);
+    window.addEventListener('deviceorientation', listener, true);
+    console.log('Compass event listener added successfully');
+
+    return () => {
+      window.removeEventListener('deviceorientation', listener, true);
+      console.log('Compass event listener removed');
+    };
+  }, [compassStarted, handleCompass]);
 
   // Fetch places when shouldScan is true or radius/category filters change
   useEffect(() => {
@@ -557,24 +562,28 @@ export default function MapComponent({
         return;
       }
 
-      // Request permission on iOS
+      // Request permission on iOS 13+ - dette må trigges av brukerklikk
       if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
         try {
           const response = await (DeviceOrientationEvent as any).requestPermission();
-          if (response !== 'granted') {
+          if (response === 'granted') {
+            console.log('Compass permission granted');
+            setCompassStarted(true);
+            alert('Kompass startet!');
+          } else {
             console.warn('Compass permission denied');
             alert('Ingen tilgang til kompass');
-            return;
           }
         } catch (err) {
           console.error('Error requesting compass permission:', err);
           alert('Kunne ikke be om kompass-tillatelse');
-          return;
         }
+      } else {
+        // Android eller gamle iOS – bare start kompass
+        console.log('No permission required, starting compass');
+        setCompassStarted(true);
+        alert('Kompass startet!');
       }
-
-      setCompassStarted(true);
-      alert('Kompass startet!');
     } catch (error) {
       console.error('Error starting compass:', error);
       alert('Feil ved start av kompass');
