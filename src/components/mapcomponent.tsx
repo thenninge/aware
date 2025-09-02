@@ -160,6 +160,14 @@ function MapController({
   useEffect(() => {
     // Improved compass handler with better error handling and stability
     const handleCompass = (event: DeviceOrientationEvent) => {
+      console.log('Compass event received:', {
+        alpha: event.alpha,
+        beta: event.beta,
+        gamma: event.gamma,
+        webkitCompassHeading: (event as any).webkitCompassHeading,
+        absolute: event.absolute
+      });
+      
       let heading: number | null = null;
 
       // iOS Safari har dette feltet
@@ -206,6 +214,8 @@ function MapController({
           onPositionChange?.(newPos);
           return newPos;
         });
+        
+        console.log('Heading updated successfully:', avgHeading);
       } else {
         console.log('Invalid compass data:', { webkitHeading, alpha: event.alpha });
       }
@@ -217,6 +227,18 @@ function MapController({
         // Add event listener with better options for compatibility
         window.addEventListener('deviceorientation', handleCompass, true);
         console.log('Compass event listener added successfully');
+        
+        // Test om event listener faktisk fungerer
+        setTimeout(() => {
+          console.log('Testing compass event listener...');
+          // Simuler en test-event for å verifisere at listener fungerer
+          const testEvent = new Event('deviceorientation') as any;
+          testEvent.alpha = 0;
+          testEvent.beta = 0;
+          testEvent.gamma = 0;
+          window.dispatchEvent(testEvent);
+        }, 1000);
+        
         return true;
       } catch (error) {
         console.error('Error registering compass listener:', error);
@@ -274,10 +296,13 @@ function MapController({
 
     // Start kompass hvis compassStarted er true
     if (compassStarted && !compassId) {
+      console.log('Attempting to register compass listener...');
       const success = registerCompassListener();
       if (success) {
         setCompassId(1);
         console.log('Compass listener registered successfully');
+      } else {
+        console.error('Failed to register compass listener');
       }
     }
 
