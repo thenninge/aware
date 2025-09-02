@@ -293,18 +293,6 @@ function MapController({
     window.addEventListener('deviceorientation', listener, true);
     console.log('Compass event listener added successfully');
 
-    // Test: Dispatch a fake event to see if listener works
-    setTimeout(() => {
-      const testEvent = new Event('deviceorientation') as any;
-      testEvent.alpha = 45;
-      testEvent.beta = 0;
-      testEvent.gamma = 0;
-      testEvent.webkitCompassHeading = 90;
-      testEvent.absolute = true;
-      console.log('Dispatching test compass event');
-      window.dispatchEvent(testEvent);
-    }, 1000);
-
     return () => {
       window.removeEventListener('deviceorientation', listener, true);
       console.log('Compass event listener removed');
