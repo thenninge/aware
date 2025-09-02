@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, useMap, Circle, Polyline, Tooltip, LayersControl } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -156,70 +156,71 @@ function MapController({
     }
   }, [map, onError, onPositionChange]);
 
-  // GPS and Compass functionality
-  useEffect(() => {
-    // Improved compass handler with better error handling and stability
-    const handleCompass = (event: DeviceOrientationEvent) => {
-      console.log('Compass event received:', {
-        alpha: event.alpha,
-        beta: event.beta,
-        gamma: event.gamma,
-        webkitCompassHeading: (event as any).webkitCompassHeading,
-        absolute: event.absolute
+  // Improved compass handler with better error handling and stability
+  const handleCompass = useCallback((event: DeviceOrientationEvent) => {
+    console.log('Compass event received:', {
+      alpha: event.alpha,
+      beta: event.beta,
+      gamma: event.gamma,
+      webkitCompassHeading: (event as any).webkitCompassHeading,
+      absolute: event.absolute
+    });
+    
+    let heading: number | null = null;
+
+    // iOS Safari har dette feltet
+    const webkitHeading = (event as any).webkitCompassHeading;
+    if (typeof webkitHeading === 'number' && !isNaN(webkitHeading)) {
+      heading = webkitHeading; // 0 = nord
+      console.log('Using webkitHeading:', heading);
+    } else if (event.alpha !== null && !isNaN(event.alpha)) {
+      // fallback: bruk alpha - juster for 90 graders feil
+      heading = (360 - event.alpha + 90) % 360; // juster for retning og 90 graders feil
+      console.log('Using alpha:', event.alpha, '-> heading:', heading);
+    }
+
+    if (heading !== null && !isNaN(heading)) {
+      heading = (heading + 360) % 360;
+      
+      // Throttle oppdateringer til maks 10 per sekund
+      const now = Date.now();
+      if (now - lastUpdateTime < 100) { // 100ms = 10 oppdateringer per sekund
+        return;
+      }
+      setLastUpdateTime(now);
+      
+      // Lagre siste gyldige heading for debugging
+      (window as any).lastValidHeading = heading;
+      
+      // Legg til i historikk for stabilisering
+      setHeadingHistory((prev: number[]) => {
+        const newHistory = [...prev, heading as number];
+        // Behold kun siste 3 målinger (redusert fra 5)
+        return newHistory.slice(-3);
       });
       
-      let heading: number | null = null;
+      // Beregn gjennomsnitt for stabilisering
+      const avgHeading = headingHistory.length > 0 
+        ? headingHistory.reduce((sum: number, h: number) => sum + h, heading as number) / (headingHistory.length + 1)
+        : heading;
+      
+      setCurrentPosition((prev: Position) => {
+        const newPos = {
+          ...prev,
+          heading: avgHeading as number
+        };
+        onPositionChange?.(newPos);
+        return newPos;
+      });
+      
+      console.log('Heading updated successfully:', avgHeading);
+    } else {
+      console.log('Invalid compass data:', { webkitHeading, alpha: event.alpha });
+    }
+  }, [lastUpdateTime, headingHistory, onPositionChange]);
 
-      // iOS Safari har dette feltet
-      const webkitHeading = (event as any).webkitCompassHeading;
-      if (typeof webkitHeading === 'number' && !isNaN(webkitHeading)) {
-        heading = webkitHeading; // 0 = nord
-        console.log('Using webkitHeading:', heading);
-      } else if (event.alpha !== null && !isNaN(event.alpha)) {
-        // fallback: bruk alpha - juster for 90 graders feil
-        heading = (360 - event.alpha + 90) % 360; // juster for retning og 90 graders feil
-        console.log('Using alpha:', event.alpha, '-> heading:', heading);
-      }
-
-      if (heading !== null && !isNaN(heading)) {
-        heading = (heading + 360) % 360;
-        
-        // Throttle oppdateringer til maks 10 per sekund
-        const now = Date.now();
-        if (now - lastUpdateTime < 100) { // 100ms = 10 oppdateringer per sekund
-          return;
-        }
-        setLastUpdateTime(now);
-        
-        // Lagre siste gyldige heading for debugging
-        (window as any).lastValidHeading = heading;
-        
-        // Legg til i historikk for stabilisering
-        setHeadingHistory((prev: number[]) => {
-          const newHistory = [...prev, heading as number];
-          // Behold kun siste 3 målinger (redusert fra 5)
-          return newHistory.slice(-3);
-        });
-        
-        // Beregn gjennomsnitt for stabilisering
-        const avgHeading = headingHistory.length > 0 
-          ? headingHistory.reduce((sum: number, h: number) => sum + h, heading as number) / (headingHistory.length + 1)
-          : heading;
-        
-        setCurrentPosition((prev: Position) => {
-          const newPos = {
-            ...prev,
-            heading: avgHeading as number
-          };
-          onPositionChange?.(newPos);
-          return newPos;
-        });
-        
-        console.log('Heading updated successfully:', avgHeading);
-      } else {
-        console.log('Invalid compass data:', { webkitHeading, alpha: event.alpha });
-      }
-    };
+  // GPS and Compass functionality
+  useEffect(() => {
 
     // Compass event listener registration
     const registerCompassListener = () => {
@@ -315,7 +316,7 @@ function MapController({
         window.removeEventListener('deviceorientation', handleCompass, true);
       }
     };
-  }, [isLiveMode, map, onPositionChange, onError, currentPosition, compassStarted, compassId]);
+  }, [isLiveMode, map, onPositionChange, onError, currentPosition, compassStarted, compassId, handleCompass]);
 
   // Fetch places when shouldScan is true or radius/category filters change
   useEffect(() => {
