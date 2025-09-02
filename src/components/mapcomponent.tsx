@@ -191,17 +191,18 @@ function MapController({
       // Lagre siste gyldige heading for debugging
       (window as any).lastValidHeading = heading;
       
+      // Beregn gjennomsnitt for stabilisering - bruk nåværende historikk + ny heading
+      const currentHistory = headingHistory;
+      const avgHeading = currentHistory.length > 0 
+        ? (currentHistory.reduce((sum: number, h: number) => sum + h, 0) + heading) / (currentHistory.length + 1)
+        : heading;
+      
       // Legg til i historikk for stabilisering
       setHeadingHistory((prev: number[]) => {
         const newHistory = [...prev, heading as number];
         // Behold kun siste 3 målinger (redusert fra 5)
         return newHistory.slice(-3);
       });
-      
-      // Beregn gjennomsnitt for stabilisering
-      const avgHeading = headingHistory.length > 0 
-        ? headingHistory.reduce((sum: number, h: number) => sum + h, heading as number) / (headingHistory.length + 1)
-        : heading;
       
       setCurrentPosition((prev: Position) => {
         const newPos = {
@@ -291,6 +292,18 @@ function MapController({
     const listener = (e: DeviceOrientationEvent) => handleCompass(e);
     window.addEventListener('deviceorientation', listener, true);
     console.log('Compass event listener added successfully');
+
+    // Test: Dispatch a fake event to see if listener works
+    setTimeout(() => {
+      const testEvent = new Event('deviceorientation') as any;
+      testEvent.alpha = 45;
+      testEvent.beta = 0;
+      testEvent.gamma = 0;
+      testEvent.webkitCompassHeading = 90;
+      testEvent.absolute = true;
+      console.log('Dispatching test compass event');
+      window.dispatchEvent(testEvent);
+    }, 1000);
 
     return () => {
       window.removeEventListener('deviceorientation', listener, true);
