@@ -46,7 +46,7 @@ function arcPoints(
 ): [number, number][] {
   const points: [number, number][] = [];
 
-  let a0 = norm360(startAngleDeg);
+  const a0 = norm360(startAngleDeg);
   let a1 = norm360(endAngleDeg);
   if (a1 < a0) a1 += 360; // wrap over 360
 
