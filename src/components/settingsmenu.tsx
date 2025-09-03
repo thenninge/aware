@@ -15,9 +15,24 @@ interface SettingsMenuProps {
   onAngleRangeChange: (angleRange: number) => void;
   onCategoryConfigChange: (category: string, config: CategoryConfig) => void;
   onDeleteAllShots?: () => void;
+  showMSRRetikkel?: boolean;
+  msrRetikkelOpacity?: number;
+  onShowMSRRetikkelChange?: (show: boolean) => void;
+  onMSRRetikkelOpacityChange?: (opacity: number) => void;
 }
 
-export default function SettingsMenu({ categoryConfigs, onCategoryConfigChange, angleRange, onAngleRangeChange, onDeleteAllShots, currentCenter }: SettingsMenuProps & { currentCenter?: { lat: number, lng: number } }) {
+export default function SettingsMenu({ 
+  categoryConfigs, 
+  onCategoryConfigChange, 
+  angleRange, 
+  onAngleRangeChange, 
+  onDeleteAllShots, 
+  currentCenter,
+  showMSRRetikkel,
+  msrRetikkelOpacity,
+  onShowMSRRetikkelChange,
+  onMSRRetikkelOpacityChange
+}: SettingsMenuProps & { currentCenter?: { lat: number, lng: number } }) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [showHomeSaved, setShowHomeSaved] = useState(false);
   const [showHomeError, setShowHomeError] = useState(false);
@@ -97,6 +112,47 @@ export default function SettingsMenu({ categoryConfigs, onCategoryConfigChange, 
         />
         <div className="text-xs text-gray-600 mt-1">±{angleRange}°</div>
       </div>
+      {/* MSR-retikkel Controls */}
+      {showMSRRetikkel !== undefined && onShowMSRRetikkelChange && (
+        <div className="mb-4 p-3 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg">
+          <div className="text-sm font-medium text-gray-700 mb-3">MSR-retikkel</div>
+          
+          {/* Show/Hide MSR-retikkel */}
+          <div className="mb-3">
+            <label className="flex items-center gap-2 cursor-pointer text-sm">
+              <input
+                type="checkbox"
+                checked={showMSRRetikkel}
+                onChange={(e) => onShowMSRRetikkelChange(e.target.checked)}
+                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+              />
+              Vis MSR-retikkel
+            </label>
+          </div>
+          
+          {/* MSR-retikkel Opacity */}
+          {showMSRRetikkel && msrRetikkelOpacity !== undefined && onMSRRetikkelOpacityChange && (
+            <div className="mb-3">
+              <label className="text-xs font-medium text-gray-700 block mb-1">
+                Opasitet markeringer: {msrRetikkelOpacity}%
+              </label>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                step="5"
+                value={msrRetikkelOpacity}
+                onChange={(e) => onMSRRetikkelOpacityChange(Number(e.target.value))}
+                className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer hover:bg-gray-300 transition-colors"
+                style={{
+                  background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${msrRetikkelOpacity}%, #e5e7eb ${msrRetikkelOpacity}%, #e5e7eb 100%)`
+                }}
+              />
+            </div>
+          )}
+        </div>
+      )}
+      
       {/* Global Opacity Slider */}
       <div className="mb-4">
         <label className="block text-xs font-medium text-gray-700 mb-1">Opasitet alle kakestykker:</label>

@@ -54,7 +54,10 @@ export default function Home() {
   const [showOnlyLastShot, setShowOnlyLastShot] = useState(true);
   const [isTracking, setIsTracking] = useState(false);
   const [trackingPoints, setTrackingPoints] = useState<Position[]>([]);
- 
+  
+  // State for scale bar
+  const [showMSRRetikkel, setShowMSRRetikkel] = useState(true);
+  const [msrRetikkelOpacity, setMSRRetikkelOpacity] = useState(80);
   const [categoryConfigs, setCategoryConfigs] = useState<Record<keyof CategoryFilter, CategoryConfig>>({
     city: {
       color: '#1e40af', // Dark blue
@@ -247,6 +250,10 @@ export default function Home() {
             onAngleRangeChange={handleAngleRangeChange}
             onDeleteAllShots={handleDeleteAllShots}
             currentCenter={currentCenter || undefined}
+            showMSRRetikkel={showMSRRetikkel}
+            msrRetikkelOpacity={msrRetikkelOpacity}
+            onShowMSRRetikkelChange={setShowMSRRetikkel}
+            onMSRRetikkelOpacityChange={setMSRRetikkelOpacity}
           />
         </div>
       )}
@@ -290,6 +297,8 @@ export default function Home() {
         onTrackingChange={setIsTracking}
         trackingPoints={trackingPoints}
         onTrackingPointsChange={setTrackingPoints}
+        showMSRRetikkel={showMSRRetikkel}
+        msrRetikkelOpacity={msrRetikkelOpacity}
       />
     </div>
   );

@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, useMap, Circle, Polyline, Tooltip, Popup, LayersControl } from 'react-leaflet';
 import L from 'leaflet';
+import MSRRetikkel from './msr-retikkel';
 import 'leaflet/dist/leaflet.css';
 import React from 'react';
 import PieChart from './piechart';
@@ -50,6 +51,8 @@ interface MapComponentProps {
   onTrackingChange?: (isTracking: boolean) => void;
   trackingPoints?: Position[];
   onTrackingPointsChange?: (points: Position[]) => void;
+  showMSRRetikkel?: boolean;
+  msrRetikkelOpacity?: number;
 }
 
 interface CategoryFilter {
@@ -430,7 +433,7 @@ function MapController({
       )}
 
       {/* Pie Chart slices - only show in aware-mode */}
-              {(mode === 'aware' || mode === 'søk') && Array.isArray(places) && places.length > 0 && (
+      {mode === 'aware' && Array.isArray(places) && places.length > 0 && (
         <PieChart 
           places={places}
           categoryConfigs={categoryConfigs}
@@ -619,6 +622,8 @@ export default function MapComponent({
   onTrackingChange,
   trackingPoints = [],
   onTrackingPointsChange,
+      showMSRRetikkel = true,
+    msrRetikkelOpacity = 80,
 }: MapComponentProps) {
   const [showTargetDialog, setShowTargetDialog] = useState(false);
   const instanceId = useRef(Math.random());
@@ -648,6 +653,19 @@ export default function MapComponent({
   const [newFindPosition, setNewFindPosition] = useState<Position | null>(null);
   const [findName, setFindName] = useState('');
   const [findColor, setFindColor] = useState('#EF4444'); // Standard rød farge
+  
+  // MSR-retikkel state
+  const [localShowMSRRetikkel, setLocalShowMSRRetikkel] = useState(showMSRRetikkel);
+  const [localMSRRetikkelOpacity, setLocalMSRRetikkelOpacity] = useState(msrRetikkelOpacity);
+  
+  // Synkroniser MSR-retikkel props med local state
+  useEffect(() => {
+    setLocalShowMSRRetikkel(showMSRRetikkel);
+  }, [showMSRRetikkel]);
+  
+  useEffect(() => {
+    setLocalMSRRetikkelOpacity(msrRetikkelOpacity);
+  }, [msrRetikkelOpacity]);
   
   // Start sporing - generer ny tracking ID og start med tom liste
   const startTracking = () => {
@@ -1323,7 +1341,12 @@ export default function MapComponent({
           currentPosition={currentPosition}
         />
 
-
+        {/* MSR-retikkel controller */}
+        <MSRRetikkel 
+          isVisible={localShowMSRRetikkel}
+          opacity={localMSRRetikkelOpacity}
+          currentPosition={currentPosition}
+        />
 
         {/* Radius circle: kun i aware-mode */}
         {mode === 'aware' && currentPosition && (
@@ -1829,12 +1852,15 @@ export default function MapComponent({
       {/* Settings Menu */}
       {isSettingsExpanded && (
         <div ref={settingsMenuRef} className="fixed top-20 right-4 z-[1002]">
-      <SettingsMenu 
-        categoryConfigs={categoryConfigs}
-        onCategoryConfigChange={onCategoryConfigChange || (() => {})}
-        angleRange={angleRange}
-        onAngleRangeChange={onAngleRangeChange || (() => {})}
+          <SettingsMenu 
+            categoryConfigs={categoryConfigs}
+            onCategoryConfigChange={onCategoryConfigChange || (() => {})}
+            angleRange={angleRange}
+            onAngleRangeChange={onAngleRangeChange || (() => {})}
           />
+          
+
+          
           <button
             onClick={handleDeleteAllShots}
             className="mt-4 w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded shadow-lg text-sm"
@@ -2075,6 +2101,19 @@ export default function MapComponent({
               {isScanning ? '⏳' : '🔍'}
             </button>
           )}
+          {/* MSR-retikkel knapp */}
+          <button
+            className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
+              localShowMSRRetikkel 
+                ? 'bg-red-600 hover:bg-red-700 text-white' 
+                : 'bg-gray-600 hover:bg-gray-700 text-white'
+            }`}
+            onClick={() => setLocalShowMSRRetikkel(!localShowMSRRetikkel)}
+            title={localShowMSRRetikkel ? 'MSR-retikkel ON' : 'MSR-retikkel OFF'}
+          >
+            📐
+          </button>
+          
           {/* Layer-knapp */}
           <button
             className="w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center bg-white/90 border border-gray-300 hover:bg-gray-100"
