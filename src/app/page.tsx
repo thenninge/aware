@@ -32,7 +32,7 @@ type Post = {
 };
 
 export default function Home() {
-  const [mode, setMode] = useState<'aware' | 'track'>('aware');
+  const [mode, setMode] = useState<'aware' | 'track' | 'søk'>('aware');
   const [radius, setRadius] = useState(3000); // Default 3000m
   const [, setCurrentPosition] = useState<Position | null>(null);
   const [currentCenter, setCurrentCenter] = useState<Position | null>(null);
@@ -52,6 +52,8 @@ export default function Home() {
   const [isFilterExpanded, setIsFilterExpanded] = useState(false);
   const [orientationMode, setOrientationMode] = useState<'north' | 'heading'>('north');
   const [showOnlyLastShot, setShowOnlyLastShot] = useState(true);
+  const [isTracking, setIsTracking] = useState(false);
+  const [trackingPoints, setTrackingPoints] = useState<Position[]>([]);
  
   const [categoryConfigs, setCategoryConfigs] = useState<Record<keyof CategoryFilter, CategoryConfig>>({
     city: {
@@ -92,10 +94,23 @@ export default function Home() {
   useEffect(() => {
     if (mode === 'track') {
       setShowMarkers(false);
+      // Stopp sporing hvis vi bytter til track-modus
+      if (isTracking) {
+        setIsTracking(false);
+        setTrackingPoints([]);
+      }
     } else if (mode === 'aware') {
       setShowMarkers(true);
+      // Stopp sporing hvis vi bytter til aware-modus
+      if (isTracking) {
+        setIsTracking(false);
+        setTrackingPoints([]);
+      }
+    } else if (mode === 'søk') {
+      setShowMarkers(false);
+      setShowOnlyLastShot(true); // I søk-modus viser vi kun siste skuddpar
     }
-  }, [mode]);
+  }, [mode, isTracking]);
 
   // Lukker settings-meny ved klikk utenfor
   useEffect(() => {
@@ -207,6 +222,12 @@ export default function Home() {
         >
           Track
         </button>
+        <button
+          className={`font-semibold px-2 py-1 rounded-full transition-colors text-xs ${mode === 'søk' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
+          onClick={() => setMode('søk')}
+        >
+          Søk
+        </button>
         {/* Filter-knapp */}
         <button
           onClick={() => setIsFilterExpanded((v) => !v)}
@@ -265,6 +286,10 @@ export default function Home() {
         onLiveModeChange={handleLiveModeChange}
         mode={mode}
         showOnlyLastShot={showOnlyLastShot}
+        isTracking={isTracking}
+        onTrackingChange={setIsTracking}
+        trackingPoints={trackingPoints}
+        onTrackingPointsChange={setTrackingPoints}
       />
     </div>
   );

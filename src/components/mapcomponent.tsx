@@ -44,8 +44,12 @@ interface MapComponentProps {
   onShowMarkersChange?: (show: boolean) => void;
   isLiveMode?: boolean;
   onLiveModeChange?: (isLive: boolean) => void;
-  mode?: 'aware' | 'track'; // <-- NY
+  mode?: 'aware' | 'track' | 'søk'; // <-- NY
   showOnlyLastShot?: boolean;
+  isTracking?: boolean;
+  onTrackingChange?: (isTracking: boolean) => void;
+  trackingPoints?: Position[];
+  onTrackingPointsChange?: (points: Position[]) => void;
 }
 
 interface CategoryFilter {
@@ -89,7 +93,7 @@ function MapController({
   showMarkers?: boolean;
   isLiveMode?: boolean;
   onLoadingChange?: (loading: boolean) => void;
-  mode?: 'aware' | 'track'; // <-- NY
+  mode?: 'aware' | 'track' | 'søk'; // <-- NY
   showOnlyLastShot?: boolean;
   compassStarted?: boolean;
 }) {
@@ -426,7 +430,7 @@ function MapController({
       )}
 
       {/* Pie Chart slices - only show in aware-mode */}
-      {mode === 'aware' && Array.isArray(places) && places.length > 0 && (
+              {(mode === 'aware' || mode === 'søk') && Array.isArray(places) && places.length > 0 && (
         <PieChart 
           places={places}
           categoryConfigs={categoryConfigs}
@@ -438,6 +442,54 @@ function MapController({
       )}
     </>
   );
+}
+
+// Component to handle tracking in søk-modus
+function TrackingController({ 
+  isTracking, 
+  mode, 
+  onTrackingPointsChange, 
+  currentPosition 
+}: { 
+  isTracking: boolean; 
+  mode: string; 
+  onTrackingPointsChange: (points: Position[]) => void; 
+  currentPosition?: Position; 
+}) {
+  const map = useMap();
+  const [localTrackingPoints, setLocalTrackingPoints] = useState<Position[]>([]);
+
+  useEffect(() => {
+    if (!map || !isTracking || mode !== 'søk') return;
+
+    // Event listener for kartbevegelse - logg posisjon når kartet stopper å bevege seg
+    const handleMapMoveEnd = () => {
+      const center = map.getCenter();
+      const newPosition: Position = {
+        lat: center.lat,
+        lng: center.lng,
+        heading: currentPosition?.heading
+      };
+      const updatedPoints = [...localTrackingPoints, newPosition];
+      setLocalTrackingPoints(updatedPoints);
+      onTrackingPointsChange(updatedPoints);
+    };
+
+    map.on('moveend', handleMapMoveEnd);
+
+    return () => {
+      map.off('moveend', handleMapMoveEnd);
+    };
+  }, [map, isTracking, mode, onTrackingPointsChange, currentPosition, localTrackingPoints]);
+
+  // Reset local points when tracking starts
+  useEffect(() => {
+    if (isTracking && mode === 'søk') {
+      setLocalTrackingPoints([]);
+    }
+  }, [isTracking, mode]);
+
+  return null; // Denne komponenten renderer ingenting, bare håndterer events
 }
 
 
@@ -487,6 +539,15 @@ interface PointPair {
   category: string;
   id: number;
   created_at?: string;
+}
+
+// Type for lagrede søk-spor
+interface SavedTrack {
+  id: string;
+  points: Position[];
+  createdAt: string;
+  shotPairId: string;
+  mode: string;
 }
 
 const LAYER_CONFIGS = [
@@ -539,6 +600,10 @@ export default function MapComponent({
   onLiveModeChange,
   mode = 'aware', // <-- NY
   showOnlyLastShot = false,
+  isTracking = false,
+  onTrackingChange,
+  trackingPoints = [],
+  onTrackingPointsChange,
 }: MapComponentProps) {
   const [showTargetDialog, setShowTargetDialog] = useState(false);
   const instanceId = useRef(Math.random());
@@ -555,6 +620,98 @@ export default function MapComponent({
   const [savedPairs, setSavedPairs] = useState<PointPair[]>([]);
   const [compassStarted, setCompassStarted] = useState(false);
   
+  // Tracking state for søk-modus
+  const [currentTrackingId, setCurrentTrackingId] = useState<string | null>(null);
+  const [savedTracks, setSavedTracks] = useState<SavedTrack[]>([]);
+  
+  // Start sporing - generer ny tracking ID og start med tom liste
+  const startTracking = () => {
+    const newTrackingId = `tracking_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    setCurrentTrackingId(newTrackingId);
+    onTrackingPointsChange?.([]);
+    onTrackingChange?.(true);
+  };
+
+  // Stopp sporing og vis prompt
+  const stopTracking = () => {
+    if (trackingPoints && trackingPoints.length > 0) {
+      const shouldSave = window.confirm('Lagre spor til skudd?');
+      if (shouldSave) {
+        // Lagre spor til localStorage
+        saveTrackToLocalStorage(currentTrackingId, trackingPoints);
+        console.log('Spor lagret til localStorage:', { id: currentTrackingId, points: trackingPoints });
+      } else {
+        // Slett sporet
+        onTrackingPointsChange?.([]);
+        setCurrentTrackingId(null);
+      }
+    }
+    onTrackingChange?.(false);
+  };
+
+  // Lagre spor til localStorage
+  const saveTrackToLocalStorage = (trackId: string | null, points: Position[]) => {
+    if (!trackId) return;
+    
+    try {
+      // Hent eksisterende spor
+      const existingTracks = JSON.parse(localStorage.getItem('searchTracks') || '{}');
+      
+      // Lagre nytt spor med timestamp og skuddpar info
+      const newTrack = {
+        id: trackId,
+        points: points,
+        createdAt: new Date().toISOString(),
+        shotPairId: 'current', // TODO: Koble til faktisk skuddpar ID
+        mode: mode
+      };
+      
+      // Legg til i eksisterende spor (ikke overskriv)
+      if (!existingTracks[trackId]) {
+        existingTracks[trackId] = newTrack;
+        localStorage.setItem('searchTracks', JSON.stringify(existingTracks));
+        
+        // Oppdater state for å vise det nye sporet umiddelbart
+        setSavedTracks(prev => [...prev, newTrack]);
+      }
+    } catch (error) {
+      console.error('Feil ved lagring av spor:', error);
+    }
+  };
+
+  // Last alle lagrede spor fra localStorage
+  const loadSavedTracks = (): SavedTrack[] => {
+    try {
+      const savedTracks = JSON.parse(localStorage.getItem('searchTracks') || '{}');
+      return Object.values(savedTracks) as SavedTrack[];
+    } catch (error) {
+      console.error('Feil ved lasting av lagrede spor:', error);
+      return [];
+    }
+  };
+
+  // Håndter lagring til database
+  const handleSaveToDatabase = () => {
+    if (savedTracks.length === 0) return;
+    
+    const shouldSave = window.confirm('Lagre synlige spor til database?');
+    if (shouldSave) {
+      // TODO: Implementer faktisk lagring til database senere
+      console.log('Lagrer spor til database:', savedTracks);
+      alert('Spor lagret til database! (placeholder - implementeres senere)');
+    }
+  };
+
+  // Last lagrede spor når komponenten mountes og når modus endres
+  useEffect(() => {
+    if (mode === 'søk') {
+      const tracks = loadSavedTracks();
+      setSavedTracks(tracks);
+    } else {
+      setSavedTracks([]); // Tøm spor når vi ikke er i søk-modus
+    }
+  }, [mode]);
+
   const startCompass = async () => {
     try {
       // Check if DeviceOrientationEvent is available
@@ -948,6 +1105,7 @@ export default function MapComponent({
         style={{ height: '100%', width: '100%' }}
         zoomControl={true}
         attributionControl={true}
+
       >
         <TileLayer
           url={LAYER_CONFIGS[layerIdx].url}
@@ -975,6 +1133,14 @@ export default function MapComponent({
           showOnlyLastShot={showOnlyLastShot}
           compassStarted={compassStarted}
         />
+        
+        {/* Tracking controller for søk-modus */}
+        <TrackingController 
+          isTracking={isTracking}
+          mode={mode}
+          onTrackingPointsChange={onTrackingPointsChange || (() => {})}
+          currentPosition={currentPosition}
+        />
         {/* Radius circle: kun i aware-mode */}
         {mode === 'aware' && currentPosition && (
           <Circle
@@ -988,6 +1154,88 @@ export default function MapComponent({
               weight: 2,
             }}
           />
+        )}
+        
+        {/* Rød prikk for egen posisjon i søk-modus */}
+        {mode === 'søk' && currentPosition && (
+          <Marker
+            key={`current-position-søk-${currentPosition.lat}-${currentPosition.lng}`}
+            position={[currentPosition.lat, currentPosition.lng]}
+            icon={L.divIcon({
+              className: 'custom-marker current-position-marker',
+              html: `<div style="width: 12px; height: 12px; background-color: #EF4444; opacity: 1; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 4px rgba(0,0,0,0.5);"></div>`,
+              iconSize: [12, 12],
+              iconAnchor: [6, 6],
+            })}
+          />
+        )}
+        
+        {/* Tracking points i søk-modus */}
+        {mode === 'søk' && trackingPoints.length > 0 && (
+          <>
+            {/* Gule sirkler for hvert tracking punkt */}
+            {trackingPoints.map((point, index) => (
+              <Circle
+                key={`tracking-point-${index}`}
+                center={[point.lat, point.lng]}
+                radius={2}
+                pathOptions={{
+                  color: '#EAB308',
+                  weight: 1.5,
+                  fillColor: '#EAB308',
+                  fillOpacity: 0.5,
+                }}
+              />
+            ))}
+            
+            {/* Gul linje mellom tracking punktene */}
+            {trackingPoints.length > 1 && (
+              <Polyline
+                positions={trackingPoints.map(point => [point.lat, point.lng])}
+                pathOptions={{ 
+                  color: '#EAB308', 
+                  weight: 2,
+                  opacity: 0.8
+                }}
+              />
+            )}
+          </>
+        )}
+
+        {/* Alle lagrede spor i søk-modus */}
+        {mode === 'søk' && savedTracks.length > 0 && (
+          <>
+            {savedTracks.map((track) => (
+              <React.Fragment key={`saved-track-${track.id}`}>
+                {/* Gule sirkler for hvert lagret spor */}
+                {track.points.map((point: Position, index: number) => (
+                  <Circle
+                    key={`saved-track-${track.id}-point-${index}`}
+                    center={[point.lat, point.lng]}
+                    radius={2}
+                    pathOptions={{
+                      color: '#EAB308',
+                      weight: 1.5,
+                      fillColor: '#EAB308',
+                      fillOpacity: 0.3, // Litt mer transparent enn aktive spor
+                    }}
+                  />
+                ))}
+                
+                {/* Gul linje mellom punktene i lagret spor */}
+                {track.points.length > 1 && (
+                  <Polyline
+                    positions={track.points.map((point: Position) => [point.lat, point.lng])}
+                    pathOptions={{ 
+                      color: '#EAB308', 
+                      weight: 1.5,
+                      opacity: 0.6 // Litt mer transparent enn aktive spor
+                    }}
+                  />
+                )}
+              </React.Fragment>
+            ))}
+          </>
         )}
         {showTargetDirectionUI && currentPosition && (
           <>
@@ -1026,7 +1274,7 @@ export default function MapComponent({
           </>
         )}
         {/* Place markers: kun i aware-mode */}
-        {mode === 'aware' && showMarkers && hasSafePlaces && safePlaces
+        {(mode === 'aware' || mode === 'søk') && showMarkers && hasSafePlaces && safePlaces
           .filter(place => {
             // Filter based on category filters
             if (place.category === 'city' && !categoryFilters.city) return false;
@@ -1054,7 +1302,7 @@ export default function MapComponent({
           })}
 
         {/* Saved points: vis blå X for hver current-posisjon i track-mode */}
-        {mode === 'track' && hasSavedPairs && (
+        {(mode === 'track' || mode === 'søk') && hasSavedPairs && (
           <>
             {showOnlyLastShot
               ? (() => {
@@ -1185,7 +1433,7 @@ export default function MapComponent({
           </>
         )}
         {/* Tegn stiplede linjer mellom alle gyldige par */}
-        {mode === 'track' && (
+        {(mode === 'track' || mode === 'søk') && (
           showOnlyLastShot
             ? (() => {
                 const skyteplasser = safeSavedPairs.filter(p => p.category === 'Skyteplass' && p.current && p.created_at !== undefined)
@@ -1471,6 +1719,42 @@ export default function MapComponent({
           </button>
         </div>
       )}
+      
+                        {/* Start/Stopp spor knapp kun i søk-modus */}
+        {mode === 'søk' && (
+          <div className="fixed bottom-4 inset-x-0 z-[2001] flex flex-wrap justify-center items-center gap-2 px-2">
+            {/* Lagre til database knapp */}
+            <button
+              onClick={handleSaveToDatabase}
+              disabled={savedTracks.length === 0}
+              className={`w-9 h-9 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex items-center justify-center ${
+                savedTracks.length > 0
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white border-blue-700'
+                  : 'bg-gray-400 text-gray-200 border-gray-300 cursor-not-allowed'
+              }`}
+              title="Lagre synlige spor til database"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                <polyline points="17,21 17,13 7,13 7,21"/>
+                <polyline points="7,3 7,8 15,8"/>
+              </svg>
+            </button>
+            
+            {/* Start/Stopp spor knapp */}
+            <button
+              onClick={isTracking ? stopTracking : startTracking}
+              className={`flex-1 min-w-[60px] max-w-[110px] w-auto h-9 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex flex-col items-center justify-center px-[0.375em] py-[0.375em] ${
+                isTracking
+                  ? 'bg-red-600 hover:bg-red-700 text-white border-red-700'
+                  : 'bg-green-600 hover:bg-green-700 text-white border-green-700'
+              }`}
+              title={isTracking ? 'Stopp spor' : 'Start spor'}
+            >
+              <span className="text-[10px] mt-0.5">{isTracking ? 'Stopp spor' : 'Start spor'}</span>
+            </button>
+          </div>
+        )}
       {/* Scan & Live Buttons - Bottom Right */}
       <div className="fixed bottom-4 right-4 sm:bottom-4 sm:right-4 bottom-2 right-2 z-[1000] flex flex-col gap-2">
           {/* Scan-knapp kun i aware-mode */}

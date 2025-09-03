@@ -51,8 +51,12 @@ interface AwareMapProps {
   onShowMarkersChange?: (show: boolean) => void;
   isLiveMode?: boolean;
   onLiveModeChange?: (isLive: boolean) => void;
-  mode?: 'aware' | 'track'; // <-- NY
+  mode?: 'aware' | 'track' | 'søk'; // <-- NY
   showOnlyLastShot?: boolean;
+  isTracking?: boolean;
+  onTrackingChange?: (isTracking: boolean) => void;
+  trackingPoints?: Position[];
+  onTrackingPointsChange?: (points: Position[]) => void;
 }
 
 export default function AwareMap({ 
@@ -73,6 +77,10 @@ export default function AwareMap({
   onLiveModeChange,
   mode = 'aware', // <-- NY
   showOnlyLastShot,
+  isTracking,
+  onTrackingChange,
+  trackingPoints,
+  onTrackingPointsChange,
 }: AwareMapProps) {
   const [isClient, setIsClient] = useState(false);
   const [hasError, setHasError] = useState(false);
@@ -126,6 +134,10 @@ export default function AwareMap({
         onLiveModeChange={onLiveModeChange}
         mode={mode}
         showOnlyLastShot={showOnlyLastShot}
+        isTracking={isTracking}
+        onTrackingChange={onTrackingChange}
+        trackingPoints={trackingPoints}
+        onTrackingPointsChange={onTrackingPointsChange}
       />
     </div>
   );
