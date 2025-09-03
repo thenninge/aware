@@ -492,34 +492,7 @@ function TrackingController({
   return null; // Denne komponenten renderer ingenting, bare håndterer events
 }
 
-// Component to handle funn in søk-modus
-  function FunnController({
-    isFindingMode,
-    mode,
-    onMapClick
-  }: {
-    isFindingMode: boolean;
-    mode: string;
-    onMapClick: (e: { latlng: { lat: number; lng: number } }) => void;
-  }) {
-    const map = useMap();
 
-    useEffect(() => {
-      if (!map || !isFindingMode || mode !== 'søk') return;
-
-      const handleMapClick = (e: { latlng: { lat: number; lng: number } }) => {
-        onMapClick(e);
-      };
-
-      map.on('click', handleMapClick);
-
-      return () => {
-        map.off('click', handleMapClick);
-      };
-    }, [map, isFindingMode, mode, onMapClick]);
-
-    return null; // Denne komponenten renderer ingenting, bare håndterer events
-  }
 
 
 
@@ -670,7 +643,6 @@ export default function MapComponent({
   const [trackColor, setTrackColor] = useState('#EAB308'); // Standard gul farge
   
   // Funn state for søk-modus
-  const [isFindingMode, setIsFindingMode] = useState(false);
   const [savedFinds, setSavedFinds] = useState<SavedFind[]>([]);
   const [showFindDialog, setShowFindDialog] = useState(false);
   const [newFindPosition, setNewFindPosition] = useState<Position | null>(null);
@@ -802,9 +774,19 @@ export default function MapComponent({
     setCurrentTrackingId(null);
   };
 
-  // Aktiver funn-modus
+  // Aktiver funn-modus - bruk nåværende posisjon (rød prikk i midten)
   const toggleFindingMode = () => {
-    setIsFindingMode(true);
+    console.log('toggleFindingMode called, using current position');
+    if (currentPosition) {
+      const shouldSave = window.confirm('Lagre funn her?');
+      if (shouldSave) {
+        console.log('Opening find dialog for current position...');
+        setNewFindPosition(currentPosition);
+        setShowFindDialog(true);
+      }
+    } else {
+      alert('Kunne ikke finne din nåværende posisjon');
+    }
   };
 
   // Lagre funn til localStorage
@@ -865,14 +847,10 @@ export default function MapComponent({
     }
   };
 
-  // Håndter kart-klikk for å plassere funn
+  // Håndter kart-klikk for å plassere funn (ikke lenger brukt for funn)
   const handleMapClick = (e: { latlng: { lat: number; lng: number } }) => {
-    if (isFindingMode && mode === 'søk') {
-      const { lat, lng } = e.latlng;
-      setNewFindPosition({ lat, lng });
-      setShowFindDialog(true);
-      setIsFindingMode(false); // Deaktiver funn-modus
-    }
+    console.log('handleMapClick called:', { mode, e });
+    // Funksjonen er ikke lenger brukt for funn, men beholdes for fremtidig bruk
   };
 
   // Håndter lagring av funn fra dialog
@@ -1345,12 +1323,8 @@ export default function MapComponent({
           currentPosition={currentPosition}
         />
 
-        {/* Funn controller for søk-modus */}
-        <FunnController 
-          isFindingMode={isFindingMode}
-          mode={mode}
-          onMapClick={handleMapClick}
-        />
+
+
         {/* Radius circle: kun i aware-mode */}
         {mode === 'aware' && currentPosition && (
           <Circle
