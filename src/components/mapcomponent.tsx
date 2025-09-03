@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { MapContainer, TileLayer, Marker, useMap, Circle, Polyline, Tooltip, LayersControl } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMap, Circle, Polyline, Tooltip, Popup, LayersControl } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import React from 'react';
@@ -548,6 +548,8 @@ interface SavedTrack {
   createdAt: string;
   shotPairId: string;
   mode: string;
+  name: string;
+  color: string;
 }
 
 const LAYER_CONFIGS = [
@@ -623,6 +625,9 @@ export default function MapComponent({
   // Tracking state for søk-modus
   const [currentTrackingId, setCurrentTrackingId] = useState<string | null>(null);
   const [savedTracks, setSavedTracks] = useState<SavedTrack[]>([]);
+  const [showSaveTrackDialog, setShowSaveTrackDialog] = useState(false);
+  const [trackName, setTrackName] = useState('');
+  const [trackColor, setTrackColor] = useState('#EAB308'); // Standard gul farge
   
   // Start sporing - generer ny tracking ID og start med tom liste
   const startTracking = () => {
@@ -637,9 +642,8 @@ export default function MapComponent({
     if (trackingPoints && trackingPoints.length > 0) {
       const shouldSave = window.confirm('Lagre spor til skudd?');
       if (shouldSave) {
-        // Lagre spor til localStorage
-        saveTrackToLocalStorage(currentTrackingId, trackingPoints);
-        console.log('Spor lagret til localStorage:', { id: currentTrackingId, points: trackingPoints });
+        // Vis dialog for å navngi og velge farge
+        setShowSaveTrackDialog(true);
       } else {
         // Slett sporet
         onTrackingPointsChange?.([]);
@@ -650,20 +654,25 @@ export default function MapComponent({
   };
 
   // Lagre spor til localStorage
-  const saveTrackToLocalStorage = (trackId: string | null, points: Position[]) => {
+  const saveTrackToLocalStorage = (trackId: string | null, points: Position[], name: string, color: string) => {
     if (!trackId) return;
     
     try {
       // Hent eksisterende spor
       const existingTracks = JSON.parse(localStorage.getItem('searchTracks') || '{}');
       
+      // Finn aktivt skuddpar ID
+      const activeShotPairId = lastPair?.id?.toString() || 'unknown';
+      
       // Lagre nytt spor med timestamp og skuddpar info
-      const newTrack = {
+      const newTrack: SavedTrack = {
         id: trackId,
         points: points,
         createdAt: new Date().toISOString(),
-        shotPairId: 'current', // TODO: Koble til faktisk skuddpar ID
-        mode: mode
+        shotPairId: activeShotPairId, // Bruk reell skuddpar ID istedenfor 'current'
+        mode: 'søk',
+        name: name,
+        color: color
       };
       
       // Legg til i eksisterende spor (ikke overskriv)
@@ -683,7 +692,18 @@ export default function MapComponent({
   const loadSavedTracks = (): SavedTrack[] => {
     try {
       const savedTracks = JSON.parse(localStorage.getItem('searchTracks') || '{}');
-      return Object.values(savedTracks) as SavedTrack[];
+      const allTracks = Object.values(savedTracks) as SavedTrack[];
+      
+      // Filtrer spor basert på aktivt skuddpar og showOnlyLastShot
+      if (showOnlyLastShot && hasSavedPairs && safeSavedPairs.length > 0) {
+        const currentLastPair = safeSavedPairs[safeSavedPairs.length - 1];
+        if (currentLastPair?.id) {
+          // Vis kun spor for siste skuddpar
+          return allTracks.filter(track => track.shotPairId === currentLastPair.id.toString());
+        }
+      }
+      // Vis alle spor
+      return allTracks;
     } catch (error) {
       console.error('Feil ved lasting av lagrede spor:', error);
       return [];
@@ -702,15 +722,39 @@ export default function MapComponent({
     }
   };
 
-  // Last lagrede spor når komponenten mountes og når modus endres
-  useEffect(() => {
-    if (mode === 'søk') {
-      const tracks = loadSavedTracks();
-      setSavedTracks(tracks);
-    } else {
-      setSavedTracks([]); // Tøm spor når vi ikke er i søk-modus
+  // Håndter lagring av spor fra dialog
+  const handleSaveTrackFromDialog = () => {
+    if (!trackName.trim()) {
+      alert('Vennligst skriv inn et navn for sporet');
+      return;
     }
-  }, [mode]);
+    
+    saveTrackToLocalStorage(currentTrackingId, trackingPoints || [], trackName.trim(), trackColor);
+    console.log('Spor lagret til localStorage:', { 
+      id: currentTrackingId, 
+      name: trackName, 
+      color: trackColor, 
+      points: trackingPoints 
+    });
+    
+    // Reset dialog state
+    setShowSaveTrackDialog(false);
+    setTrackName('');
+    setTrackColor('#EAB308');
+    onTrackingPointsChange?.([]);
+    setCurrentTrackingId(null);
+  };
+
+  // Avbryt lagring av spor
+  const handleCancelSaveTrack = () => {
+    setShowSaveTrackDialog(false);
+    setTrackName('');
+    setTrackColor('#EAB308');
+    onTrackingPointsChange?.([]);
+    setCurrentTrackingId(null);
+  };
+
+
 
   const startCompass = async () => {
     try {
@@ -1020,6 +1064,16 @@ export default function MapComponent({
   const hasSavedPairs = safeSavedPairs.length > 0;
   const lastPair = hasSavedPairs ? safeSavedPairs[safeSavedPairs.length - 1] : undefined;
 
+  // Last lagrede spor når komponenten mountes og når modus endres
+  useEffect(() => {
+    if (mode === 'søk') {
+      const tracks = loadSavedTracks();
+      setSavedTracks(tracks);
+    } else {
+      setSavedTracks([]); // Tøm spor når vi ikke er i søk-modus
+    }
+  }, [mode, showOnlyLastShot, lastPair?.id]); // Reager på endringer i filter og skuddpar
+
   // Legg til funksjon for å slette alle skuddpar
   type ShotCategory = 'Skyteplass' | 'Treffpunkt';
   const handleDeleteAllShots = async () => {
@@ -1038,10 +1092,18 @@ export default function MapComponent({
 
   // Ny funksjon for å lagre treffpunkt med valgt retning og avstand
   const handleSaveTargetWithDirection = async () => {
-    if (!currentPosition) return;
+    // Bruk skyteplass-posisjonen, ikke kartets midte
+    const hasSavedPairs = Array.isArray(savedPairs) && savedPairs.length > 0;
+    const lastPair = hasSavedPairs ? savedPairs[savedPairs.length - 1] : undefined;
+    
+    if (!lastPair || !lastPair.current) {
+      alert('Ingen skyteplass funnet. Du må først lagre en skyteplass med Skudd-knappen.');
+      return;
+    }
+    
     const pos = destinationPoint(
-      currentPosition.lat,
-      currentPosition.lng,
+      lastPair.current.lat,
+      lastPair.current.lng,
       targetRange,
       targetDirection
     );
@@ -1207,27 +1269,39 @@ export default function MapComponent({
           <>
             {savedTracks.map((track) => (
               <React.Fragment key={`saved-track-${track.id}`}>
-                {/* Gule sirkler for hvert lagret spor */}
+                {/* Fargede sirkler for hvert lagret spor */}
                 {track.points.map((point: Position, index: number) => (
                   <Circle
                     key={`saved-track-${track.id}-point-${index}`}
                     center={[point.lat, point.lng]}
                     radius={2}
                     pathOptions={{
-                      color: '#EAB308',
+                      color: track.color || '#EAB308',
                       weight: 1.5,
-                      fillColor: '#EAB308',
+                      fillColor: track.color || '#EAB308',
                       fillOpacity: 0.3, // Litt mer transparent enn aktive spor
                     }}
-                  />
+                  >
+                    <Popup>
+                      <div className="text-center">
+                        <div className="font-semibold text-sm">{track.name || 'Unnamed track'}</div>
+                        <div className="text-xs text-gray-600 mt-1">
+                          {new Date(track.createdAt).toLocaleDateString('nb-NO')}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {track.points.length} punkter
+                        </div>
+                      </div>
+                    </Popup>
+                  </Circle>
                 ))}
                 
-                {/* Gul linje mellom punktene i lagret spor */}
+                {/* Farget linje mellom punktene i lagret spor */}
                 {track.points.length > 1 && (
                   <Polyline
                     positions={track.points.map((point: Position) => [point.lat, point.lng])}
                     pathOptions={{ 
-                      color: '#EAB308', 
+                      color: track.color || '#EAB308', 
                       weight: 1.5,
                       opacity: 0.6 // Litt mer transparent enn aktive spor
                     }}
@@ -1237,11 +1311,11 @@ export default function MapComponent({
             ))}
           </>
         )}
-        {showTargetDirectionUI && currentPosition && (
+        {showTargetDirectionUI && hasSavedPairs && lastPair && lastPair.current && (
           <>
             <Circle
-              key={`target-radius-${targetRange}-${currentPosition.lat}-${currentPosition.lng}`}
-              center={[currentPosition.lat, currentPosition.lng]}
+              key={`target-radius-${targetRange}-${lastPair.current.lat}-${lastPair.current.lng}`}
+              center={[lastPair.current.lat, lastPair.current.lng]}
               radius={targetRange}
               pathOptions={{
                 color: '#2563eb',
@@ -1250,20 +1324,20 @@ export default function MapComponent({
                 weight: 2,
               }}
             />
-            {/* Linje fra senter ut til sirkelen i valgt retning */}
+            {/* Linje fra skyteplass ut til sirkelen i valgt retning */}
             <Polyline
               positions={[
-                [currentPosition.lat, currentPosition.lng],
+                [lastPair.current.lat, lastPair.current.lng],
                 [
                   destinationPoint(
-                    currentPosition.lat,
-                    currentPosition.lng,
+                    lastPair.current.lat,
+                    lastPair.current.lng,
                     targetRange,
                     targetDirection
                   ).lat,
                   destinationPoint(
-                    currentPosition.lat,
-                    currentPosition.lng,
+                    lastPair.current.lat,
+                    lastPair.current.lng,
                     targetRange,
                     targetDirection
                   ).lng,
@@ -1972,6 +2046,66 @@ export default function MapComponent({
           </div>
         </div>,
         document.body
+      )}
+
+      {/* Dialog for å lagre spor med navn og farge */}
+      {showSaveTrackDialog && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[2000]">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-80 flex flex-col gap-4">
+            <div className="text-xl font-bold mb-2 text-gray-800">Lagre spor</div>
+            
+            <label className="text-base font-semibold text-gray-700">
+              Navn på spor:
+              <input
+                type="text"
+                value={trackName}
+                onChange={e => setTrackName(e.target.value)}
+                placeholder="f.eks. Tomas, tiur"
+                className="w-full border rounded px-2 py-1 mt-1 mb-2 text-lg text-[16px] text-gray-900"
+                autoFocus
+              />
+            </label>
+
+            <label className="text-base font-semibold text-gray-700">
+              Farge på spor:
+              <div className="flex gap-2 mt-1 mb-2">
+                <input
+                  type="color"
+                  value={trackColor}
+                  onChange={e => setTrackColor(e.target.value)}
+                  className="w-12 h-12 border rounded cursor-pointer"
+                  title="Velg farge"
+                />
+                <div className="flex-1 flex flex-wrap gap-1">
+                  {['#EAB308', '#EF4444', '#10B981', '#3B82F6', '#8B5CF6', '#F59E0B', '#EC4899', '#06B6D4'].map((color) => (
+                    <button
+                      key={color}
+                      onClick={() => setTrackColor(color)}
+                      className={`w-8 h-8 rounded border-2 ${trackColor === color ? 'border-gray-800' : 'border-gray-300'}`}
+                      style={{ backgroundColor: color }}
+                      title={`Velg ${color}`}
+                    />
+                  ))}
+                </div>
+              </div>
+            </label>
+
+            <div className="flex gap-2 justify-end mt-2">
+              <button
+                onClick={handleCancelSaveTrack}
+                className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold"
+              >
+                Avbryt
+              </button>
+              <button
+                onClick={handleSaveTrackFromDialog}
+                className="px-3 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white font-bold"
+              >
+                Lagre spor
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
