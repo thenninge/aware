@@ -66,8 +66,8 @@ export default function MSRRetikkel({ isVisible, opacity, style, currentPosition
           ? `${screenSize.width / 2 + 0}px`  // MSR-style: midt på skjermen
           : `140px`,                          // Ivar-style: 140px fra venstre kant (10px + 50px + 30px + 30px + 20px)
         top: style === 'msr'
-          ? `${screenSize.height / 2}px`      // MSR-style: midt på skjermen
-          : `${screenSize.height + 20 - L_SIZE_PIXELS}px`, // Ivar-style: 20px over bunnen (10px - 30px - 30px)
+          ? `${screenSize.height / 2 + 40}px` // MSR-style: 40px under midten av skjermen
+          : `${screenSize.height + 50 - L_SIZE_PIXELS}px`, // Ivar-style: 50px over bunnen (40px + 10px)
         transform: 'translate(-50%, -50%)',
         width: `${L_SIZE_PIXELS}px`,
         height: `${L_SIZE_PIXELS}px`,
@@ -184,6 +184,19 @@ export default function MSRRetikkel({ isVisible, opacity, style, currentPosition
         0
       </div>
       
+      {/* X-akse midtpunkt */}
+      <div 
+        className="absolute text-xs font-bold text-red-600 bg-white/80 px-1 py-0.5 rounded shadow-sm"
+        style={{
+          left: `${L_SIZE_PIXELS / 2}px`,
+          bottom: '-25px',
+          transform: 'translateX(-50%)',
+          opacity: opacity / 100,
+        }}
+      >
+        {Math.round(scaleValues.x / 2)}m
+      </div>
+      
       {/* X-akse ende */}
       <div 
         className="absolute text-xs font-bold text-red-600 bg-white/80 px-1 py-0.5 rounded shadow-sm"
@@ -197,12 +210,25 @@ export default function MSRRetikkel({ isVisible, opacity, style, currentPosition
         {scaleValues.x}m
       </div>
       
+      {/* Y-akse midtpunkt */}
+      <div 
+        className="absolute text-xs font-bold text-red-600 bg-white/80 px-1 py-0.5 rounded shadow-sm"
+        style={{
+          left: '-25px',
+          bottom: `${L_SIZE_PIXELS / 2 + 15}px`,
+          transform: 'translateY(50%)',
+          opacity: opacity / 100,
+        }}
+      >
+        {Math.round(scaleValues.y / 2)}m
+      </div>
+      
       {/* Y-akse ende */}
       <div 
         className="absolute text-xs font-bold text-red-600 bg-white/80 px-1 py-0.5 rounded shadow-sm"
         style={{
           left: '-25px',
-          bottom: `${L_SIZE_PIXELS}px`,
+          bottom: `${L_SIZE_PIXELS + 15}px`,
           transform: 'translateY(50%)',
           opacity: opacity / 100,
         }}
