@@ -58,7 +58,7 @@ export default function Home() {
   // State for MSR-retikkel
   const [showMSRRetikkel, setShowMSRRetikkel] = useState(true);
   const [msrRetikkelOpacity, setMSRRetikkelOpacity] = useState(80);
-  const [msrRetikkelStyle, setMSRRetikkelStyle] = useState<'msr' | 'ivar'>('msr');
+  const [msrRetikkelStyle, setMSRRetikkelStyle] = useState<'msr' | 'ivar'>('ivar');
   const [categoryConfigs, setCategoryConfigs] = useState<Record<keyof CategoryFilter, CategoryConfig>>({
     city: {
       color: '#1e40af', // Dark blue
