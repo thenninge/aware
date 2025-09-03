@@ -224,13 +224,13 @@ export default function Home() {
           className={`font-semibold px-2 py-1 rounded-full transition-colors text-xs ${mode === 'track' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
           onClick={() => setMode('track')}
         >
-          Track
+          Shoot
         </button>
         <button
           className={`font-semibold px-2 py-1 rounded-full transition-colors text-xs ${mode === 'søk' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
           onClick={() => setMode('søk')}
         >
-          Søk
+          Track
         </button>
         {/* Filter-knapp */}
         <button

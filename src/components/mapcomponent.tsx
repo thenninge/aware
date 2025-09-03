@@ -2037,14 +2037,14 @@ export default function MapComponent({
             }`}
             title="Du må først markere Skyteplass med Skudd-knappen"
           >
-            <span className="text-[10px] mt-0.5">Treff</span>
+                                    <span className="text-[10px] mt-0.5">Target</span>
           </button>
           <button
             onClick={handleSaveCurrentPos}
             className="flex-1 min-w-[60px] max-w-[110px] w-auto h-9 rounded-full shadow-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-[0.75rem] transition-colors border border-blue-700 flex flex-col items-center justify-center px-[0.375em] py-[0.375em]"
             title="Save current pos"
           >
-            <span className="text-[10px] mt-0.5">Skudd</span>
+                                    <span className="text-[10px] mt-0.5">From</span>
           </button>
         </div>
       )}
@@ -2063,20 +2063,16 @@ export default function MapComponent({
                       }`}
                       title="Lagre synlige spor til database"
                     >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-                        <polyline points="17,21 17,13 7,13 7,21"/>
-                        <polyline points="7,3 7,8 15,8"/>
-                      </svg>
+                      💾
                     </button>
 
                     {/* Funn! knapp */}
                     <button
                       onClick={toggleFindingMode}
                       className="px-3 h-9 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex items-center justify-center bg-purple-600 hover:bg-purple-700 text-white border-purple-700"
-                      title="Klikk for å plassere funn"
+                      title="Klikk for å plassere markering"
                     >
-                      <span className="text-[10px] font-bold">Funn!</span>
+                      <span className="text-[10px] font-bold">Mark!</span>
                     </button>
 
                     {/* Start/Stopp spor knapp */}
@@ -2087,9 +2083,9 @@ export default function MapComponent({
                           ? 'bg-red-600 hover:bg-red-700 text-white border-red-700'
                           : 'bg-green-600 hover:bg-green-700 text-white border-green-700'
                       }`}
-                      title={isTracking ? 'Stopp spor' : 'Start spor'}
+                      title={isTracking ? 'Stop track' : 'Start track'}
                     >
-                      <span className="text-[10px] mt-0.5">{isTracking ? 'Stopp spor' : 'Start spor'}</span>
+                                              <span className="text-[10px] mt-0.5">{isTracking ? 'Stop track' : 'Start track'}</span>
                     </button>
                   </div>
                 )}
