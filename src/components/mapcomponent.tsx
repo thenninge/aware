@@ -633,11 +633,9 @@ export default function MapComponent({
   const [hasError, setHasError] = useState(false);
   const [places, setPlaces] = useState<PlaceData[]>([]);
   const [currentPosition, setCurrentPosition] = useState<Position | undefined>(undefined);
-  const [isSettingsExpanded, setIsSettingsExpanded] = useState(false);
-  const [isFilterExpanded, setIsFilterExpanded] = useState(false);
+
   const [rotateMap, setRotateMap] = useState(false); // Ny state
-  const filterMenuRef = useRef<HTMLDivElement>(null);
-  const settingsMenuRef = useRef<HTMLDivElement>(null);
+
   const [isScanning, setIsScanning] = useState(false);
   const [savedPairs, setSavedPairs] = useState<PointPair[]>([]);
   const [compassStarted, setCompassStarted] = useState(false);
@@ -980,37 +978,7 @@ export default function MapComponent({
     );
   }, [showTargetDirectionUI, targetRange, targetDirection, savedPairs]);
 
-  // Lukker filter-expander ved klikk utenfor
-  useEffect(() => {
-    if (!isFilterExpanded) return;
-    function handleClick(event: MouseEvent | TouchEvent) {
-      if (filterMenuRef.current && !filterMenuRef.current.contains(event.target as Node)) {
-        setIsFilterExpanded(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClick);
-    document.addEventListener('touchstart', handleClick);
-    return () => {
-      document.removeEventListener('mousedown', handleClick);
-      document.removeEventListener('touchstart', handleClick);
-    };
-  }, [isFilterExpanded]);
 
-  // Lukker settings-expander ved klikk utenfor
-  useEffect(() => {
-    if (!isSettingsExpanded) return;
-    function handleClick(event: MouseEvent | TouchEvent) {
-      if (settingsMenuRef.current && !settingsMenuRef.current.contains(event.target as Node)) {
-        setIsSettingsExpanded(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClick);
-    document.addEventListener('touchstart', handleClick);
-    return () => {
-      document.removeEventListener('mousedown', handleClick);
-      document.removeEventListener('touchstart', handleClick);
-    };
-  }, [isSettingsExpanded]);
 
   useEffect(() => {
     // Ensure Leaflet is loaded
@@ -1857,171 +1825,11 @@ export default function MapComponent({
       {/* Settings & Filter Buttons - Top Right */}
       {/* Fjern hele blokken for Settings & Filter Buttons - Top Right */}
 
-      {/* Settings Menu */}
-      {isSettingsExpanded && (
-        <div ref={settingsMenuRef} className="fixed top-20 right-4 z-[1002]">
-          <SettingsMenu 
-            categoryConfigs={categoryConfigs}
-            onCategoryConfigChange={onCategoryConfigChange || (() => {})}
-            angleRange={angleRange}
-            onAngleRangeChange={onAngleRangeChange || (() => {})}
-          />
-          
 
-          
-          <button
-            onClick={handleDeleteAllShots}
-            className="mt-4 w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded shadow-lg text-sm"
-          >
-            Slett alle skuddpar
-          </button>
-        </div>
-      )}
 
-      {/* Filter Menu */}
-      {isFilterExpanded && (
-        <div ref={filterMenuRef} className="fixed top-36 right-4 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg z-[1000] max-w-xs">
-        {/* Filter Header with Expand/Collapse */}
-        <div className="p-3 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            <div className="text-sm font-medium text-gray-700">Filtrer & Kontroller</div>
-            <button
-                  onClick={() => setIsFilterExpanded(false)}
-              className="text-gray-500 hover:text-gray-700 transition-colors"
-            >
-                  ✕
-            </button>
-          </div>
-        </div>
-        {/* Expandable Filter Content */}
-          <div className="p-3 border-b border-gray-200">
-            {/* Radius Control */}
-            <div className="mb-3">
-              <label className="text-xs font-medium text-gray-700 block mb-1">
-                Radius: {radius}m
-              </label>
-              <input
-                type="range"
-                min="1000"
-                max="4000"
-                step="500"
-                value={radius}
-                onChange={(e) => {
-                  onRadiusChange?.(Number(e.target.value));
-                }}
-                className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer hover:bg-gray-300 transition-colors"
-                style={{
-                  background: 'linear-gradient(to right, #3b82f6 0%, #3b82f6 ' + ((radius - 1000) / 3000 * 100) + '%, #e5e7eb ' + ((radius - 1000) / 3000 * 100) + '%, #e5e7eb 100%)'
-                }}
-              />
-            </div>
 
-            {/* Global Opacity Control */}
-            <div className="mb-3">
-              <label className="text-xs font-medium text-gray-700 block mb-1">
-                Gjennomsiktighet: {Math.round((categoryConfigs.city?.opacity || 1.0) * 100)}%
-              </label>
-              <input
-                type="range"
-                min="0.1"
-                max="0.7"
-                step="0.05"
-                value={categoryConfigs.city?.opacity || 0.3}
-                onChange={(e) => {
-                  const newOpacity = parseFloat(e.target.value);
-                  if (onCategoryConfigChange) {
-                    Object.keys(categoryConfigs).forEach((key) => {
-                      onCategoryConfigChange(key as keyof CategoryFilter, {
-                        ...categoryConfigs[key as keyof CategoryFilter],
-                        opacity: newOpacity,
-                    });
-                  });
-                  }
-                }}
-                className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer hover:bg-gray-300 transition-colors"
-                style={{
-                  background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${(categoryConfigs.city?.opacity || 0.3) * 100}%, #e5e7eb ${(categoryConfigs.city?.opacity || 0.3) * 100}%, #e5e7eb 100%)`
-                }}
-              />
-            </div>
 
-                         {/* Category Filters */}
-             <div className="mb-3">
-               <div className="text-xs font-medium text-gray-700 mb-2">Filtrer:</div>
-               <div className="space-y-1">
-                 {Object.entries(categoryConfigs).map(([category, config]) => (
-                   <label key={category} className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
-                     <input
-                       type="checkbox"
-                       checked={categoryFilters[category as keyof CategoryFilter]}
-                       onChange={() => onCategoryChange?.(category as keyof CategoryFilter)}
-                       className="w-3 h-3 text-blue-600 rounded focus:ring-blue-500"
-                     />
-                     <span 
-                       className="font-medium"
-                       style={{ color: config.color }}
-                     >
-                       {category === 'city' && 'By'}
-                       {category === 'town' && 'Tettsted'}
-                       {category === 'village' && 'Landsby'}
-                       {category === 'hamlet' && 'Grend'}
-                       {category === 'farm' && 'Gård'}
-                       {category === 'isolated_dwelling' && 'Enkeltbolig'}
-                     </span>
-                   </label>
-                 ))}
-               </div>
-             </div>
-
-             {/* Show Markers Setting */}
-             <div className="mb-3">
-               <div className="text-xs font-medium text-gray-700 mb-2">Visning:</div>
-               <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
-                 <input
-                   type="checkbox"
-                   checked={showMarkers}
-                   onChange={(e) => onShowMarkersChange?.(e.target.checked)}
-                   className="w-3 h-3 text-blue-600 rounded focus:ring-blue-500"
-                 />
-                 <span className="font-medium text-gray-700">
-                   Vis treff i kart
-                 </span>
-               </label>
-            </div>
-
-            {/* Live Position Setting */}
-            <div className="mb-3">
-              <div className="text-xs font-medium text-gray-700 mb-2">Live:</div>
-              <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
-                <input
-                  type="checkbox"
-                  checked={isLiveMode}
-                  onChange={(e) => onLiveModeChange?.(e.target.checked)}
-                  className="w-3 h-3 text-blue-600 rounded focus:ring-blue-500"
-                />
-                <span className="font-medium text-gray-700">
-                  Live GPS & Kompass
-                </span>
-              </label>
-            </div>
-
-            {/* Kartrotasjon Setting */}
-            <div className="mb-3">
-              <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
-                <input
-                  type="checkbox"
-                  checked={rotateMap}
-                  onChange={(e) => setRotateMap(e.target.checked)}
-                  className="w-3 h-3 text-blue-600 rounded focus:ring-blue-500"
-                />
-                <span className="font-medium text-gray-700">
-                  Roter kart etter mobilretning (Front up)
-                </span>
-              </label>
-            </div>
-             </div>
-          </div>
-        )}
+      
 
       {/* --- PATCH FOR BEDRE KNAPPEPLASSERING --- */}
       {/* Track-mode: Knapper for lagring av posisjoner */}

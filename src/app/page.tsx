@@ -116,36 +116,7 @@ export default function Home() {
     }
   }, [mode, isTracking]);
 
-  // Lukker settings-meny ved klikk utenfor
-  useEffect(() => {
-    if (!isSettingsExpanded) return;
-    function handleClick(event: MouseEvent | TouchEvent) {
-      if (settingsMenuRef.current && !settingsMenuRef.current.contains(event.target as Node)) {
-        setIsSettingsExpanded(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClick);
-    document.addEventListener('touchstart', handleClick);
-    return () => {
-      document.removeEventListener('mousedown', handleClick);
-      document.removeEventListener('touchstart', handleClick);
-    };
-  }, [isSettingsExpanded]);
-  // Lukker filter-meny ved klikk utenfor
-  useEffect(() => {
-    if (!isFilterExpanded) return;
-    function handleClick(event: MouseEvent | TouchEvent) {
-      if (filterMenuRef.current && !filterMenuRef.current.contains(event.target as Node)) {
-        setIsFilterExpanded(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClick);
-    document.addEventListener('touchstart', handleClick);
-    return () => {
-      document.removeEventListener('mousedown', handleClick);
-      document.removeEventListener('touchstart', handleClick);
-    };
-  }, [isFilterExpanded]);
+
 
   const handlePositionChange = (position: Position) => {
     setCurrentPosition(position);
@@ -202,15 +173,21 @@ export default function Home() {
 
  
 
-  return (
+        return (
     <div className="w-full h-screen">
+
+      
       {/* Mode-toggle og menyknapper alltid synlig, fixed og midtjustert, også på mobil */}
-      <div className="fixed top-0 left-1/2 -translate-x-1/2 z-[2001] flex justify-center items-center w-full max-w-xs px-2 py-1 gap-2">
+      <div className="fixed top-0 left-1/2 -translate-x-1/2 z-[2001] flex justify-center items-center w-full max-w-xs px-2 py-2 gap-2">
         {/* Settings-knapp */}
         <button
-          onClick={() => setIsSettingsExpanded((v) => !v)}
-          className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors border border-gray-200"
-          title="Innstillinger"
+          onClick={() => setIsSettingsExpanded(!isSettingsExpanded)}
+          className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors border ${
+            isSettingsExpanded 
+              ? 'bg-blue-100 border-blue-300 hover:bg-blue-200' 
+              : 'bg-white hover:bg-gray-200'
+          }`}
+          title={isSettingsExpanded ? 'Lukk innstillinger' : 'Åpne innstillinger'}
         >
           <span className="text-xl">⚙️</span>
         </button>
@@ -234,9 +211,13 @@ export default function Home() {
         </button>
         {/* Filter-knapp */}
         <button
-          onClick={() => setIsFilterExpanded((v) => !v)}
-          className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors border border-gray-200"
-          title="Filter"
+          onClick={() => setIsFilterExpanded(!isFilterExpanded)}
+          className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors border ${
+            isFilterExpanded 
+              ? 'bg-blue-100 border-blue-300 hover:bg-blue-200' 
+              : 'bg-white hover:bg-gray-100 border-gray-200'
+          }`}
+          title={isFilterExpanded ? 'Lukk filter' : 'Åpne filter'}
         >
           <span className="text-xl">☑️</span>
         </button>
