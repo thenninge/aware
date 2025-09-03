@@ -492,6 +492,35 @@ function TrackingController({
   return null; // Denne komponenten renderer ingenting, bare håndterer events
 }
 
+// Component to handle funn in søk-modus
+  function FunnController({
+    isFindingMode,
+    mode,
+    onMapClick
+  }: {
+    isFindingMode: boolean;
+    mode: string;
+    onMapClick: (e: { latlng: { lat: number; lng: number } }) => void;
+  }) {
+    const map = useMap();
+
+    useEffect(() => {
+      if (!map || !isFindingMode || mode !== 'søk') return;
+
+      const handleMapClick = (e: { latlng: { lat: number; lng: number } }) => {
+        onMapClick(e);
+      };
+
+      map.on('click', handleMapClick);
+
+      return () => {
+        map.off('click', handleMapClick);
+      };
+    }, [map, isFindingMode, mode, onMapClick]);
+
+    return null; // Denne komponenten renderer ingenting, bare håndterer events
+  }
+
 
 
 // Hjelpefunksjon for å kalkulere ny posisjon ut fra avstand og retning
@@ -550,6 +579,15 @@ interface SavedTrack {
   mode: string;
   name: string;
   color: string;
+}
+
+// Type for lagrede funn
+interface SavedFind {
+  id: string;
+  position: Position;
+  createdAt: string;
+  shotPairId: string;
+  mode: string;
 }
 
 const LAYER_CONFIGS = [
@@ -628,6 +666,10 @@ export default function MapComponent({
   const [showSaveTrackDialog, setShowSaveTrackDialog] = useState(false);
   const [trackName, setTrackName] = useState('');
   const [trackColor, setTrackColor] = useState('#EAB308'); // Standard gul farge
+  
+  // Funn state for søk-modus
+  const [isFindingMode, setIsFindingMode] = useState(false);
+  const [savedFinds, setSavedFinds] = useState<SavedFind[]>([]);
   
   // Start sporing - generer ny tracking ID og start med tom liste
   const startTracking = () => {
@@ -752,6 +794,79 @@ export default function MapComponent({
     setTrackColor('#EAB308');
     onTrackingPointsChange?.([]);
     setCurrentTrackingId(null);
+  };
+
+  // Toggle funn-modus
+  const toggleFindingMode = () => {
+    setIsFindingMode(!isFindingMode);
+  };
+
+  // Lagre funn til localStorage
+  const saveFindToLocalStorage = (position: Position) => {
+    try {
+      // Hent eksisterende funn
+      const existingFinds = JSON.parse(localStorage.getItem('searchFinds') || '{}');
+      
+      // Finn aktivt skuddpar ID
+      const activeShotPairId = lastPair?.id?.toString() || 'unknown';
+      
+      // Generer unik ID for funnet
+      const findId = `find_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Lagre nytt funn
+      const newFind: SavedFind = {
+        id: findId,
+        position: position,
+        createdAt: new Date().toISOString(),
+        shotPairId: activeShotPairId,
+        mode: 'søk'
+      };
+      
+      // Legg til i eksisterende funn
+      existingFinds[findId] = newFind;
+      localStorage.setItem('searchFinds', JSON.stringify(existingFinds));
+      
+      // Oppdater state for å vise det nye funnet umiddelbart
+      setSavedFinds(prev => [...prev, newFind]);
+      
+      console.log('Funn lagret:', newFind);
+    } catch (error) {
+      console.error('Feil ved lagring av funn:', error);
+    }
+  };
+
+  // Last alle lagrede funn fra localStorage
+  const loadSavedFinds = (): SavedFind[] => {
+    try {
+      const savedFinds = JSON.parse(localStorage.getItem('searchFinds') || '{}');
+      const allFinds = Object.values(savedFinds) as SavedFind[];
+      
+      // Filtrer funn basert på aktivt skuddpar og showOnlyLastShot
+      if (showOnlyLastShot && hasSavedPairs && safeSavedPairs.length > 0) {
+        const currentLastPair = safeSavedPairs[safeSavedPairs.length - 1];
+        if (currentLastPair?.id) {
+          // Vis kun funn for siste skuddpar
+          return allFinds.filter(find => find.shotPairId === currentLastPair.id.toString());
+        }
+      }
+      // Vis alle funn
+      return allFinds;
+    } catch (error) {
+      console.error('Feil ved lasting av lagrede funn:', error);
+      return [];
+    }
+  };
+
+  // Håndter kart-klikk for å plassere funn
+  const handleMapClick = (e: { latlng: { lat: number; lng: number } }) => {
+    if (isFindingMode && mode === 'søk') {
+      const { lat, lng } = e.latlng;
+      const shouldSave = window.confirm('Lagre funn her?');
+      if (shouldSave) {
+        saveFindToLocalStorage({ lat, lng });
+        setIsFindingMode(false); // Deaktiver funn-modus etter lagring
+      }
+    }
   };
 
 
@@ -1069,8 +1184,12 @@ export default function MapComponent({
     if (mode === 'søk') {
       const tracks = loadSavedTracks();
       setSavedTracks(tracks);
+      
+      const finds = loadSavedFinds();
+      setSavedFinds(finds);
     } else {
       setSavedTracks([]); // Tøm spor når vi ikke er i søk-modus
+      setSavedFinds([]); // Tøm funn når vi ikke er i søk-modus
     }
   }, [mode, showOnlyLastShot, lastPair?.id]); // Reager på endringer i filter og skuddpar
 
@@ -1167,7 +1286,6 @@ export default function MapComponent({
         style={{ height: '100%', width: '100%' }}
         zoomControl={true}
         attributionControl={true}
-
       >
         <TileLayer
           url={LAYER_CONFIGS[layerIdx].url}
@@ -1202,6 +1320,13 @@ export default function MapComponent({
           mode={mode}
           onTrackingPointsChange={onTrackingPointsChange || (() => {})}
           currentPosition={currentPosition}
+        />
+
+        {/* Funn controller for søk-modus */}
+        <FunnController 
+          isFindingMode={isFindingMode}
+          mode={mode}
+          onMapClick={handleMapClick}
         />
         {/* Radius circle: kun i aware-mode */}
         {mode === 'aware' && currentPosition && (
@@ -1247,7 +1372,25 @@ export default function MapComponent({
                   fillColor: '#EAB308',
                   fillOpacity: 0.5,
                 }}
-              />
+                eventHandlers={{
+                  click: (e) => {
+                    // Åpne popup manuelt på mobil
+                    const popup = e.target.getPopup();
+                    if (popup) {
+                      popup.openPopup();
+                    }
+                  }
+                }}
+              >
+                <Popup>
+                  <div className="text-center">
+                    <div className="font-semibold text-sm">Aktivt spor</div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      Under opprettelse
+                    </div>
+                  </div>
+                </Popup>
+              </Circle>
             ))}
             
             {/* Gul linje mellom tracking punktene */}
@@ -1259,7 +1402,25 @@ export default function MapComponent({
                   weight: 2,
                   opacity: 0.8
                 }}
-              />
+                eventHandlers={{
+                  click: (e) => {
+                    // Åpne popup manuelt på mobil
+                    const popup = e.target.getPopup();
+                    if (popup) {
+                      popup.openPopup();
+                    }
+                  }
+                }}
+              >
+                <Popup>
+                  <div className="text-center">
+                    <div className="font-semibold text-sm">Aktivt spor</div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      Under opprettelse
+                    </div>
+                  </div>
+                </Popup>
+              </Polyline>
             )}
           </>
         )}
@@ -1281,15 +1442,21 @@ export default function MapComponent({
                       fillColor: track.color || '#EAB308',
                       fillOpacity: 0.3, // Litt mer transparent enn aktive spor
                     }}
+                    eventHandlers={{
+                      click: (e) => {
+                        // Åpne popup manuelt på mobil
+                        const popup = e.target.getPopup();
+                        if (popup) {
+                          popup.openPopup();
+                        }
+                      }
+                    }}
                   >
                     <Popup>
                       <div className="text-center">
                         <div className="font-semibold text-sm">{track.name || 'Unnamed track'}</div>
                         <div className="text-xs text-gray-600 mt-1">
                           {new Date(track.createdAt).toLocaleDateString('nb-NO')}
-                        </div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          {track.points.length} punkter
                         </div>
                       </div>
                     </Popup>
@@ -1305,9 +1472,66 @@ export default function MapComponent({
                       weight: 1.5,
                       opacity: 0.6 // Litt mer transparent enn aktive spor
                     }}
-                  />
+                    eventHandlers={{
+                      click: (e) => {
+                        // Åpne popup manuelt på mobil
+                        const popup = e.target.getPopup();
+                        if (popup) {
+                          popup.openPopup();
+                        }
+                      }
+                    }}
+                  >
+                    <Popup>
+                      <div className="text-center">
+                        <div className="font-semibold text-sm">{track.name || 'Unnamed track'}</div>
+                        <div className="text-xs text-gray-600 mt-1">
+                          {new Date(track.createdAt).toLocaleDateString('nb-NO')}
+                        </div>
+                      </div>
+                    </Popup>
+                  </Polyline>
                 )}
               </React.Fragment>
+            ))}
+          </>
+        )}
+
+        {/* Alle lagrede funn i søk-modus */}
+        {mode === 'søk' && savedFinds.length > 0 && (
+          <>
+            {savedFinds.map((find) => (
+              <Marker
+                key={`saved-find-${find.id}`}
+                position={[find.position.lat, find.position.lng]}
+                icon={L.divIcon({
+                  className: 'custom-marker find-marker',
+                  html: `<div style="width: 16px; height: 16px; position: relative;">
+                    <div style="width: 2px; height: 16px; background-color: #EF4444; position: absolute; left: 7px; top: 0;"></div>
+                    <div style="width: 16px; height: 2px; background-color: #EF4444; position: absolute; left: 0; top: 7px;"></div>
+                  </div>`,
+                  iconSize: [16, 16],
+                  iconAnchor: [8, 8],
+                })}
+                eventHandlers={{
+                  click: (e) => {
+                    // Åpne popup manuelt på mobil
+                    const popup = e.target.getPopup();
+                    if (popup) {
+                      popup.openPopup();
+                    }
+                  }
+                }}
+              >
+                <Popup>
+                  <div className="text-center">
+                    <div className="font-semibold text-sm">Funn</div>
+                    <div className="text-xs text-gray-600 mt-1">
+                      {new Date(find.createdAt).toLocaleDateString('nb-NO')}
+                    </div>
+                  </div>
+                </Popup>
+              </Marker>
             ))}
           </>
         )}
@@ -1794,41 +2018,54 @@ export default function MapComponent({
         </div>
       )}
       
-                        {/* Start/Stopp spor knapp kun i søk-modus */}
-        {mode === 'søk' && (
-          <div className="fixed bottom-4 inset-x-0 z-[2001] flex flex-wrap justify-center items-center gap-2 px-2">
-            {/* Lagre til database knapp */}
-            <button
-              onClick={handleSaveToDatabase}
-              disabled={savedTracks.length === 0}
-              className={`w-9 h-9 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex items-center justify-center ${
-                savedTracks.length > 0
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white border-blue-700'
-                  : 'bg-gray-400 text-gray-200 border-gray-300 cursor-not-allowed'
-              }`}
-              title="Lagre synlige spor til database"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-                <polyline points="17,21 17,13 7,13 7,21"/>
-                <polyline points="7,3 7,8 15,8"/>
-              </svg>
-            </button>
-            
-            {/* Start/Stopp spor knapp */}
-            <button
-              onClick={isTracking ? stopTracking : startTracking}
-              className={`flex-1 min-w-[60px] max-w-[110px] w-auto h-9 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex flex-col items-center justify-center px-[0.375em] py-[0.375em] ${
-                isTracking
-                  ? 'bg-red-600 hover:bg-red-700 text-white border-red-700'
-                  : 'bg-green-600 hover:bg-green-700 text-white border-green-700'
-              }`}
-              title={isTracking ? 'Stopp spor' : 'Start spor'}
-            >
-              <span className="text-[10px] mt-0.5">{isTracking ? 'Stopp spor' : 'Start spor'}</span>
-            </button>
-          </div>
-        )}
+                                        {/* Start/Stopp spor knapp kun i søk-modus */}
+                {mode === 'søk' && (
+                  <div className="fixed bottom-4 inset-x-0 z-[2001] flex flex-wrap justify-center items-center gap-2 px-2">
+                    {/* Lagre til database knapp */}
+                    <button
+                      onClick={handleSaveToDatabase}
+                      disabled={savedTracks.length === 0}
+                      className={`w-9 h-9 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex items-center justify-center ${
+                        savedTracks.length > 0
+                          ? 'bg-blue-600 hover:bg-blue-700 text-white border-blue-700'
+                          : 'bg-gray-400 text-gray-200 border-gray-300 cursor-not-allowed'
+                      }`}
+                      title="Lagre synlige spor til database"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                        <polyline points="17,21 17,13 7,13 7,21"/>
+                        <polyline points="7,3 7,8 15,8"/>
+                      </svg>
+                    </button>
+
+                    {/* Funn! knapp */}
+                    <button
+                      onClick={toggleFindingMode}
+                      className={`px-3 h-9 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex items-center justify-center ${
+                        isFindingMode
+                          ? 'bg-purple-600 hover:bg-purple-700 text-white border-purple-700'
+                          : 'bg-gray-600 hover:bg-gray-700 text-white border-gray-700'
+                      }`}
+                      title={isFindingMode ? 'Funn-modus aktiv' : 'Aktiver funn-modus'}
+                    >
+                      <span className="text-[10px] font-bold">Funn!</span>
+                    </button>
+
+                    {/* Start/Stopp spor knapp */}
+                    <button
+                      onClick={isTracking ? stopTracking : startTracking}
+                      className={`flex-1 min-w-[60px] max-w-[110px] w-auto h-9 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex flex-col items-center justify-center px-[0.375em] py-[0.375em] ${
+                        isTracking
+                          ? 'bg-red-600 hover:bg-red-700 text-white border-red-700'
+                          : 'bg-green-600 hover:bg-green-700 text-white border-green-700'
+                      }`}
+                      title={isTracking ? 'Stopp spor' : 'Start spor'}
+                    >
+                      <span className="text-[10px] mt-0.5">{isTracking ? 'Stopp spor' : 'Start spor'}</span>
+                    </button>
+                  </div>
+                )}
       {/* Scan & Live Buttons - Bottom Right */}
       <div className="fixed bottom-4 right-4 sm:bottom-4 sm:right-4 bottom-2 right-2 z-[1000] flex flex-col gap-2">
           {/* Scan-knapp kun i aware-mode */}
