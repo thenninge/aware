@@ -588,6 +588,8 @@ interface SavedFind {
   createdAt: string;
   shotPairId: string;
   mode: string;
+  name: string;
+  color: string;
 }
 
 const LAYER_CONFIGS = [
@@ -670,6 +672,10 @@ export default function MapComponent({
   // Funn state for søk-modus
   const [isFindingMode, setIsFindingMode] = useState(false);
   const [savedFinds, setSavedFinds] = useState<SavedFind[]>([]);
+  const [showFindDialog, setShowFindDialog] = useState(false);
+  const [newFindPosition, setNewFindPosition] = useState<Position | null>(null);
+  const [findName, setFindName] = useState('');
+  const [findColor, setFindColor] = useState('#EF4444'); // Standard rød farge
   
   // Start sporing - generer ny tracking ID og start med tom liste
   const startTracking = () => {
@@ -796,13 +802,13 @@ export default function MapComponent({
     setCurrentTrackingId(null);
   };
 
-  // Toggle funn-modus
+  // Aktiver funn-modus
   const toggleFindingMode = () => {
-    setIsFindingMode(!isFindingMode);
+    setIsFindingMode(true);
   };
 
   // Lagre funn til localStorage
-  const saveFindToLocalStorage = (position: Position) => {
+  const saveFindToLocalStorage = (position: Position, name: string, color: string) => {
     try {
       // Hent eksisterende funn
       const existingFinds = JSON.parse(localStorage.getItem('searchFinds') || '{}');
@@ -819,7 +825,9 @@ export default function MapComponent({
         position: position,
         createdAt: new Date().toISOString(),
         shotPairId: activeShotPairId,
-        mode: 'søk'
+        mode: 'søk',
+        name: name,
+        color: color
       };
       
       // Legg til i eksisterende funn
@@ -861,15 +869,30 @@ export default function MapComponent({
   const handleMapClick = (e: { latlng: { lat: number; lng: number } }) => {
     if (isFindingMode && mode === 'søk') {
       const { lat, lng } = e.latlng;
-      const shouldSave = window.confirm('Lagre funn her?');
-      if (shouldSave) {
-        saveFindToLocalStorage({ lat, lng });
-        setIsFindingMode(false); // Deaktiver funn-modus etter lagring
-      }
+      setNewFindPosition({ lat, lng });
+      setShowFindDialog(true);
+      setIsFindingMode(false); // Deaktiver funn-modus
     }
   };
 
+  // Håndter lagring av funn fra dialog
+  const handleSaveFindFromDialog = () => {
+    if (newFindPosition && findName.trim()) {
+      saveFindToLocalStorage(newFindPosition, findName.trim(), findColor);
+      setShowFindDialog(false);
+      setNewFindPosition(null);
+      setFindName('');
+      setFindColor('#EF4444');
+    }
+  };
 
+  // Håndter avbryt av funn dialog
+  const handleCancelFind = () => {
+    setShowFindDialog(false);
+    setNewFindPosition(null);
+      setFindName('');
+      setFindColor('#EF4444');
+  };
 
   const startCompass = async () => {
     try {
@@ -1507,8 +1530,8 @@ export default function MapComponent({
                 icon={L.divIcon({
                   className: 'custom-marker find-marker',
                   html: `<div style="width: 16px; height: 16px; position: relative;">
-                    <div style="width: 2px; height: 16px; background-color: #EF4444; position: absolute; left: 7px; top: 0;"></div>
-                    <div style="width: 16px; height: 2px; background-color: #EF4444; position: absolute; left: 0; top: 7px;"></div>
+                    <div style="width: 2px; height: 16px; background-color: ${find.color}; position: absolute; left: 7px; top: 0;"></div>
+                    <div style="width: 16px; height: 2px; background-color: ${find.color}; position: absolute; left: 0; top: 7px;"></div>
                   </div>`,
                   iconSize: [16, 16],
                   iconAnchor: [8, 8],
@@ -1525,7 +1548,7 @@ export default function MapComponent({
               >
                 <Popup>
                   <div className="text-center">
-                    <div className="font-semibold text-sm">Funn</div>
+                    <div className="font-semibold text-sm">{find.name}</div>
                     <div className="text-xs text-gray-600 mt-1">
                       {new Date(find.createdAt).toLocaleDateString('nb-NO')}
                     </div>
@@ -2042,12 +2065,8 @@ export default function MapComponent({
                     {/* Funn! knapp */}
                     <button
                       onClick={toggleFindingMode}
-                      className={`px-3 h-9 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex items-center justify-center ${
-                        isFindingMode
-                          ? 'bg-purple-600 hover:bg-purple-700 text-white border-purple-700'
-                          : 'bg-gray-600 hover:bg-gray-700 text-white border-gray-700'
-                      }`}
-                      title={isFindingMode ? 'Funn-modus aktiv' : 'Aktiver funn-modus'}
+                      className="px-3 h-9 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex items-center justify-center bg-purple-600 hover:bg-purple-700 text-white border-purple-700"
+                      title="Klikk for å plassere funn"
                     >
                       <span className="text-[10px] font-bold">Funn!</span>
                     </button>
@@ -2339,6 +2358,66 @@ export default function MapComponent({
                 className="px-3 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white font-bold"
               >
                 Lagre spor
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Dialog for å lagre funn med navn og farge */}
+      {showFindDialog && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[2000]">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-80 flex flex-col gap-4">
+            <div className="text-xl font-bold mb-2 text-gray-800">Lagre funn</div>
+            
+            <label className="text-base font-semibold text-gray-700">
+              Navn på funn:
+              <input
+                type="text"
+                value={findName}
+                onChange={e => setFindName(e.target.value)}
+                placeholder="f.eks. Tiur"
+                className="w-full border rounded px-2 py-1 mt-1 mb-2 text-lg text-[16px] text-gray-900"
+                autoFocus
+              />
+            </label>
+
+            <label className="text-base font-semibold text-gray-700">
+              Farge på funn:
+              <div className="flex gap-2 mt-1 mb-2">
+                <input
+                  type="color"
+                  value={findColor}
+                  onChange={e => setFindColor(e.target.value)}
+                  className="w-12 h-12 border rounded cursor-pointer"
+                  title="Velg farge"
+                />
+                <div className="flex-1 flex flex-wrap gap-1">
+                  {['#EF4444', '#EAB308', '#10B981', '#3B82F6', '#8B5CF6', '#F59E0B', '#EC4899', '#06B6D4'].map((color) => (
+                    <button
+                      key={color}
+                      onClick={() => setFindColor(color)}
+                      className={`w-8 h-8 rounded border-2 ${findColor === color ? 'border-gray-800' : 'border-gray-300'}`}
+                      title={`Velg ${color}`}
+                      style={{ backgroundColor: color }}
+                    />
+                  ))}
+                </div>
+              </div>
+            </label>
+
+            <div className="flex gap-2 justify-end mt-2">
+              <button
+                onClick={handleCancelFind}
+                className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold"
+              >
+                Avbryt
+              </button>
+              <button
+                onClick={handleSaveFindFromDialog}
+                className="px-3 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white font-bold"
+              >
+                Lagre funn
               </button>
             </div>
           </div>
