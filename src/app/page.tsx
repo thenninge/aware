@@ -55,9 +55,10 @@ export default function Home() {
   const [isTracking, setIsTracking] = useState(false);
   const [trackingPoints, setTrackingPoints] = useState<Position[]>([]);
   
-  // State for scale bar
+  // State for MSR-retikkel
   const [showMSRRetikkel, setShowMSRRetikkel] = useState(true);
   const [msrRetikkelOpacity, setMSRRetikkelOpacity] = useState(80);
+  const [msrRetikkelStyle, setMSRRetikkelStyle] = useState<'msr' | 'ivar'>('msr');
   const [categoryConfigs, setCategoryConfigs] = useState<Record<keyof CategoryFilter, CategoryConfig>>({
     city: {
       color: '#1e40af', // Dark blue
@@ -252,8 +253,10 @@ export default function Home() {
             currentCenter={currentCenter || undefined}
             showMSRRetikkel={showMSRRetikkel}
             msrRetikkelOpacity={msrRetikkelOpacity}
+            msrRetikkelStyle={msrRetikkelStyle}
             onShowMSRRetikkelChange={setShowMSRRetikkel}
             onMSRRetikkelOpacityChange={setMSRRetikkelOpacity}
+            onMSRRetikkelStyleChange={setMSRRetikkelStyle}
           />
         </div>
       )}
@@ -299,6 +302,7 @@ export default function Home() {
         onTrackingPointsChange={setTrackingPoints}
         showMSRRetikkel={showMSRRetikkel}
         msrRetikkelOpacity={msrRetikkelOpacity}
+        msrRetikkelStyle={msrRetikkelStyle}
       />
     </div>
   );

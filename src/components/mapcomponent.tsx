@@ -53,6 +53,7 @@ interface MapComponentProps {
   onTrackingPointsChange?: (points: Position[]) => void;
   showMSRRetikkel?: boolean;
   msrRetikkelOpacity?: number;
+  msrRetikkelStyle?: 'msr' | 'ivar';
 }
 
 interface CategoryFilter {
@@ -624,6 +625,7 @@ export default function MapComponent({
   onTrackingPointsChange,
       showMSRRetikkel = true,
     msrRetikkelOpacity = 80,
+    msrRetikkelStyle = 'msr',
 }: MapComponentProps) {
   const [showTargetDialog, setShowTargetDialog] = useState(false);
   const instanceId = useRef(Math.random());
@@ -657,6 +659,7 @@ export default function MapComponent({
   // MSR-retikkel state
   const [localShowMSRRetikkel, setLocalShowMSRRetikkel] = useState(showMSRRetikkel);
   const [localMSRRetikkelOpacity, setLocalMSRRetikkelOpacity] = useState(msrRetikkelOpacity);
+  const [localMSRRetikkelStyle, setLocalMSRRetikkelStyle] = useState(msrRetikkelStyle);
   
   // Synkroniser MSR-retikkel props med local state
   useEffect(() => {
@@ -666,6 +669,10 @@ export default function MapComponent({
   useEffect(() => {
     setLocalMSRRetikkelOpacity(msrRetikkelOpacity);
   }, [msrRetikkelOpacity]);
+  
+  useEffect(() => {
+    setLocalMSRRetikkelStyle(msrRetikkelStyle);
+  }, [msrRetikkelStyle]);
   
   // Start sporing - generer ny tracking ID og start med tom liste
   const startTracking = () => {
@@ -1345,6 +1352,7 @@ export default function MapComponent({
         <MSRRetikkel 
           isVisible={localShowMSRRetikkel}
           opacity={localMSRRetikkelOpacity}
+          style={localMSRRetikkelStyle}
           currentPosition={currentPosition}
         />
 

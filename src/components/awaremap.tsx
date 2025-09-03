@@ -59,6 +59,7 @@ interface AwareMapProps {
   onTrackingPointsChange?: (points: Position[]) => void;
   showMSRRetikkel?: boolean;
   msrRetikkelOpacity?: number;
+  msrRetikkelStyle?: 'msr' | 'ivar';
 }
 
 export default function AwareMap({ 
@@ -85,6 +86,7 @@ export default function AwareMap({
   onTrackingPointsChange,
           showMSRRetikkel,
         msrRetikkelOpacity,
+        msrRetikkelStyle,
 }: AwareMapProps) {
   const [isClient, setIsClient] = useState(false);
   const [hasError, setHasError] = useState(false);
@@ -144,6 +146,7 @@ export default function AwareMap({
         onTrackingPointsChange={onTrackingPointsChange}
         showMSRRetikkel={showMSRRetikkel}
         msrRetikkelOpacity={msrRetikkelOpacity}
+        msrRetikkelStyle={msrRetikkelStyle}
       />
     </div>
   );

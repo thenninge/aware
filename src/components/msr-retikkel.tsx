@@ -6,15 +6,35 @@ import { useState, useEffect } from 'react';
 interface MSRRetikkelProps {
   isVisible: boolean;
   opacity: number;
+  style: 'msr' | 'ivar';
   currentPosition?: { lat: number; lng: number };
 }
 
-export default function MSRRetikkel({ isVisible, opacity, currentPosition }: MSRRetikkelProps) {
+export default function MSRRetikkel({ isVisible, opacity, style, currentPosition }: MSRRetikkelProps) {
   const map = useMap();
   const [scaleValues, setScaleValues] = useState({ x: 0, y: 0 });
+  const [screenSize, setScreenSize] = useState({ width: 0, height: 0 });
   
   // Fast piksel-størrelse for L-en (200px x 200px)
   const L_SIZE_PIXELS = 200;
+  
+  // Hent skjermstørrelse og oppdater ved resize
+  useEffect(() => {
+    const updateScreenSize = () => {
+      setScreenSize({
+        width: window.innerWidth,
+        height: window.innerHeight
+      });
+    };
+    
+    // Sett initial størrelse
+    updateScreenSize();
+    
+    // Lyt til resize events
+    window.addEventListener('resize', updateScreenSize);
+    
+    return () => window.removeEventListener('resize', updateScreenSize);
+  }, []);
   
   // Beregn faktiske avstander i meter basert på zoom-nivå
   useEffect(() => {
@@ -42,8 +62,12 @@ export default function MSRRetikkel({ isVisible, opacity, currentPosition }: MSR
     <div 
       className="absolute pointer-events-none z-[1000]"
       style={{
-        left: 'calc(25% + 257px)',
-        top: 'calc(50% + 0px)',
+        left: style === 'msr' 
+          ? `${screenSize.width / 2 + 0}px`  // MSR-style: midt på skjermen
+          : `140px`,                          // Ivar-style: 140px fra venstre kant (10px + 50px + 30px + 30px + 20px)
+        top: style === 'msr'
+          ? `${screenSize.height / 2}px`      // MSR-style: midt på skjermen
+          : `${screenSize.height + 20 - L_SIZE_PIXELS}px`, // Ivar-style: 20px over bunnen (10px - 30px - 30px)
         transform: 'translate(-50%, -50%)',
         width: `${L_SIZE_PIXELS}px`,
         height: `${L_SIZE_PIXELS}px`,

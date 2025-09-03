@@ -17,8 +17,10 @@ interface SettingsMenuProps {
   onDeleteAllShots?: () => void;
   showMSRRetikkel?: boolean;
   msrRetikkelOpacity?: number;
+  msrRetikkelStyle?: 'msr' | 'ivar';
   onShowMSRRetikkelChange?: (show: boolean) => void;
   onMSRRetikkelOpacityChange?: (opacity: number) => void;
+  onMSRRetikkelStyleChange?: (style: 'msr' | 'ivar') => void;
 }
 
 export default function SettingsMenu({ 
@@ -30,8 +32,10 @@ export default function SettingsMenu({
   currentCenter,
   showMSRRetikkel,
   msrRetikkelOpacity,
+  msrRetikkelStyle,
   onShowMSRRetikkelChange,
-  onMSRRetikkelOpacityChange
+  onMSRRetikkelOpacityChange,
+  onMSRRetikkelStyleChange
 }: SettingsMenuProps & { currentCenter?: { lat: number, lng: number } }) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [showHomeSaved, setShowHomeSaved] = useState(false);
@@ -148,6 +152,39 @@ export default function SettingsMenu({
                   background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${msrRetikkelOpacity}%, #e5e7eb ${msrRetikkelOpacity}%, #e5e7eb 100%)`
                 }}
               />
+            </div>
+          )}
+          
+          {/* MSR-retikkel Style Toggle */}
+          {showMSRRetikkel && msrRetikkelStyle !== undefined && onMSRRetikkelStyleChange && (
+            <div className="mb-3">
+              <label className="text-xs font-medium text-gray-700 block mb-2">
+                Plassering:
+              </label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => onMSRRetikkelStyleChange('msr')}
+                  className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                    msrRetikkelStyle === 'msr'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  MSR-style
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onMSRRetikkelStyleChange('ivar')}
+                  className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                    msrRetikkelStyle === 'ivar'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  Ivar-style
+                </button>
+              </div>
             </div>
           )}
         </div>
