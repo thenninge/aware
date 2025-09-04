@@ -1169,8 +1169,8 @@ export default function MapComponent({
       return;
     }
     if (!lastPair || !lastPair.current) return;
-    // 0° = nord, positiv = med klokka, negativ = mot klokka
-    // Kompassgrad: -90 => 270, 90 => 90, -180/180 => 180
+    // 0° = nord, 90° = øst, 180° = sør, 270° = vest
+    // Konverter fra -180 til +180 til 0-359
     const compassDeg = ((targetDirection + 360) % 360);
     setPreviewTarget(
       destinationPoint(
@@ -1301,12 +1301,12 @@ export default function MapComponent({
     const hasSavedPairs = Array.isArray(savedPairs) && savedPairs.length > 0;
     const lastPair = hasSavedPairs ? savedPairs[savedPairs.length - 1] : undefined;
     if (!hasSavedPairs || !lastPair || !lastPair.current) return;
-    const previewTarget = destinationPoint(
-      lastPair.current.lat,
-      lastPair.current.lng,
-      targetRange,
-      ((targetDirection + 360) % 360)
-    );
+          const previewTarget = destinationPoint(
+        lastPair.current.lat,
+        lastPair.current.lng,
+        targetRange,
+        ((targetDirection + 360) % 360)
+      );
     if (!previewTarget) return;
     setSavedPairs((prev) =>
       prev.map((pair, idx) =>
@@ -1346,7 +1346,7 @@ export default function MapComponent({
     if (!savedPairs.length || !savedPairs[savedPairs.length - 1].current) return;
     const base = savedPairs[savedPairs.length - 1].current;
     if (!base) return; // Guard mot undefined
-    const bearing = (targetDirection + 360) % 360;
+    const bearing = ((targetDirection + 360) % 360);
     const pos = destinationPoint(base.lat, base.lng, targetDistance, bearing);
     const { data, error } = await supabase.from('posts').insert([
       {
@@ -2561,11 +2561,11 @@ export default function MapComponent({
               <div className="w-full mt-2 flex flex-col items-center">
                 <label htmlFor="target-direction" className="block text-xs font-medium text-gray-700 mb-1 text-center">Retning:</label>
                 <input type="range" id="target-direction" name="target-direction" min={-180} max={180} step={1} value={targetDirection} onChange={e => setTargetDirection(Number(e.target.value))} className="w-full max-w-xs" style={{margin:'0 auto'}} />
-                <div className="text-xs text-center mt-1 font-semibold">Retning: {targetDirection}° {
-                  targetDirection === 0 ? '(nord)' :
-                  targetDirection === 180 || targetDirection === -180 ? '(sør)' :
-                  targetDirection === 90 ? '(øst)' :
-                  targetDirection === -90 ? '(vest)' : ''
+                <div className="text-xs text-center mt-1 font-semibold">Retning: {((targetDirection + 360) % 360)}° {
+                  ((targetDirection + 360) % 360) === 0 ? '(nord)' :
+                  ((targetDirection + 360) % 360) === 180 ? '(sør)' :
+                  ((targetDirection + 360) % 360) === 90 ? '(øst)' :
+                  ((targetDirection + 360) % 360) === 270 ? '(vest)' : ''
                 }</div>
               </div>
             </div>
