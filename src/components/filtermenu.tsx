@@ -28,6 +28,8 @@ interface FilterMenuProps {
   showOnlyLastShot?: boolean;
   onShowOnlyLastShotChange?: (v: boolean) => void;
   mode?: 'aware' | 'track' | 'søk';
+  showAllTracksAndFinds?: boolean;
+  onShowAllTracksAndFindsChange?: (v: boolean) => void;
 }
 
 const categoryLabels: Record<keyof CategoryFilter, string> = {
@@ -39,7 +41,7 @@ const categoryLabels: Record<keyof CategoryFilter, string> = {
   isolated_dwelling: 'Enkeltbolig',
 };
 
-export default function FilterMenu({ categoryFilters, onCategoryChange, radius, onRadiusChange, showMarkers, onShowMarkersChange, orientationMode, onOrientationModeChange, categoryConfigs, showOnlyLastShot, onShowOnlyLastShotChange, mode }: FilterMenuProps) {
+export default function FilterMenu({ categoryFilters, onCategoryChange, radius, onRadiusChange, showMarkers, onShowMarkersChange, orientationMode, onOrientationModeChange, categoryConfigs, showOnlyLastShot, onShowOnlyLastShotChange, mode, showAllTracksAndFinds, onShowAllTracksAndFindsChange }: FilterMenuProps) {
   return (
     <div className="bg-white rounded-lg shadow-lg p-4 min-w-[220px] max-w-xs">
       <div className="flex items-center justify-between mb-2">
@@ -103,6 +105,23 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
           <div className="text-xs text-blue-600">
             Viser valgt skuddpar automatisk
           </div>
+        </div>
+      )}
+      
+      {/* Vis alle søk-spor og funn i søk-modus */}
+      {mode === 'søk' && onShowAllTracksAndFindsChange && (
+        <div className="mb-3">
+          <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+            <input
+              type="checkbox"
+              checked={!!showAllTracksAndFinds}
+              onChange={e => onShowAllTracksAndFindsChange(e.target.checked)}
+              className="w-3 h-3 text-blue-600 rounded focus:ring-blue-500"
+            />
+            <span className="font-medium text-gray-700">
+              Vis alle søk-spor og funn
+            </span>
+          </label>
         </div>
       )}
       {/* Kategori-filter */}

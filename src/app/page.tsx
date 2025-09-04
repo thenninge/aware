@@ -54,6 +54,7 @@ export default function Home() {
   const [isAdminExpanded, setIsAdminExpanded] = useState(false);
   const [orientationMode, setOrientationMode] = useState<'north' | 'heading'>('north');
   const [showOnlyLastShot, setShowOnlyLastShot] = useState(true);
+  const [showAllTracksAndFinds, setShowAllTracksAndFinds] = useState(false);
   const [isTracking, setIsTracking] = useState(false);
   const [trackingPoints, setTrackingPoints] = useState<Position[]>([]);
   
@@ -353,6 +354,8 @@ export default function Home() {
           showOnlyLastShot={showOnlyLastShot}
           onShowOnlyLastShotChange={setShowOnlyLastShot}
           mode={mode}
+          showAllTracksAndFinds={showAllTracksAndFinds}
+          onShowAllTracksAndFindsChange={setShowAllTracksAndFinds}
         />
         </div>
       )}
@@ -386,6 +389,7 @@ export default function Home() {
         onPreviousTarget={handlePreviousTarget}
         onNextTarget={handleNextTarget}
         onSelectedTargetIndexChange={setSelectedTargetIndex}
+        showAllTracksAndFinds={showAllTracksAndFinds}
       />
 
       {/* Admin Menu */}

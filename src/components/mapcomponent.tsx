@@ -58,6 +58,7 @@ interface MapComponentProps {
   onPreviousTarget?: () => void;
   onNextTarget?: () => void;
   onSelectedTargetIndexChange?: (index: number) => void;
+  showAllTracksAndFinds?: boolean;
 }
 
 interface CategoryFilter {
@@ -634,6 +635,7 @@ export default function MapComponent({
   onPreviousTarget,
   onNextTarget,
   onSelectedTargetIndexChange,
+  showAllTracksAndFinds = false,
 }: MapComponentProps) {
   const [showTargetDialog, setShowTargetDialog] = useState(false);
   const instanceId = useRef(Math.random());
@@ -798,9 +800,14 @@ export default function MapComponent({
       const savedTracks = JSON.parse(localStorage.getItem('searchTracks') || '{}');
       const allTracks = Object.values(savedTracks) as SavedTrack[];
       
-      // I søk-modus: vis kun spor for det valgte treffpunktet
+      // I søk-modus: vis kun spor for det valgte treffpunktet, eller alle hvis showAllTracksAndFinds er aktiv
       if (mode === 'søk' && hasSavedPairs && safeSavedPairs.length > 0) {
-        // Reverser rekkefølgen slik at index 0 = nyeste, index 1 = nest nyeste, etc.
+        // Hvis showAllTracksAndFinds er aktiv, vis alle spor
+        if (showAllTracksAndFinds) {
+          return allTracks;
+        }
+        
+        // Ellers vis kun spor for det valgte treffpunktet
         const treffpunkter = safeSavedPairs.filter(p => p.category === 'Treffpunkt');
         const reversedTreffpunkter = treffpunkter.length > 0 ? [...treffpunkter].reverse() : [];
         const selectedTarget = reversedTreffpunkter[adjustedSelectedTargetIndex];
@@ -932,9 +939,14 @@ export default function MapComponent({
       const savedFinds = JSON.parse(localStorage.getItem('searchFinds') || '{}');
       const allFinds = Object.values(savedFinds) as SavedFind[];
       
-      // I søk-modus: vis kun funn for det valgte treffpunktet
+      // I søk-modus: vis kun funn for det valgte treffpunktet, eller alle hvis showAllTracksAndFinds er aktiv
       if (mode === 'søk' && hasSavedPairs && safeSavedPairs.length > 0) {
-        // Reverser rekkefølgen slik at index 0 = nyeste, index 1 = nest nyeste, etc.
+        // Hvis showAllTracksAndFinds er aktiv, vis alle funn
+        if (showAllTracksAndFinds) {
+          return allFinds;
+        }
+        
+        // Ellers vis kun funn for det valgte treffpunktet
         const treffpunkter = safeSavedPairs.filter(p => p.category === 'Treffpunkt');
         const reversedTreffpunkter = treffpunkter.length > 0 ? [...treffpunkter].reverse() : [];
         const selectedTarget = reversedTreffpunkter[adjustedSelectedTargetIndex];
@@ -1283,7 +1295,7 @@ export default function MapComponent({
       setSavedTracks([]); // Tøm spor når vi ikke er i søk-modus
       setSavedFinds([]); // Tøm funn når vi ikke er i søk-modus
     }
-  }, [mode, adjustedSelectedTargetIndex, lastPair?.id]); // Reager på endringer i modus, valgt treffpunkt og skuddpar
+  }, [mode, adjustedSelectedTargetIndex, lastPair?.id, showAllTracksAndFinds]); // Reager på endringer i modus, valgt treffpunkt, skuddpar og visningsmodus
 
   // Funksjon for å slette et spesifikt skuddpar
   const handleDeleteShotPair = async (clickedPairId: number) => {
