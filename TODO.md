@@ -50,6 +50,7 @@
 - [ ] Loading states
 - [ ] Error handling
 - [ ] Fjern lagg i map-pan (debounce API-kall)
+- [ ] Legge til tekst, dato, farge for skuddpar
 
 ## Teknisk
 - [x] Client-side rendering (CSR) for Leaflet
@@ -68,6 +69,7 @@
 
 ## Deployment
 - [ ] Vercel konfigurasjon
+- [ ] Zoom buttons leaflet optimization
 - [ ] Production build
 - [ ] Domain setup
 - [ ] Environment variables
@@ -77,3 +79,6 @@
 - [ ] Lage tabell for punkter med feltene: id, latitude, longitude, category, creator_id, created_at
 - [ ] Lage API-endepunkt for å lagre og hente punkter fra databasen
 - [ ] Integrere lagring og henting av punkter i frontend
+- [ ] Lagre og hente funn-data i database 
+- [ ] Lagre og hente spor-logg i database
+- [ ] Sync -button with DB? how to sync reliably?

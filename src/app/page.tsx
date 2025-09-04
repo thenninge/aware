@@ -4,6 +4,7 @@ import { useRef, useEffect, useState } from 'react';
 import AwareMap from '@/components/awaremap';
 import SettingsMenu from '@/components/settingsmenu';
 import FilterMenu from '@/components/filtermenu';
+import AdminMenu from '@/components/adminmenu';
 
 interface Position {
   lat: number;
@@ -50,6 +51,7 @@ export default function Home() {
   const [isLiveMode, setIsLiveMode] = useState(false); // Default live mode off
   const [isSettingsExpanded, setIsSettingsExpanded] = useState(false);
   const [isFilterExpanded, setIsFilterExpanded] = useState(false);
+  const [isAdminExpanded, setIsAdminExpanded] = useState(false);
   const [orientationMode, setOrientationMode] = useState<'north' | 'heading'>('north');
   const [showOnlyLastShot, setShowOnlyLastShot] = useState(true);
   const [isTracking, setIsTracking] = useState(false);
@@ -222,10 +224,20 @@ export default function Home() {
  
 
         return (
-    <div className="w-full h-screen">
+          <div className="w-full h-screen">
 
-      
-      {/* Mode-toggle og menyknapper alltid synlig, fixed og midtjustert, også på mobil */}
+        {/* Admin hamburger-knapp oppe til høyre */}
+        <div className="fixed top-4 right-4 z-[2001]">
+          <button
+            onClick={() => setIsAdminExpanded(!isAdminExpanded)}
+            className="w-10 h-10 bg-gray-800 hover:bg-gray-700 text-white rounded-lg shadow-lg flex items-center justify-center transition-colors"
+            title="Admin Panel"
+          >
+            <span className="text-lg">☰</span>
+          </button>
+        </div>
+        
+        {/* Mode-toggle og menyknapper alltid synlig, fixed og midtjustert, også på mobil */}
       <div className="fixed top-0 left-1/2 -translate-x-1/2 z-[2001] flex justify-center items-center w-full max-w-xs px-2 py-2 gap-2">
         {/* Settings-knapp */}
         <button
@@ -350,6 +362,12 @@ export default function Home() {
         selectedTargetIndex={selectedTargetIndex}
         onPreviousTarget={handlePreviousTarget}
         onNextTarget={handleNextTarget}
+      />
+
+      {/* Admin Menu */}
+      <AdminMenu 
+        isExpanded={isAdminExpanded}
+        onClose={() => setIsAdminExpanded(false)}
       />
     </div>
   );

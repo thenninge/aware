@@ -31,7 +31,7 @@ body {
 /* Flytt Leaflet zoom-kontroller ned på mobil */
 @media (max-width: 768px) {
   .leaflet-control-zoom {
-    top: 50% !important;
+    top: 30% !important;
     left: 10px !important;
     transform: translateY(-50%);
   }
