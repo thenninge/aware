@@ -1252,6 +1252,7 @@ export default function MapComponent({
           current_lat: currentPosition.lat,
           current_lng: currentPosition.lng,
           category: 'Skyteplass',
+          created_at: new Date().toISOString(),
         },
       ]).select();
       if (error) {
@@ -1278,6 +1279,7 @@ export default function MapComponent({
           target_lat: currentPosition.lat,
           target_lng: currentPosition.lng,
           category: 'Treffpunkt',
+          created_at: new Date().toISOString(),
         },
       ]).select();
       if (error) {
@@ -1325,6 +1327,7 @@ export default function MapComponent({
           current_lat: newPostPosition.lat,
           current_lng: newPostPosition.lng,
           category: 'Post',
+          created_at: new Date().toISOString(),
         },
       ]).select();
       if (error) {
@@ -1353,6 +1356,7 @@ export default function MapComponent({
         target_lat: pos.lat,
         target_lng: pos.lng,
         category: 'Treffpunkt',
+        created_at: new Date().toISOString(),
       },
     ]).select();
     if (error) {
@@ -1518,6 +1522,7 @@ export default function MapComponent({
         target_lat: pos.lat,
         target_lng: pos.lng,
         category: 'Treffpunkt',
+        created_at: new Date().toISOString(),
       },
     ]).select();
     if (error) {
@@ -2480,14 +2485,16 @@ export default function MapComponent({
         <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[2002] bg-white rounded-lg shadow-lg px-4 py-3 flex flex-col items-center gap-2 w-[90vw] max-w-xs">
           <label className="text-sm font-medium w-full text-black">Retning (grader):
             <div className="flex items-center gap-2 w-full mt-1">
-              <input
-                type="range"
-                min={-180}
-                max={180}
-                value={targetDirection}
-                onChange={e => setTargetDirection(Number(e.target.value))}
-                className="flex-1"
-              />
+              <div className="flex-1 px-2 py-1">
+                <input
+                  type="range"
+                  min={-180}
+                  max={180}
+                  value={targetDirection}
+                  onChange={e => setTargetDirection(Number(e.target.value))}
+                  className="w-full"
+                />
+              </div>
               <input
                 type="number"
                 min={-180}
