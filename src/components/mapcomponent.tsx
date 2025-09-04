@@ -743,15 +743,17 @@ export default function MapComponent({
       const savedTracks = JSON.parse(localStorage.getItem('searchTracks') || '{}');
       const allTracks = Object.values(savedTracks) as SavedTrack[];
       
-      // Filtrer spor basert på aktivt skuddpar og showOnlyLastShot
-      if (showOnlyLastShot && hasSavedPairs && safeSavedPairs.length > 0) {
-        const currentLastPair = safeSavedPairs[safeSavedPairs.length - 1];
-        if (currentLastPair?.id) {
-          // Vis kun spor for siste skuddpar
-          return allTracks.filter(track => track.shotPairId === currentLastPair.id.toString());
+      // I søk-modus: vis kun spor for det valgte treffpunktet
+      if (mode === 'søk' && hasSavedPairs && safeSavedPairs.length > 0) {
+        // Reverser rekkefølgen slik at index 0 = nyeste, index 1 = nest nyeste, etc.
+        const reversedPairs = [...safeSavedPairs].reverse();
+        const selectedTarget = reversedPairs[selectedTargetIndex];
+        if (selectedTarget?.id) {
+          // Vis kun spor for det valgte treffpunktet
+          return allTracks.filter(track => track.shotPairId === selectedTarget.id.toString());
         }
       }
-      // Vis alle spor
+      // Vis alle spor i andre moduser
       return allTracks;
     } catch (error) {
       console.error('Feil ved lasting av lagrede spor:', error);
@@ -860,15 +862,17 @@ export default function MapComponent({
       const savedFinds = JSON.parse(localStorage.getItem('searchFinds') || '{}');
       const allFinds = Object.values(savedFinds) as SavedFind[];
       
-      // Filtrer funn basert på aktivt skuddpar og showOnlyLastShot
-      if (showOnlyLastShot && hasSavedPairs && safeSavedPairs.length > 0) {
-        const currentLastPair = safeSavedPairs[safeSavedPairs.length - 1];
-        if (currentLastPair?.id) {
-          // Vis kun funn for siste skuddpar
-          return allFinds.filter(find => find.shotPairId === currentLastPair.id.toString());
+      // I søk-modus: vis kun funn for det valgte treffpunktet
+      if (mode === 'søk' && hasSavedPairs && safeSavedPairs.length > 0) {
+        // Reverser rekkefølgen slik at index 0 = nyeste, index 1 = nest nyeste, etc.
+        const reversedPairs = [...safeSavedPairs].reverse();
+        const selectedTarget = reversedPairs[selectedTargetIndex];
+        if (selectedTarget?.id) {
+          // Vis kun funn for det valgte treffpunktet
+          return allFinds.filter(find => find.shotPairId === selectedTarget.id.toString());
         }
       }
-      // Vis alle funn
+      // Vis alle funn i andre moduser
       return allFinds;
     } catch (error) {
       console.error('Feil ved lasting av lagrede funn:', error);
@@ -965,7 +969,9 @@ export default function MapComponent({
   // Oppdater previewTarget når range eller direction endres
   useEffect(() => {
     const hasSavedPairs = Array.isArray(savedPairs) && savedPairs.length > 0;
-    const lastPair = hasSavedPairs ? savedPairs[selectedTargetIndex] : undefined;
+    // Reverser rekkefølgen slik at index 0 = nyeste, index 1 = nest nyeste, etc.
+    const reversedPairs = hasSavedPairs ? [...savedPairs].reverse() : [];
+    const lastPair = hasSavedPairs ? reversedPairs[selectedTargetIndex] : undefined;
     if (!showTargetDirectionUI || !hasSavedPairs) {
       setPreviewTarget(null);
       return;
@@ -1177,7 +1183,9 @@ export default function MapComponent({
   const hasSafePlaces = safePlaces.length > 0;
   const safeSavedPairs = Array.isArray(savedPairs) ? savedPairs : [];
   const hasSavedPairs = safeSavedPairs.length > 0;
-  const lastPair = hasSavedPairs ? safeSavedPairs[selectedTargetIndex] : undefined;
+  // Reverser rekkefølgen slik at index 0 = nyeste, index 1 = nest nyeste, etc.
+  const reversedPairs = hasSavedPairs ? [...safeSavedPairs].reverse() : [];
+  const lastPair = hasSavedPairs ? reversedPairs[selectedTargetIndex] : undefined;
 
   // Last lagrede spor når komponenten mountes og når modus endres
   useEffect(() => {
@@ -1191,7 +1199,7 @@ export default function MapComponent({
       setSavedTracks([]); // Tøm spor når vi ikke er i søk-modus
       setSavedFinds([]); // Tøm funn når vi ikke er i søk-modus
     }
-  }, [mode, showOnlyLastShot, lastPair?.id]); // Reager på endringer i filter og skuddpar
+  }, [mode, selectedTargetIndex, lastPair?.id]); // Reager på endringer i modus, valgt treffpunkt og skuddpar
 
   // Legg til funksjon for å slette alle skuddpar
   type ShotCategory = 'Skyteplass' | 'Treffpunkt';
@@ -1213,7 +1221,9 @@ export default function MapComponent({
   const handleSaveTargetWithDirection = async () => {
     // Bruk skyteplass-posisjonen, ikke kartets midte
     const hasSavedPairs = Array.isArray(savedPairs) && savedPairs.length > 0;
-    const lastPair = hasSavedPairs ? savedPairs[selectedTargetIndex] : undefined;
+    // Reverser rekkefølgen slik at index 0 = nyeste, index 1 = nest nyeste, etc.
+    const reversedPairs = hasSavedPairs ? [...savedPairs].reverse() : [];
+    const lastPair = hasSavedPairs ? reversedPairs[selectedTargetIndex] : undefined;
     
     if (!lastPair || !lastPair.current) {
       alert('Ingen skyteplass funnet. Du må først lagre en skyteplass med Skudd-knappen.');
@@ -1652,7 +1662,9 @@ export default function MapComponent({
                 ? (() => {
                     // I søk-modus: vis kun det valgte treffpunktet
                     const treffpunkter = safeSavedPairs.filter(p => p.category === 'Treffpunkt');
-                    const selectedTarget = treffpunkter[selectedTargetIndex];
+                    // Reverser rekkefølgen slik at index 0 = nyeste, index 1 = nest nyeste, etc.
+                    const reversedTreffpunkter = treffpunkter.length > 0 ? [...treffpunkter].reverse() : [];
+                    const selectedTarget = reversedTreffpunkter[selectedTargetIndex];
                     if (!selectedTarget) return null;
                     
                     return (
