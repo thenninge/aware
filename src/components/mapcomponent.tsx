@@ -2315,7 +2315,7 @@ export default function MapComponent({
                     {/* Start/Stopp spor knapp */}
             <button
               onClick={isTracking ? stopTracking : startTracking}
-              className={`flex-1 min-w-[60px] max-w-[110px] w-auto h-9 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex flex-col items-center justify-center px-[0.375em] py-[0.375em] ${
+              className={`flex-1 min-w-[60px] max-w-[55px] w-auto h-9 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex flex-col items-center justify-center px-[0.375em] py-[0.375em] ${
                 isTracking
                   ? 'bg-red-600 hover:bg-red-700 text-white border-red-700'
                   : 'bg-green-600 hover:bg-green-700 text-white border-green-700'
