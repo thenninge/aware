@@ -60,6 +60,9 @@ interface AwareMapProps {
   showMSRRetikkel?: boolean;
   msrRetikkelOpacity?: number;
   msrRetikkelStyle?: 'msr' | 'ivar';
+  selectedTargetIndex?: number;
+  onPreviousTarget?: () => void;
+  onNextTarget?: () => void;
 }
 
 export default function AwareMap({ 
@@ -78,15 +81,18 @@ export default function AwareMap({
   onShowMarkersChange,
   isLiveMode,
   onLiveModeChange,
-  mode = 'aware', // <-- NY
+  mode = 'aware',
   showOnlyLastShot,
   isTracking,
   onTrackingChange,
   trackingPoints,
   onTrackingPointsChange,
-          showMSRRetikkel,
-        msrRetikkelOpacity,
-        msrRetikkelStyle,
+  showMSRRetikkel,
+  msrRetikkelOpacity,
+  msrRetikkelStyle,
+  selectedTargetIndex,
+  onPreviousTarget,
+  onNextTarget,
 }: AwareMapProps) {
   const [isClient, setIsClient] = useState(false);
   const [hasError, setHasError] = useState(false);
@@ -147,6 +153,9 @@ export default function AwareMap({
         showMSRRetikkel={showMSRRetikkel}
         msrRetikkelOpacity={msrRetikkelOpacity}
         msrRetikkelStyle={msrRetikkelStyle}
+        selectedTargetIndex={selectedTargetIndex}
+        onPreviousTarget={onPreviousTarget}
+        onNextTarget={onNextTarget}
       />
     </div>
   );

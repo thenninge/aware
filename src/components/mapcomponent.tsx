@@ -54,6 +54,9 @@ interface MapComponentProps {
   showMSRRetikkel?: boolean;
   msrRetikkelOpacity?: number;
   msrRetikkelStyle?: 'msr' | 'ivar';
+  selectedTargetIndex?: number;
+  onPreviousTarget?: () => void;
+  onNextTarget?: () => void;
 }
 
 interface CategoryFilter {
@@ -626,6 +629,9 @@ export default function MapComponent({
       showMSRRetikkel = true,
     msrRetikkelOpacity = 80,
     msrRetikkelStyle = 'msr',
+      selectedTargetIndex = 0,
+  onPreviousTarget,
+  onNextTarget,
 }: MapComponentProps) {
   const [showTargetDialog, setShowTargetDialog] = useState(false);
   const instanceId = useRef(Math.random());
@@ -959,7 +965,7 @@ export default function MapComponent({
   // Oppdater previewTarget når range eller direction endres
   useEffect(() => {
     const hasSavedPairs = Array.isArray(savedPairs) && savedPairs.length > 0;
-    const lastPair = hasSavedPairs ? savedPairs[savedPairs.length - 1] : undefined;
+    const lastPair = hasSavedPairs ? savedPairs[selectedTargetIndex] : undefined;
     if (!showTargetDirectionUI || !hasSavedPairs) {
       setPreviewTarget(null);
       return;
@@ -976,7 +982,7 @@ export default function MapComponent({
         compassDeg
       )
     );
-  }, [showTargetDirectionUI, targetRange, targetDirection, savedPairs]);
+  }, [showTargetDirectionUI, targetRange, targetDirection, savedPairs, selectedTargetIndex]);
 
 
 
@@ -1171,7 +1177,7 @@ export default function MapComponent({
   const hasSafePlaces = safePlaces.length > 0;
   const safeSavedPairs = Array.isArray(savedPairs) ? savedPairs : [];
   const hasSavedPairs = safeSavedPairs.length > 0;
-  const lastPair = hasSavedPairs ? safeSavedPairs[safeSavedPairs.length - 1] : undefined;
+  const lastPair = hasSavedPairs ? safeSavedPairs[selectedTargetIndex] : undefined;
 
   // Last lagrede spor når komponenten mountes og når modus endres
   useEffect(() => {
@@ -1207,7 +1213,7 @@ export default function MapComponent({
   const handleSaveTargetWithDirection = async () => {
     // Bruk skyteplass-posisjonen, ikke kartets midte
     const hasSavedPairs = Array.isArray(savedPairs) && savedPairs.length > 0;
-    const lastPair = hasSavedPairs ? savedPairs[savedPairs.length - 1] : undefined;
+    const lastPair = hasSavedPairs ? savedPairs[selectedTargetIndex] : undefined;
     
     if (!lastPair || !lastPair.current) {
       alert('Ingen skyteplass funnet. Du må først lagre en skyteplass med Skudd-knappen.');
@@ -1598,6 +1604,8 @@ export default function MapComponent({
         {/* Saved points: vis blå X for hver current-posisjon i track-mode */}
         {(mode === 'track' || mode === 'søk') && hasSavedPairs && (
           <>
+
+            
             {showOnlyLastShot
               ? (() => {
                   // Finn nyeste skyteplass
@@ -1640,7 +1648,31 @@ export default function MapComponent({
                     </>
                   );
                 })()
-              : safeSavedPairs.filter(Boolean).map((pair, idx) => (
+              : mode === 'søk' 
+                ? (() => {
+                    // I søk-modus: vis kun det valgte treffpunktet
+                    const treffpunkter = safeSavedPairs.filter(p => p.category === 'Treffpunkt');
+                    const selectedTarget = treffpunkter[selectedTargetIndex];
+                    if (!selectedTarget) return null;
+                    
+                    return (
+                      <React.Fragment key={`selected-target-${selectedTarget.id ?? selectedTargetIndex}`}>
+                        {selectedTarget.target && (
+                          <Circle
+                            center={[selectedTarget.target.lat, selectedTarget.target.lng]}
+                            radius={15}
+                            pathOptions={{
+                              color: 'rgba(220,38,38,0.8)',
+                              weight: 2,
+                              fillColor: 'rgba(220,38,38,0.4)',
+                              fillOpacity: 0.4,
+                            }}
+                          />
+                        )}
+                      </React.Fragment>
+                    );
+                  })()
+                : safeSavedPairs.filter(Boolean).map((pair, idx) => (
                   <React.Fragment key={pair.id ?? idx}>
                     {pair && pair.current && (
                       <Circle
@@ -1913,6 +1945,36 @@ export default function MapComponent({
               {isScanning ? '⏳' : '🔍'}
             </button>
           )}
+          {/* Skuddpar-valgknapper - kun i søk-modus */}
+          {mode === 'søk' && (
+            <>
+              {/* Pil opp - forrige treffpunkt */}
+              <button
+                onClick={onPreviousTarget}
+                className="w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white"
+                title="Forrige treffpunkt"
+              >
+                ↑
+              </button>
+              
+              {/* Pil ned - neste treffpunkt */}
+              <button
+                onClick={onNextTarget}
+                className="w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white"
+                title="Neste treffpunkt"
+              >
+                ↓
+              </button>
+
+              {/* Indikator for valgt treffpunkt */}
+              {savedPairs.filter(p => p.category === 'Treffpunkt').length > 0 && (
+                <div className="text-xs text-center text-gray-700 bg-white/90 px-2 py-1 rounded shadow-sm">
+                  {selectedTargetIndex + 1} / {savedPairs.filter(p => p.category === 'Treffpunkt').length}
+                </div>
+              )}
+            </>
+          )}
+
           {/* MSR-retikkel knapp */}
           <button
             className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${

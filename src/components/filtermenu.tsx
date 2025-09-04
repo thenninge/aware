@@ -27,6 +27,7 @@ interface FilterMenuProps {
   categoryConfigs: Record<keyof CategoryFilter, CategoryConfig>;
   showOnlyLastShot?: boolean;
   onShowOnlyLastShotChange?: (v: boolean) => void;
+  mode?: 'aware' | 'track' | 'søk';
 }
 
 const categoryLabels: Record<keyof CategoryFilter, string> = {
@@ -38,7 +39,7 @@ const categoryLabels: Record<keyof CategoryFilter, string> = {
   isolated_dwelling: 'Enkeltbolig',
 };
 
-export default function FilterMenu({ categoryFilters, onCategoryChange, radius, onRadiusChange, showMarkers, onShowMarkersChange, orientationMode, onOrientationModeChange, categoryConfigs, showOnlyLastShot, onShowOnlyLastShotChange }: FilterMenuProps) {
+export default function FilterMenu({ categoryFilters, onCategoryChange, radius, onRadiusChange, showMarkers, onShowMarkersChange, orientationMode, onOrientationModeChange, categoryConfigs, showOnlyLastShot, onShowOnlyLastShotChange, mode }: FilterMenuProps) {
   return (
     <div className="bg-white rounded-lg shadow-lg p-4 min-w-[220px] max-w-xs">
       <div className="flex items-center justify-between mb-2">
@@ -76,7 +77,8 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
           </span>
         </label>
       </div>
-      {onShowOnlyLastShotChange && (
+      {/* Vis kun siste skuddpar - skjul i søk-modus */}
+      {onShowOnlyLastShotChange && mode !== 'søk' && (
         <div className="mb-3">
           <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
             <input
@@ -89,6 +91,18 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
               Vis kun siste skuddpar
             </span>
           </label>
+        </div>
+      )}
+      
+      {/* Info i søk-modus */}
+      {mode === 'søk' && (
+        <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded">
+          <div className="text-xs text-blue-700 font-medium">
+            Søk-modus aktiv
+          </div>
+          <div className="text-xs text-blue-600">
+            Viser valgt skuddpar automatisk
+          </div>
         </div>
       )}
       {/* Kategori-filter */}

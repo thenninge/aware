@@ -55,6 +55,9 @@ export default function Home() {
   const [isTracking, setIsTracking] = useState(false);
   const [trackingPoints, setTrackingPoints] = useState<Position[]>([]);
   
+  // State for valgt treffpunkt i søk-modus
+  const [selectedTargetIndex, setSelectedTargetIndex] = useState(0);
+  
   // State for MSR-retikkel
   const [showMSRRetikkel, setShowMSRRetikkel] = useState(true);
   const [msrRetikkelOpacity, setMSRRetikkelOpacity] = useState(80);
@@ -112,7 +115,7 @@ export default function Home() {
       }
     } else if (mode === 'søk') {
       setShowMarkers(false);
-      setShowOnlyLastShot(true); // I søk-modus viser vi kun siste skuddpar
+      setShowOnlyLastShot(false); // I søk-modus viser vi det valgte skuddparet
     }
   }, [mode, isTracking]);
 
@@ -171,6 +174,20 @@ export default function Home() {
     window.location.reload();
   };
 
+  // Funksjoner for å navigere mellom treffpunkter i søk-modus
+  const handlePreviousTarget = () => {
+    setSelectedTargetIndex(prev => Math.max(0, prev - 1));
+  };
+
+  const handleNextTarget = () => {
+    setSelectedTargetIndex(prev => prev + 1);
+  };
+
+  const handleGoToLastTarget = () => {
+    // Gå til nyeste treffpunkt (index 0)
+    setSelectedTargetIndex(0);
+  };
+
  
 
         return (
@@ -222,6 +239,8 @@ export default function Home() {
           <span className="text-xl">☑️</span>
         </button>
       </div>
+      
+
       {/* Settings Menu */}
       {isSettingsExpanded && (
         <div ref={settingsMenuRef} className="fixed top-14 left-1/2 -translate-x-1/2 z-[2002]">
@@ -243,19 +262,20 @@ export default function Home() {
       )}
       {isFilterExpanded && (
         <div ref={filterMenuRef} className="fixed top-14 left-1/2 -translate-x-1/2 z-[2002]">
-          <FilterMenu
-            categoryFilters={categoryFilters}
-            onCategoryChange={handleCategoryChange}
-            radius={radius}
-            onRadiusChange={handleRadiusChange}
-            showMarkers={showMarkers}
-            onShowMarkersChange={handleShowMarkersChange}
-            orientationMode={orientationMode}
-            onOrientationModeChange={setOrientationMode}
-            categoryConfigs={categoryConfigs}
-            showOnlyLastShot={showOnlyLastShot}
-            onShowOnlyLastShotChange={setShowOnlyLastShot}
-          />
+                  <FilterMenu
+          categoryFilters={categoryFilters}
+          onCategoryChange={handleCategoryChange}
+          radius={radius}
+          onRadiusChange={handleRadiusChange}
+          showMarkers={showMarkers}
+          onShowMarkersChange={handleShowMarkersChange}
+          orientationMode={orientationMode}
+          onOrientationModeChange={setOrientationMode}
+          categoryConfigs={categoryConfigs}
+          showOnlyLastShot={showOnlyLastShot}
+          onShowOnlyLastShotChange={setShowOnlyLastShot}
+          mode={mode}
+        />
         </div>
       )}
       {/* Kartet */}
@@ -284,6 +304,9 @@ export default function Home() {
         showMSRRetikkel={showMSRRetikkel}
         msrRetikkelOpacity={msrRetikkelOpacity}
         msrRetikkelStyle={msrRetikkelStyle}
+        selectedTargetIndex={selectedTargetIndex}
+        onPreviousTarget={handlePreviousTarget}
+        onNextTarget={handleNextTarget}
       />
     </div>
   );
