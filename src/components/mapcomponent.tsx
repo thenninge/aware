@@ -890,8 +890,9 @@ export default function MapComponent({
       let activeShotPairId: string;
       if (mode === 'søk' && hasSavedPairs && safeSavedPairs.length > 0) {
         // I søk-modus: bruk det aktive treffpunktet
-        const reversedPairs = [...safeSavedPairs].reverse();
-        const selectedTarget = reversedPairs[adjustedSelectedTargetIndex];
+        const treffpunkter = safeSavedPairs.filter(p => p.category === 'Treffpunkt');
+        const reversedTreffpunkter = treffpunkter.length > 0 ? [...treffpunkter].reverse() : [];
+        const selectedTarget = reversedTreffpunkter[adjustedSelectedTargetIndex];
         activeShotPairId = selectedTarget?.id?.toString() || 'unknown';
       } else {
         // I andre moduser: bruk lastPair
