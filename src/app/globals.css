@@ -27,3 +27,12 @@ body {
 
 /* Skjul Next.js Turbopack overlay-ikonet i dev */
 #__nextjs-turbopack-overlay { display: none !important; }
+
+/* Flytt Leaflet zoom-kontroller ned på mobil */
+@media (max-width: 768px) {
+  .leaflet-control-zoom {
+    top: 50% !important;
+    left: 10px !important;
+    transform: translateY(-50%);
+  }
+}
