@@ -1156,6 +1156,7 @@ export default function MapComponent({
     setShowTargetRadiusModal(true);
     setShowTargetDirectionUI(false);
     setShowTargetDialog(false); // Skjul gammel dialog
+    setIsTargetModeActive(true); // Aktiver Target-modus (deaktiverer Shot-knappen)
   };
 
   // Oppdater previewTarget når range eller direction endres
@@ -1243,6 +1244,14 @@ export default function MapComponent({
 
   // Legg til state for å styre om Treff-knappen er aktiv
   const [canAddTreff, setCanAddTreff] = useState(false);
+  
+  // State for å spore om Target-funksjonaliteten er aktiv (for å deaktivere Shot-knappen)
+  const [isTargetModeActive, setIsTargetModeActive] = useState(false);
+  
+  // Toggle-funksjon for Shot/Target
+  const toggleShotTargetMode = () => {
+    setIsTargetModeActive(!isTargetModeActive);
+  };
 
   // Oppdater canAddTreff til true når Skudd lagres
   const handleSaveCurrentPos = async () => {
@@ -1262,11 +1271,9 @@ export default function MapComponent({
       }
       if (data && data[0]) {
         setSavedPairs(prev => [...prev, { current: { ...currentPosition }, category: 'Skyteplass', id: data[0].id }]);
-        setFeedbackText('lagret');
-        setShowCurrentFeedback(true);
-        setTimeout(() => setShowCurrentFeedback(false), 1000);
         fetchPosts();
         setCanAddTreff(true); // Aktiver Treff-knappen
+        setIsTargetModeActive(true); // Aktiver Target-modus når Shot lagres
       }
     }
   };
@@ -1289,8 +1296,6 @@ export default function MapComponent({
       }
       if (data && data[0]) {
         setSavedPairs(prev => [...prev, { target: { ...currentPosition }, category: 'Treffpunkt', id: data[0].id }]);
-        setShowCurrentFeedback(true);
-        setTimeout(() => setShowCurrentFeedback(false), 700);
         fetchPosts();
       }
     }
@@ -1350,7 +1355,7 @@ export default function MapComponent({
     const base = savedPairs[savedPairs.length - 1].current;
     if (!base) return; // Guard mot undefined
     const bearing = ((targetDirection + 360) % 360);
-    const pos = destinationPoint(base.lat, base.lng, targetDistance, bearing);
+    const pos = destinationPoint(base.lat, base.lng, targetRange, bearing);
     const { data, error } = await supabase.from('posts').insert([
       {
         target_lat: pos.lat,
@@ -1366,12 +1371,10 @@ export default function MapComponent({
     }
     if (data && data[0]) {
       setSavedPairs(prev => [...prev, { target: { ...pos }, category: 'Treffpunkt', id: data[0].id }]);
-      setFeedbackText('lagret');
-      setShowCurrentFeedback(true);
-      setTimeout(() => setShowCurrentFeedback(false), 1000);
       fetchPosts();
     }
     setShowTargetDialog(false);
+    setIsTargetModeActive(false); // Deaktiver Target-modus (reaktiverer Shot-knappen)
   };
 
   // Defensive guards i toppen av renderblokken
@@ -1532,13 +1535,11 @@ export default function MapComponent({
     }
     if (data && data[0]) {
       setSavedPairs(prev => [...prev, { target: { ...pos }, category: 'Treffpunkt', id: data[0].id }]);
-      setFeedbackText('lagret');
-      setShowCurrentFeedback(true);
-      setTimeout(() => setShowCurrentFeedback(false), 1000);
       fetchPosts();
     }
     setShowTargetDirectionUI(false);
     setCanAddTreff(false); // Deaktiver Treff-knappen
+    setIsTargetModeActive(false); // Deaktiver Target-modus (reaktiverer Shot-knappen)
   };
 
   useEffect(() => {
@@ -2263,11 +2264,15 @@ export default function MapComponent({
                                     <span className="text-[10px] mt-0.5">Target</span>
           </button>
           <button
-            onClick={handleSaveCurrentPos}
-            className="flex-1 min-w-[60px] max-w-[110px] w-auto h-9 rounded-full shadow-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-[0.75rem] transition-colors border border-blue-700 flex flex-col items-center justify-center px-[0.375em] py-[0.375em]"
-            title="Save current pos"
+            onClick={isTargetModeActive ? toggleShotTargetMode : handleSaveCurrentPos}
+            className={`flex-1 min-w-[60px] max-w-[110px] w-auto h-9 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex flex-col items-center justify-center px-[0.375em] py-[0.375em] ${
+              isTargetModeActive
+                ? 'bg-gray-300 text-gray-400 border-gray-400 hover:bg-gray-400'
+                : 'bg-blue-600 hover:bg-blue-700 text-white border-blue-700'
+            }`}
+            title={isTargetModeActive ? "Klikk for å gå tilbake til Shot-modus" : "Save current pos"}
           >
-                                    <span className="text-[10px] mt-0.5">Shot</span>
+                                    <span className="text-[10px] mt-0.5">{isTargetModeActive ? 'Back' : 'Shot'}</span>
           </button>
         </div>
       )}
@@ -2469,55 +2474,52 @@ export default function MapComponent({
               <button
                 onClick={() => { setShowTargetRadiusModal(false); setShowTargetDirectionUI(true); }}
                 className="px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 text-xs"
-              >OK</button>
+              >Neste</button>
             </div>
           </div>
         </div>
       )}
-      {/* Feedback for current-pos lagring */}
-      {showCurrentFeedback && (
-        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[3000] bg-gray-500 text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-2 animate-bounce">
-          <span className="font-semibold text-lg">lagret</span>
-        </div>
-      )}
+
       {/* Slider og lagre-knapp for retning (andre steg) */}
       {showTargetDirectionUI && (
-        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[2002] bg-white rounded-lg shadow-lg px-4 py-3 flex flex-col items-center gap-2 w-[90vw] max-w-xs">
-          <label className="text-sm font-medium w-full text-black">Retning (grader):
-            <div className="flex items-center gap-2 w-full mt-1">
-              <div className="flex-1 px-2 py-1">
+        <div className="fixed bottom-0 left-0 w-full z-[2002] flex justify-center items-end pointer-events-none">
+          <div className="bg-white rounded-t-lg shadow-lg p-4 w-full max-w-xs mx-auto mb-2 flex flex-col items-center gap-2 pointer-events-auto">
+            <label className="text-sm font-medium w-full text-black">Retning (grader):
+              <div className="flex items-center gap-2 w-full mt-1">
+                <div className="flex-1 px-2 py-1">
+                  <input
+                    type="range"
+                    min={-180}
+                    max={180}
+                    value={targetDirection}
+                    onChange={e => setTargetDirection(Number(e.target.value))}
+                    className="w-full"
+                  />
+                </div>
                 <input
-                  type="range"
+                  type="number"
                   min={-180}
                   max={180}
                   value={targetDirection}
                   onChange={e => setTargetDirection(Number(e.target.value))}
-                  className="w-full"
+                  className="w-16 border rounded px-2 py-1 text-[16px] text-black"
                 />
+                <span className="text-xs text-black">°</span>
               </div>
-              <input
-                type="number"
-                min={-180}
-                max={180}
-                value={targetDirection}
-                onChange={e => setTargetDirection(Number(e.target.value))}
-                className="w-16 border rounded px-2 py-1 text-[16px] text-black"
-              />
-              <span className="text-xs text-black">°</span>
-            </div>
-            <div className="text-base text-black text-center font-semibold mt-1">
-              {((targetDirection + 360) % 360)}° {
-                ((targetDirection + 360) % 360) === 0 ? '(nord)' :
-                ((targetDirection + 360) % 360) === 180 ? '(sør)' :
-                ((targetDirection + 360) % 360) === 90 ? '(øst)' :
-                ((targetDirection + 360) % 360) === 270 ? '(vest)' : ''
-              }
-            </div>
-          </label>
-          <button
-            onClick={handleSaveTargetWithDirection}
-            className="px-4 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white font-semibold mt-1"
-          >Lagre</button>
+              <div className="text-base text-black text-center font-semibold mt-1">
+                {((targetDirection + 360) % 360)}° {
+                  ((targetDirection + 360) % 360) === 0 ? '(nord)' :
+                  ((targetDirection + 360) % 360) === 180 ? '(sør)' :
+                  ((targetDirection + 360) % 360) === 90 ? '(øst)' :
+                  ((targetDirection + 360) % 360) === 270 ? '(vest)' : ''
+                }
+              </div>
+            </label>
+            <button
+              onClick={handleSaveTargetWithDirection}
+              className="px-4 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white font-semibold mt-1"
+            >Lagre</button>
+          </div>
         </div>
       )}
       {showNewPostDialog && (
@@ -2767,3 +2769,5 @@ export default function MapComponent({
     </div>
   );
 }
+
+
