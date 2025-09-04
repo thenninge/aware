@@ -82,3 +82,10 @@
 - [ ] Lagre og hente funn-data i database 
 - [ ] Lagre og hente spor-logg i database
 - [ ] Sync -button with DB? how to sync reliably?
+
+## Uncategorized
+- [ ] default search track named with timestamp as default if no text input. 
+- [ ] live mode, not debug couch mode for tracking
+- [ ] test actual mobile workflow marking distance and direction shot target
+
+

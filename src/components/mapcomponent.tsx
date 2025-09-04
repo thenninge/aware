@@ -665,6 +665,8 @@ export default function MapComponent({
   const [localMSRRetikkelOpacity, setLocalMSRRetikkelOpacity] = useState(msrRetikkelOpacity);
   const [localMSRRetikkelStyle, setLocalMSRRetikkelStyle] = useState(msrRetikkelStyle);
   
+
+  
   // Juster selectedTargetIndex for wraparound (loop fra slutten til starten)
   const adjustedSelectedTargetIndex = (() => {
     if (mode !== 'søk' || !savedPairs || savedPairs.length === 0) return selectedTargetIndex;
@@ -690,10 +692,9 @@ export default function MapComponent({
       const treffpunkter = savedPairs.filter(p => p.category === 'Treffpunkt');
       if (treffpunkter.length > 0) {
         console.log('Wraparound check:', { selectedTargetIndex, treffpunkterLength: treffpunkter.length });
-        // Hvis index er for høy (f.eks. 999), gå til starten
+        // Hvis index er for høy (f.eks. 999), gå til første
         if (selectedTargetIndex >= treffpunkter.length) {
-          console.log('Index too high, resetting to 0');
-          // Bruk callback for å oppdatere selectedTargetIndex i page.tsx
+          console.log('Forward wraparound: going to first target point');
           onSelectedTargetIndexChange?.(0);
         }
         // Hvis index er negativ, gå til slutten
@@ -754,15 +755,25 @@ export default function MapComponent({
       // Hent eksisterende spor
       const existingTracks = JSON.parse(localStorage.getItem('searchTracks') || '{}');
       
-      // Finn aktivt skuddpar ID
-      const activeShotPairId = lastPair?.id?.toString() || 'unknown';
+      // Finn aktivt skuddpar ID - bruk selectedTarget i søk-modus, lastPair i andre moduser
+      let activeShotPairId: string;
+      if (mode === 'søk' && hasSavedPairs && safeSavedPairs.length > 0) {
+        // I søk-modus: bruk det aktive treffpunktet
+        const treffpunkter = safeSavedPairs.filter(p => p.category === 'Treffpunkt');
+        const reversedTreffpunkter = treffpunkter.length > 0 ? [...treffpunkter].reverse() : [];
+        const selectedTarget = reversedTreffpunkter[adjustedSelectedTargetIndex];
+        activeShotPairId = selectedTarget?.id?.toString() || 'unknown';
+      } else {
+        // I andre moduser: bruk lastPair
+        activeShotPairId = lastPair?.id?.toString() || 'unknown';
+      }
       
       // Lagre nytt spor med timestamp og skuddpar info
       const newTrack: SavedTrack = {
         id: trackId,
         points: points,
         createdAt: new Date().toISOString(),
-        shotPairId: activeShotPairId, // Bruk reell skuddpar ID istedenfor 'current'
+        shotPairId: activeShotPairId,
         mode: 'søk',
         name: name,
         color: color
@@ -790,8 +801,9 @@ export default function MapComponent({
       // I søk-modus: vis kun spor for det valgte treffpunktet
       if (mode === 'søk' && hasSavedPairs && safeSavedPairs.length > 0) {
         // Reverser rekkefølgen slik at index 0 = nyeste, index 1 = nest nyeste, etc.
-        const reversedPairs = [...safeSavedPairs].reverse();
-        const selectedTarget = reversedPairs[adjustedSelectedTargetIndex];
+        const treffpunkter = safeSavedPairs.filter(p => p.category === 'Treffpunkt');
+        const reversedTreffpunkter = treffpunkter.length > 0 ? [...treffpunkter].reverse() : [];
+        const selectedTarget = reversedTreffpunkter[adjustedSelectedTargetIndex];
         if (selectedTarget?.id) {
           // Vis kun spor for det valgte treffpunktet
           return allTracks.filter(track => track.shotPairId === selectedTarget.id.toString());
@@ -874,8 +886,17 @@ export default function MapComponent({
       // Hent eksisterende funn
       const existingFinds = JSON.parse(localStorage.getItem('searchFinds') || '{}');
       
-      // Finn aktivt skuddpar ID
-      const activeShotPairId = lastPair?.id?.toString() || 'unknown';
+      // Finn aktivt skuddpar ID - bruk selectedTarget i søk-modus, lastPair i andre moduser
+      let activeShotPairId: string;
+      if (mode === 'søk' && hasSavedPairs && safeSavedPairs.length > 0) {
+        // I søk-modus: bruk det aktive treffpunktet
+        const reversedPairs = [...safeSavedPairs].reverse();
+        const selectedTarget = reversedPairs[adjustedSelectedTargetIndex];
+        activeShotPairId = selectedTarget?.id?.toString() || 'unknown';
+      } else {
+        // I andre moduser: bruk lastPair
+        activeShotPairId = lastPair?.id?.toString() || 'unknown';
+      }
       
       // Generer unik ID for funnet
       const findId = `find_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -913,8 +934,9 @@ export default function MapComponent({
       // I søk-modus: vis kun funn for det valgte treffpunktet
       if (mode === 'søk' && hasSavedPairs && safeSavedPairs.length > 0) {
         // Reverser rekkefølgen slik at index 0 = nyeste, index 1 = nest nyeste, etc.
-        const reversedPairs = [...safeSavedPairs].reverse();
-        const selectedTarget = reversedPairs[adjustedSelectedTargetIndex];
+        const treffpunkter = safeSavedPairs.filter(p => p.category === 'Treffpunkt');
+        const reversedTreffpunkter = treffpunkter.length > 0 ? [...treffpunkter].reverse() : [];
+        const selectedTarget = reversedTreffpunkter[adjustedSelectedTargetIndex];
         if (selectedTarget?.id) {
           // Vis kun funn for det valgte treffpunktet
           return allFinds.filter(find => find.shotPairId === selectedTarget.id.toString());
@@ -1842,9 +1864,9 @@ export default function MapComponent({
                           />
                         )}
                       </React.Fragment>
-                    );
-                  })()
-                : safeSavedPairs.filter(Boolean).map((pair, idx) => (
+                  );
+                })()
+              : safeSavedPairs.filter(Boolean).map((pair, idx) => (
                   <React.Fragment key={pair.id ?? idx}>
                     {pair && pair.current && (
                       <Circle
@@ -2075,20 +2097,20 @@ export default function MapComponent({
         </div>
       )}
       
-                                        {/* Start/Stopp spor knapp kun i søk-modus */}
-                {mode === 'søk' && (
-                  <div className="fixed bottom-4 inset-x-0 z-[2001] flex flex-wrap justify-center items-center gap-2 px-2">
-                    {/* Lagre til database knapp */}
-                    <button
-                      onClick={handleSaveToDatabase}
-                      disabled={savedTracks.length === 0}
-                      className={`w-9 h-9 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex items-center justify-center ${
-                        savedTracks.length > 0
-                          ? 'bg-blue-600 hover:bg-blue-700 text-white border-blue-700'
-                          : 'bg-gray-400 text-gray-200 border-gray-300 cursor-not-allowed'
-                      }`}
-                      title="Lagre synlige spor til database"
-                    >
+                        {/* Start/Stopp spor knapp kun i søk-modus */}
+        {mode === 'søk' && (
+          <div className="fixed bottom-4 inset-x-0 z-[2001] flex flex-wrap justify-center items-center gap-2 px-2">
+            {/* Lagre til database knapp */}
+            <button
+              onClick={handleSaveToDatabase}
+              disabled={savedTracks.length === 0}
+              className={`w-9 h-9 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex items-center justify-center ${
+                savedTracks.length > 0
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white border-blue-700'
+                  : 'bg-gray-400 text-gray-200 border-gray-300 cursor-not-allowed'
+              }`}
+              title="Lagre synlige spor til database"
+            >
                       💾
                     </button>
 
@@ -2099,22 +2121,22 @@ export default function MapComponent({
                       title="Klikk for å plassere markering"
                     >
                       <span className="text-[10px] font-bold">Mark!</span>
-                    </button>
-
-                    {/* Start/Stopp spor knapp */}
-                    <button
-                      onClick={isTracking ? stopTracking : startTracking}
-                      className={`flex-1 min-w-[60px] max-w-[110px] w-auto h-9 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex flex-col items-center justify-center px-[0.375em] py-[0.375em] ${
-                        isTracking
-                          ? 'bg-red-600 hover:bg-red-700 text-white border-red-700'
-                          : 'bg-green-600 hover:bg-green-700 text-white border-green-700'
-                      }`}
+            </button>
+            
+            {/* Start/Stopp spor knapp */}
+            <button
+              onClick={isTracking ? stopTracking : startTracking}
+              className={`flex-1 min-w-[60px] max-w-[110px] w-auto h-9 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex flex-col items-center justify-center px-[0.375em] py-[0.375em] ${
+                isTracking
+                  ? 'bg-red-600 hover:bg-red-700 text-white border-red-700'
+                  : 'bg-green-600 hover:bg-green-700 text-white border-green-700'
+              }`}
                       title={isTracking ? 'Stop track' : 'Start track'}
-                    >
+            >
                                               <span className="text-[10px] mt-0.5">{isTracking ? 'Stop track' : 'Start track'}</span>
-                    </button>
-                  </div>
-                )}
+            </button>
+          </div>
+        )}
       {/* Scan & Live Buttons - Bottom Right */}
       <div className="fixed bottom-4 right-4 sm:bottom-4 sm:right-4 bottom-2 right-2 z-[1000] flex flex-col gap-2">
           {/* Scan-knapp kun i aware-mode */}
