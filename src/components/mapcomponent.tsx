@@ -647,19 +647,17 @@ export default function MapComponent({
   const [compassStarted, setCompassStarted] = useState(false);
   
   // Tracking state for søk-modus
-  const [currentTrackingId, setCurrentTrackingId] = useState<string | null>(null);
   const [savedTracks, setSavedTracks] = useState<SavedTrack[]>([]);
+  const [savedFinds, setSavedFinds] = useState<SavedFind[]>([]);
   const [showSaveTrackDialog, setShowSaveTrackDialog] = useState(false);
   const [trackName, setTrackName] = useState('');
-  const [trackColor, setTrackColor] = useState('#EAB308'); // Standard gul farge
-  
-  // Funn state for søk-modus
-  const [savedFinds, setSavedFinds] = useState<SavedFind[]>([]);
+  const [trackColor, setTrackColor] = useState('#EAB308');
+  const [currentTrackingId, setCurrentTrackingId] = useState<string | null>(null);
   const [showFindDialog, setShowFindDialog] = useState(false);
   const [newFindPosition, setNewFindPosition] = useState<Position | null>(null);
   const [findName, setFindName] = useState('');
-  const [findColor, setFindColor] = useState('#EF4444'); // Standard rød farge
-  
+  const [findColor, setFindColor] = useState('#EF4444');
+
   // MSR-retikkel state
   const [localShowMSRRetikkel, setLocalShowMSRRetikkel] = useState(showMSRRetikkel);
   const [localMSRRetikkelOpacity, setLocalMSRRetikkelOpacity] = useState(msrRetikkelOpacity);
@@ -691,6 +689,8 @@ export default function MapComponent({
     if (trackingPoints && trackingPoints.length > 0) {
       const shouldSave = window.confirm('Lagre spor til skudd?');
       if (shouldSave) {
+        // Sett default navn med dato og tid
+        setTrackName(generateDefaultName('track'));
         // Vis dialog for å navngi og velge farge
         setShowSaveTrackDialog(true);
       } else {
@@ -775,15 +775,17 @@ export default function MapComponent({
 
   // Håndter lagring av spor fra dialog
   const handleSaveTrackFromDialog = () => {
-    if (!trackName.trim()) {
+    // Hvis brukeren ikke har skrevet noe, bruk default navnet
+    const finalTrackName = trackName.trim() || trackName;
+    if (!finalTrackName) {
       alert('Vennligst skriv inn et navn for sporet');
       return;
     }
     
-    saveTrackToLocalStorage(currentTrackingId, trackingPoints || [], trackName.trim(), trackColor);
+    saveTrackToLocalStorage(currentTrackingId, trackingPoints || [], finalTrackName, trackColor);
     console.log('Spor lagret til localStorage:', { 
       id: currentTrackingId, 
-      name: trackName, 
+      name: finalTrackName, 
       color: trackColor, 
       points: trackingPoints 
     });
@@ -813,6 +815,8 @@ export default function MapComponent({
       if (shouldSave) {
         console.log('Opening find dialog for current position...');
         setNewFindPosition(currentPosition);
+        // Sett default navn med dato og tid
+        setFindName(generateDefaultName('find'));
         setShowFindDialog(true);
       }
     } else {
@@ -888,8 +892,15 @@ export default function MapComponent({
 
   // Håndter lagring av funn fra dialog
   const handleSaveFindFromDialog = () => {
-    if (newFindPosition && findName.trim()) {
-      saveFindToLocalStorage(newFindPosition, findName.trim(), findColor);
+    if (newFindPosition) {
+      // Hvis brukeren ikke har skrevet noe, bruk default navnet
+      const finalFindName = findName.trim() || findName;
+      if (!finalFindName) {
+        alert('Vennligst skriv inn et navn for funnet');
+        return;
+      }
+      
+      saveFindToLocalStorage(newFindPosition, finalFindName, findColor);
       setShowFindDialog(false);
       setNewFindPosition(null);
       setFindName('');
@@ -1371,6 +1382,26 @@ export default function MapComponent({
   if (!currentPosition) {
     return <div className="w-full h-screen flex items-center justify-center text-lg text-gray-500">Laster posisjon...</div>;
   }
+
+  // Generer default navn med dato og tid
+  const generateDefaultName = (type: 'track' | 'find') => {
+    const now = new Date();
+    const date = now.toLocaleDateString('nb-NO', { 
+      day: '2-digit', 
+      month: '2-digit', 
+      year: 'numeric' 
+    });
+    const time = now.toLocaleTimeString('nb-NO', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
+    
+    if (type === 'track') {
+      return `Spor ${date} ${time}`;
+    } else {
+      return `Funn ${date} ${time}`;
+    }
+  };
 
   return (
     <div className="w-full h-screen relative">
@@ -2314,7 +2345,7 @@ export default function MapComponent({
                 type="text"
                 value={trackName}
                 onChange={e => setTrackName(e.target.value)}
-                placeholder="f.eks. Tomas, tiur"
+                placeholder={trackName || "f.eks. Tomas, tiur"}
                 className="w-full border rounded px-2 py-1 mt-1 mb-2 text-lg text-[16px] text-gray-900"
                 autoFocus
               />
@@ -2374,7 +2405,7 @@ export default function MapComponent({
                 type="text"
                 value={findName}
                 onChange={e => setFindName(e.target.value)}
-                placeholder="f.eks. Tiur"
+                placeholder={findName || "f.eks. Tiur"}
                 className="w-full border rounded px-2 py-1 mt-1 mb-2 text-lg text-[16px] text-gray-900"
                 autoFocus
               />
