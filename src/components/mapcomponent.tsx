@@ -1185,7 +1185,13 @@ export default function MapComponent({
   const hasSavedPairs = safeSavedPairs.length > 0;
   // Reverser rekkefølgen slik at index 0 = nyeste, index 1 = nest nyeste, etc.
   const reversedPairs = hasSavedPairs ? [...safeSavedPairs].reverse() : [];
-  const lastPair = hasSavedPairs ? reversedPairs[selectedTargetIndex] : undefined;
+  
+  // I track-mode: bruk siste skyteplass. I søk-modus: bruk valgt index
+  const lastPair = hasSavedPairs 
+    ? (mode === 'track' 
+        ? safeSavedPairs.filter(p => p.category === 'Skyteplass').pop() // Finn siste skyteplass i track-mode
+        : reversedPairs[selectedTargetIndex]) // Bruk valgt index i søk-modus
+    : undefined;
 
   // Last lagrede spor når komponenten mountes og når modus endres
   useEffect(() => {
@@ -1221,9 +1227,16 @@ export default function MapComponent({
   const handleSaveTargetWithDirection = async () => {
     // Bruk skyteplass-posisjonen, ikke kartets midte
     const hasSavedPairs = Array.isArray(savedPairs) && savedPairs.length > 0;
-    // Reverser rekkefølgen slik at index 0 = nyeste, index 1 = nest nyeste, etc.
-    const reversedPairs = hasSavedPairs ? [...savedPairs].reverse() : [];
-    const lastPair = hasSavedPairs ? reversedPairs[selectedTargetIndex] : undefined;
+    
+    // I track-mode: bruk siste skyteplass. I søk-modus: bruk valgt index
+    const lastPair = hasSavedPairs 
+      ? (mode === 'track' 
+          ? savedPairs.filter(p => p.category === 'Skyteplass').pop() // Finn siste skyteplass i track-mode
+          : (() => {
+              const reversedPairs = [...savedPairs].reverse();
+              return reversedPairs[selectedTargetIndex];
+            })()) // Bruk valgt index i søk-modus
+      : undefined;
     
     if (!lastPair || !lastPair.current) {
       alert('Ingen skyteplass funnet. Du må først lagre en skyteplass med Skudd-knappen.');
