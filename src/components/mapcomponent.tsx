@@ -2059,6 +2059,13 @@ export default function MapComponent({
           {/* Skuddpar-valgknapper - kun i søk-modus */}
           {mode === 'søk' && (
             <>
+              {/* Indikator for valgt treffpunkt */}
+              {savedPairs.filter(p => p.category === 'Treffpunkt').length > 0 && (
+                <div className="text-xs text-center text-gray-700 bg-white/90 px-2 py-1 rounded shadow-sm">
+                  {selectedTargetIndex + 1}
+                </div>
+              )}
+              
               {/* Pil opp - forrige treffpunkt */}
               <button
                 onClick={onPreviousTarget}
@@ -2076,13 +2083,6 @@ export default function MapComponent({
               >
                 ↓
               </button>
-
-              {/* Indikator for valgt treffpunkt */}
-              {savedPairs.filter(p => p.category === 'Treffpunkt').length > 0 && (
-                <div className="text-xs text-center text-gray-700 bg-white/90 px-2 py-1 rounded shadow-sm">
-                  {selectedTargetIndex + 1} / {savedPairs.filter(p => p.category === 'Treffpunkt').length}
-                </div>
-              )}
             </>
           )}
 
