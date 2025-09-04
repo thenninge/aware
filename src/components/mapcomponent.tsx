@@ -1207,6 +1207,78 @@ export default function MapComponent({
     }
   }, [mode, selectedTargetIndex, lastPair?.id]); // Reager på endringer i modus, valgt treffpunkt og skuddpar
 
+  // Funksjon for å slette et spesifikt skuddpar
+  const handleDeleteShotPair = async (clickedPairId: number) => {
+    if (!window.confirm('Er du sikker på at du vil slette dette skuddparet?')) return;
+    
+    try {
+      // Finn hele skuddparet basert på timestamp
+      const clickedPair = savedPairs.find(p => p.id === clickedPairId);
+      if (!clickedPair || !clickedPair.created_at) {
+        alert('Kunne ikke finne skuddparet');
+        return;
+      }
+      
+      // Finn skyteplass og treffpunkt som tilhører samme skuddpar
+      const clickedTime = new Date(clickedPair.created_at).getTime();
+      const timeWindow = 5 * 60 * 1000; // 5 minutter vindu
+      
+      const relatedPairs = savedPairs.filter(p => {
+        const pairTime = new Date(p.created_at || '').getTime();
+        return Math.abs(pairTime - clickedTime) < timeWindow;
+      });
+      
+      if (relatedPairs.length === 0) {
+        alert('Kunne ikke finne tilhørende poster');
+        return;
+      }
+      
+      // Slett alle relaterte poster fra Supabase
+      const pairIds = relatedPairs.map(p => p.id);
+      const { error } = await supabase.from('posts').delete().in('id', pairIds);
+      if (error) {
+        alert('Feil ved sletting: ' + error.message);
+        return;
+      }
+      
+      // Slett tilhørende spor og funn fra localStorage
+      const existingTracks = JSON.parse(localStorage.getItem('searchTracks') || '{}');
+      const existingFinds = JSON.parse(localStorage.getItem('searchFinds') || '{}');
+      
+      // Fjern spor med matching shotPairId
+      Object.keys(existingTracks).forEach(trackId => {
+        if (existingTracks[trackId].shotPairId && pairIds.includes(parseInt(existingTracks[trackId].shotPairId))) {
+          delete existingTracks[trackId];
+        }
+      });
+      localStorage.setItem('searchTracks', JSON.stringify(existingTracks));
+      
+      // Fjern funn med matching shotPairId
+      Object.keys(existingFinds).forEach(findId => {
+        if (existingFinds[findId].shotPairId && pairIds.includes(parseInt(existingFinds[findId].shotPairId))) {
+          delete existingFinds[findId];
+        }
+      });
+      localStorage.setItem('searchFinds', JSON.stringify(existingFinds));
+      
+      // Oppdater lokal state
+      setSavedPairs(prev => prev.filter(pair => !pairIds.includes(pair.id)));
+      
+      // Oppdater spor og funn state
+      setSavedTracks(prev => prev.filter(track => 
+        !track.shotPairId || !pairIds.includes(parseInt(track.shotPairId))
+      ));
+      setSavedFinds(prev => prev.filter(find => 
+        !find.shotPairId || !pairIds.includes(parseInt(find.shotPairId))
+      ));
+      
+      alert('Skuddpar slettet!');
+    } catch (error) {
+      console.error('Feil ved sletting av skuddpar:', error);
+      alert('Feil ved sletting av skuddpar');
+    }
+  };
+
   // Legg til funksjon for å slette alle skuddpar
   type ShotCategory = 'Skyteplass' | 'Treffpunkt';
   const handleDeleteAllShots = async () => {
@@ -1709,6 +1781,13 @@ export default function MapComponent({
                           fillColor: '#2563eb',
                           fillOpacity: 0.5,
                         }}
+                        eventHandlers={{
+                          click: () => {
+                            if (mode === 'track') {
+                              handleDeleteShotPair(pair.id);
+                            }
+                          }
+                        }}
                       />
                     )}
                     {pair && pair.target && (
@@ -1720,6 +1799,13 @@ export default function MapComponent({
                           weight: 2,
                           fillColor: 'rgba(220,38,38,0.4)',
                           fillOpacity: 0.4,
+                        }}
+                        eventHandlers={{
+                          click: () => {
+                            if (mode === 'track') {
+                              handleDeleteShotPair(pair.id);
+                            }
+                          }
                         }}
                       />
                     )}
