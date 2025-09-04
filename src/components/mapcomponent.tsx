@@ -59,6 +59,7 @@ interface MapComponentProps {
   onNextTarget?: () => void;
   onSelectedTargetIndexChange?: (index: number) => void;
   showAllTracksAndFinds?: boolean;
+  showObservations?: boolean;
 }
 
 interface CategoryFilter {
@@ -574,6 +575,17 @@ interface SavedFind {
   color: string;
 }
 
+// Type for lagrede observasjoner
+interface SavedObservation {
+  id: string;
+  position: Position;
+  createdAt: string;
+  shotPairId: string;
+  mode: string;
+  name: string;
+  color: string;
+}
+
 const LAYER_CONFIGS = [
   {
     name: 'Flyfoto',
@@ -636,6 +648,7 @@ export default function MapComponent({
   onNextTarget,
   onSelectedTargetIndexChange,
   showAllTracksAndFinds = false,
+  showObservations = true,
 }: MapComponentProps) {
   const [showTargetDialog, setShowTargetDialog] = useState(false);
   const instanceId = useRef(Math.random());
@@ -653,6 +666,7 @@ export default function MapComponent({
   // Tracking state for søk-modus
   const [savedTracks, setSavedTracks] = useState<SavedTrack[]>([]);
   const [savedFinds, setSavedFinds] = useState<SavedFind[]>([]);
+  const [savedObservations, setSavedObservations] = useState<SavedObservation[]>([]);
   const [showSaveTrackDialog, setShowSaveTrackDialog] = useState(false);
   const [trackName, setTrackName] = useState('');
   const [trackColor, setTrackColor] = useState('#EAB308');
@@ -661,6 +675,11 @@ export default function MapComponent({
   const [newFindPosition, setNewFindPosition] = useState<Position | null>(null);
   const [findName, setFindName] = useState('');
   const [findColor, setFindColor] = useState('#EF4444');
+  
+  // Observasjon state
+  const [showObservationDialog, setShowObservationDialog] = useState(false);
+  const [observationName, setObservationName] = useState('');
+  const [observationColor, setObservationColor] = useState('#FF6B35');
 
   // MSR-retikkel state
   const [localShowMSRRetikkel, setLocalShowMSRRetikkel] = useState(showMSRRetikkel);
@@ -993,6 +1012,89 @@ export default function MapComponent({
     setNewFindPosition(null);
       setFindName('');
       setFindColor('#EF4444');
+  };
+  
+  // Aktiver observasjon-modus - bruk nåværende posisjon (rød prikk i midten)
+  const toggleObservationMode = () => {
+    console.log('toggleObservationMode called, using current position');
+    if (currentPosition) {
+      console.log('Opening observation dialog for current position...');
+      // Sett default navn med dato og tid
+      setObservationName(generateDefaultName('observation'));
+      setShowObservationDialog(true);
+    } else {
+      alert('Kunne ikke finne din nåværende posisjon');
+    }
+  };
+  
+  // Lagre observasjon til localStorage
+  const saveObservationToLocalStorage = (position: Position, name: string, color: string) => {
+    try {
+      // Hent eksisterende observasjoner
+      const existingObservations = JSON.parse(localStorage.getItem('searchObservations') || '{}');
+      
+      // Finn aktivt skuddpar ID - bruk selectedTarget i søk-modus, lastPair i andre moduser
+      let activeShotPairId: string;
+      if (mode === 'søk' && hasSavedPairs && safeSavedPairs.length > 0) {
+        // I søk-modus: bruk det aktive treffpunktet
+        const treffpunkter = safeSavedPairs.filter(p => p.category === 'Treffpunkt');
+        const reversedTreffpunkter = treffpunkter.length > 0 ? [...treffpunkter].reverse() : [];
+        const selectedTarget = reversedTreffpunkter[adjustedSelectedTargetIndex];
+        activeShotPairId = selectedTarget?.id?.toString() || 'unknown';
+      } else {
+        // I andre moduser: bruk lastPair
+        activeShotPairId = lastPair?.id?.toString() || 'unknown';
+      }
+      
+      // Generer unik ID for observasjonen
+      const observationId = `observation_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Lagre ny observasjon
+      const newObservation: SavedObservation = {
+        id: observationId,
+        position: position,
+        createdAt: new Date().toISOString(),
+        shotPairId: activeShotPairId,
+        mode: 'søk',
+        name: name,
+        color: color
+      };
+      
+      // Legg til i eksisterende observasjoner
+      existingObservations[observationId] = newObservation;
+      localStorage.setItem('searchObservations', JSON.stringify(existingObservations));
+      
+      // Oppdater state for å vise den nye observasjonen umiddelbart
+      setSavedObservations(prev => [...prev, newObservation]);
+      
+      console.log('Observasjon lagret:', newObservation);
+    } catch (error) {
+      console.error('Feil ved lagring av observasjon:', error);
+    }
+  };
+  
+  // Håndter lagring av observasjon fra dialog
+  const handleSaveObservationFromDialog = () => {
+    if (currentPosition) {
+      // Hvis brukeren ikke har skrevet noe, bruk default navnet
+      const finalObservationName = observationName.trim() || observationName;
+      if (!finalObservationName) {
+        alert('Vennligst skriv inn et navn for observasjonen');
+        return;
+      }
+      
+      saveObservationToLocalStorage(currentPosition, finalObservationName, observationColor);
+      setShowObservationDialog(false);
+      setObservationName('');
+      setObservationColor('#FF6B35');
+    }
+  };
+  
+  // Håndter avbryt av observasjon dialog
+  const handleCancelObservation = () => {
+    setShowObservationDialog(false);
+    setObservationName('');
+    setObservationColor('#FF6B35');
   };
 
   const startCompass = async () => {
@@ -1463,7 +1565,7 @@ export default function MapComponent({
   }
 
   // Generer default navn med dato og tid
-  const generateDefaultName = (type: 'track' | 'find') => {
+  const generateDefaultName = (type: 'track' | 'find' | 'observation') => {
     const now = new Date();
     const date = now.toLocaleDateString('nb-NO', { 
       day: '2-digit', 
@@ -1477,8 +1579,10 @@ export default function MapComponent({
     
     if (type === 'track') {
       return `Spor ${date} ${time}`;
-    } else {
+    } else if (type === 'find') {
       return `Funn ${date} ${time}`;
+    } else {
+      return `Obs ${date} ${time}`;
     }
   };
 
@@ -1739,6 +1843,43 @@ export default function MapComponent({
                   </div>
                 </Popup>
               </Marker>
+            ))}
+          </>
+        )}
+        
+        {/* Alle lagrede observasjoner i søk-modus */}
+        {mode === 'søk' && showObservations && savedObservations.length > 0 && (
+          <>
+            {savedObservations.map((observation) => (
+              <Circle
+                key={`saved-observation-${observation.id}`}
+                center={[observation.position.lat, observation.position.lng]}
+                radius={2.5} // 2.5 meter radius = 5x5 meter firkant
+                pathOptions={{
+                  color: observation.color,
+                  fillColor: 'transparent',
+                  fillOpacity: 0,
+                  weight: 2,
+                }}
+                eventHandlers={{
+                  click: (e) => {
+                    // Åpne popup manuelt på mobil
+                    const popup = e.target.getPopup();
+                    if (popup) {
+                      popup.openPopup();
+                    }
+                  }
+                }}
+              >
+                <Popup>
+                  <div className="text-center">
+                    <div className="font-semibold text-sm">{observation.name}</div>
+                    <div className="text-xs text-gray-600 mt-1">
+                      {new Date(observation.createdAt).toLocaleDateString('nb-NO')}
+                    </div>
+                  </div>
+                </Popup>
+              </Circle>
             ))}
           </>
         )}
@@ -2143,6 +2284,15 @@ export default function MapComponent({
                       💾
                     </button>
 
+                    {/* Obs-knapp */}
+                    <button
+                      onClick={toggleObservationMode}
+                      className="px-3 h-9 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex items-center justify-center bg-orange-600 hover:bg-orange-700 text-white border-orange-700"
+                      title="Legg til observasjon"
+                    >
+                      <span className="text-[10px] font-bold">Obs</span>
+                    </button>
+                    
                     {/* Funn! knapp */}
                     <button
                       onClick={toggleFindingMode}
@@ -2150,9 +2300,9 @@ export default function MapComponent({
                       title="Klikk for å plassere markering"
                     >
                       <span className="text-[10px] font-bold">Mark!</span>
-            </button>
+                    </button>
             
-            {/* Start/Stopp spor knapp */}
+                    {/* Start/Stopp spor knapp */}
             <button
               onClick={isTracking ? stopTracking : startTracking}
               className={`flex-1 min-w-[60px] max-w-[110px] w-auto h-9 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex flex-col items-center justify-center px-[0.375em] py-[0.375em] ${
@@ -2160,9 +2310,9 @@ export default function MapComponent({
                   ? 'bg-red-600 hover:bg-red-700 text-white border-red-700'
                   : 'bg-green-600 hover:bg-green-700 text-white border-green-700'
               }`}
-                      title={isTracking ? 'Stop track' : 'Start track'}
+                                              title={isTracking ? 'Stop' : 'Start'}
             >
-                                              <span className="text-[10px] mt-0.5">{isTracking ? 'Stop track' : 'Start track'}</span>
+                                                                                              <span className="text-[10px] mt-0.5">{isTracking ? 'Stop' : 'Start'}</span>
             </button>
           </div>
         )}
@@ -2482,6 +2632,66 @@ export default function MapComponent({
                 className="px-3 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white font-bold"
               >
                 Lagre spor
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Dialog for å lagre observasjon med navn og farge */}
+      {showObservationDialog && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[2000]">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-80 flex flex-col gap-4">
+            <div className="text-xl font-bold mb-2 text-gray-800">Lagre observasjon</div>
+            
+            <label className="text-base font-semibold text-gray-700">
+              Navn på observasjon:
+              <input
+                type="text"
+                value={observationName}
+                onChange={e => setObservationName(e.target.value)}
+                placeholder={observationName || "f.eks. Elg sett"}
+                className="w-full border rounded px-2 py-1 mt-1 mb-2 text-lg text-[16px] text-gray-900"
+                autoFocus
+              />
+            </label>
+
+            <label className="text-base font-semibold text-gray-700">
+              Farge på observasjon:
+              <div className="flex gap-2 mt-1 mb-2">
+                <input
+                  type="color"
+                  value={observationColor}
+                  onChange={e => setObservationColor(e.target.value)}
+                  className="w-12 h-12 border rounded cursor-pointer"
+                  title="Velg farge"
+                />
+                <div className="flex-1 flex flex-wrap gap-1">
+                  {['#FF6B35', '#EF4444', '#EAB308', '#10B981', '#3B82F6', '#8B5CF6', '#F59E0B', '#EC4899'].map((color) => (
+                    <button
+                      key={color}
+                      onClick={() => setObservationColor(color)}
+                      className={`w-8 h-8 rounded border-2 ${observationColor === color ? 'border-gray-800' : 'border-gray-300'}`}
+                      title={`Velg ${color}`}
+                      style={{ backgroundColor: color }}
+                    />
+                  ))}
+                </div>
+              </div>
+            </label>
+
+            <div className="flex gap-2 justify-end mt-2">
+              <button
+                onClick={handleCancelObservation}
+                className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold"
+              >
+                Avbryt
+              </button>
+              <button
+                onClick={handleSaveObservationFromDialog}
+                className="px-3 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white font-bold"
+              >
+                Lagre observasjon
               </button>
             </div>
           </div>

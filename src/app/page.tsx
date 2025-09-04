@@ -55,6 +55,7 @@ export default function Home() {
   const [orientationMode, setOrientationMode] = useState<'north' | 'heading'>('north');
   const [showOnlyLastShot, setShowOnlyLastShot] = useState(true);
   const [showAllTracksAndFinds, setShowAllTracksAndFinds] = useState(false);
+  const [showObservations, setShowObservations] = useState(true);
   const [isTracking, setIsTracking] = useState(false);
   const [trackingPoints, setTrackingPoints] = useState<Position[]>([]);
   
@@ -356,6 +357,8 @@ export default function Home() {
           mode={mode}
           showAllTracksAndFinds={showAllTracksAndFinds}
           onShowAllTracksAndFindsChange={setShowAllTracksAndFinds}
+          showObservations={showObservations}
+          onShowObservationsChange={setShowObservations}
         />
         </div>
       )}
@@ -390,6 +393,7 @@ export default function Home() {
         onNextTarget={handleNextTarget}
         onSelectedTargetIndexChange={setSelectedTargetIndex}
         showAllTracksAndFinds={showAllTracksAndFinds}
+        showObservations={showObservations}
       />
 
       {/* Admin Menu */}
