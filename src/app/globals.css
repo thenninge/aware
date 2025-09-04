@@ -36,3 +36,55 @@ body {
     transform: translateY(-50%);
   }
 }
+
+/* Custom slider styling for bedre finger-treffsone */
+.slider-custom {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.slider-custom::-webkit-slider-track {
+  height: 16px;
+  border-radius: 8px;
+  background: transparent;
+}
+
+.slider-custom::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 24px;
+  width: 24px;
+  border-radius: 50%;
+  background: #3b82f6;
+  border: 2px solid #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.slider-custom::-webkit-slider-thumb:hover {
+  background: #2563eb;
+  transform: scale(1.1);
+}
+
+.slider-custom::-moz-range-track {
+  height: 16px;
+  border-radius: 8px;
+  background: transparent;
+}
+
+.slider-custom::-moz-range-thumb {
+  height: 24px;
+  width: 24px;
+  border-radius: 50%;
+  background: #3b82f6;
+  border: 2px solid #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.slider-custom::-moz-range-thumb:hover {
+  background: #2563eb;
+  transform: scale(1.1);
+}

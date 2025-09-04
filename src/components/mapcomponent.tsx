@@ -2570,8 +2570,8 @@ export default function MapComponent({
               </div>
             </div>
             <div className="flex gap-2 justify-end mt-4">
-              <button onClick={() => setShowTargetDialog(false)} className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 text-xs">Avbryt</button>
-              <button onClick={async () => { await handleConfirmTarget(); setShowTargetDialog(false); }} className="px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 text-xs">Lagre treffpunkt</button>
+              <button onClick={() => setShowTargetDialog(false)} className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300 text-xs">Avbryt</button>
+              <button onClick={async () => { await handleConfirmTarget(); setShowTargetDialog(false); }} className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 text-xs">Lagre treffpunkt</button>
             </div>
           </div>
         </div>,
