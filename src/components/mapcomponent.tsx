@@ -1729,6 +1729,22 @@ export default function MapComponent({
             ))}
           </>
         )}
+        {/* Live preview av radius-sirkel når radius-modal er aktiv */}
+        {showTargetRadiusModal && hasSavedPairs && lastPair && lastPair.current && (
+          <Circle
+            key={`radius-preview-${targetRange}-${lastPair.current.lat}-${lastPair.current.lng}`}
+            center={[lastPair.current.lat, lastPair.current.lng]}
+            radius={targetRange}
+            pathOptions={{
+              color: '#2563eb',
+              fillColor: '#2563eb',
+              fillOpacity: 0.08,
+              weight: 2,
+              dashArray: '5 5',
+            }}
+          />
+        )}
+        
         {showTargetDirectionUI && hasSavedPairs && lastPair && lastPair.current && (
           <>
             <Circle
@@ -2092,7 +2108,7 @@ export default function MapComponent({
             className="flex-1 min-w-[60px] max-w-[110px] w-auto h-9 rounded-full shadow-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-[0.75rem] transition-colors border border-blue-700 flex flex-col items-center justify-center px-[0.375em] py-[0.375em]"
             title="Save current pos"
           >
-                                    <span className="text-[10px] mt-0.5">From</span>
+                                    <span className="text-[10px] mt-0.5">Shot</span>
           </button>
         </div>
       )}
