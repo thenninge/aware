@@ -97,6 +97,8 @@ export default function Home() {
 
   const settingsMenuRef = useRef<HTMLDivElement>(null);
   const filterMenuRef = useRef<HTMLDivElement>(null);
+  const settingsButtonRef = useRef<HTMLButtonElement>(null);
+  const filterButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (mode === 'track') {
@@ -118,6 +120,35 @@ export default function Home() {
       setShowOnlyLastShot(false); // I søk-modus viser vi det valgte skuddparet
     }
   }, [mode, isTracking]);
+
+  // Close menus when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: Event) => {
+      const target = event.target as Node;
+      
+      // Don't close if clicking on the toggle buttons
+      if (settingsButtonRef.current?.contains(target) || filterButtonRef.current?.contains(target)) {
+        return;
+      }
+      
+      if (isSettingsExpanded && settingsMenuRef.current && !settingsMenuRef.current.contains(target)) {
+        setIsSettingsExpanded(false);
+      }
+      if (isFilterExpanded && filterMenuRef.current && !filterMenuRef.current.contains(target)) {
+        setIsFilterExpanded(false);
+      }
+    };
+
+    if (isSettingsExpanded || isFilterExpanded) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [isSettingsExpanded, isFilterExpanded]);
 
 
 
@@ -198,7 +229,13 @@ export default function Home() {
       <div className="fixed top-0 left-1/2 -translate-x-1/2 z-[2001] flex justify-center items-center w-full max-w-xs px-2 py-2 gap-2">
         {/* Settings-knapp */}
         <button
-          onClick={() => setIsSettingsExpanded(!isSettingsExpanded)}
+          onClick={() => {
+            setIsSettingsExpanded(!isSettingsExpanded);
+            if (!isSettingsExpanded) {
+              setIsFilterExpanded(false); // Lukk filter-menyen hvis den er åpen
+            }
+          }}
+          ref={settingsButtonRef}
           className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors border ${
             isSettingsExpanded 
               ? 'bg-blue-100 border-blue-300 hover:bg-blue-200' 
@@ -228,7 +265,13 @@ export default function Home() {
         </button>
         {/* Filter-knapp */}
         <button
-          onClick={() => setIsFilterExpanded(!isFilterExpanded)}
+          onClick={() => {
+            setIsFilterExpanded(!isFilterExpanded);
+            if (!isFilterExpanded) {
+              setIsSettingsExpanded(false); // Lukk settings-menyen hvis den er åpen
+            }
+          }}
+          ref={filterButtonRef}
           className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors border ${
             isFilterExpanded 
               ? 'bg-blue-100 border-blue-300 hover:bg-blue-200' 
