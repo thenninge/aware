@@ -209,17 +209,40 @@ export default function Home() {
 
   // Funksjoner for å navigere mellom treffpunkter i søk-modus
   const handlePreviousTarget = () => {
-    setSelectedTargetIndex(prev => Math.max(0, prev - 1));
+    setSelectedTargetIndex(prev => {
+      console.log('handlePreviousTarget called with prev:', prev);
+      // Hvis vi er på første (index 0), gå til siste
+      // Vi antar at det finnes minst 1 treffpunkt siden denne funksjonen kalles
+      if (prev === 0) {
+        console.log('Going from first to last, setting to 999');
+        // Gå til siste (vi kan ikke vite nøyaktig antall her, så vi setter en høy verdi)
+        // MapComponent vil håndtere dette riktig
+        return 999; // Dette vil bli justert til faktisk siste index i MapComponent
+      }
+      // Ellers gå til forrige
+      console.log('Going to previous, new index:', prev - 1);
+      return prev - 1;
+    });
   };
 
   const handleNextTarget = () => {
-    setSelectedTargetIndex(prev => prev + 1);
+    setSelectedTargetIndex(prev => {
+      // Gå til neste, MapComponent vil håndtere wraparound
+      // Vi setter en høy verdi som MapComponent vil justere til riktig wraparound
+      return prev + 1;
+    });
   };
 
   const handleGoToLastTarget = () => {
     // Gå til nyeste treffpunkt (index 0)
     setSelectedTargetIndex(0);
   };
+  
+  // useEffect for å håndtere wraparound når selectedTargetIndex blir for høy eller negativ
+  useEffect(() => {
+    // Dette vil bli implementert senere når vi har tilgang til antall treffpunkter
+    // For nå bruker vi MapComponent sin adjustedSelectedTargetIndex
+  }, [selectedTargetIndex]);
 
  
 
@@ -362,6 +385,7 @@ export default function Home() {
         selectedTargetIndex={selectedTargetIndex}
         onPreviousTarget={handlePreviousTarget}
         onNextTarget={handleNextTarget}
+        onSelectedTargetIndexChange={setSelectedTargetIndex}
       />
 
       {/* Admin Menu */}

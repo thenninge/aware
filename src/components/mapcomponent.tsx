@@ -57,6 +57,7 @@ interface MapComponentProps {
   selectedTargetIndex?: number;
   onPreviousTarget?: () => void;
   onNextTarget?: () => void;
+  onSelectedTargetIndexChange?: (index: number) => void;
 }
 
 interface CategoryFilter {
@@ -632,6 +633,7 @@ export default function MapComponent({
       selectedTargetIndex = 0,
   onPreviousTarget,
   onNextTarget,
+  onSelectedTargetIndexChange,
 }: MapComponentProps) {
   const [showTargetDialog, setShowTargetDialog] = useState(false);
   const instanceId = useRef(Math.random());
@@ -662,6 +664,48 @@ export default function MapComponent({
   const [localShowMSRRetikkel, setLocalShowMSRRetikkel] = useState(showMSRRetikkel);
   const [localMSRRetikkelOpacity, setLocalMSRRetikkelOpacity] = useState(msrRetikkelOpacity);
   const [localMSRRetikkelStyle, setLocalMSRRetikkelStyle] = useState(msrRetikkelStyle);
+  
+  // Juster selectedTargetIndex for wraparound (loop fra slutten til starten)
+  const adjustedSelectedTargetIndex = (() => {
+    if (mode !== 'søk' || !savedPairs || savedPairs.length === 0) return selectedTargetIndex;
+    
+    const treffpunkter = savedPairs.filter(p => p.category === 'Treffpunkt');
+    if (treffpunkter.length === 0) return 0;
+    
+    // Hvis index er for høy, gå til starten
+    if (selectedTargetIndex >= treffpunkter.length) {
+      return 0;
+    }
+    // Hvis index er negativ, gå til slutten
+    if (selectedTargetIndex < 0) {
+      return treffpunkter.length - 1;
+    }
+    
+    return selectedTargetIndex;
+  })();
+  
+  // useEffect for å oppdatere selectedTargetIndex når den blir for høy eller negativ
+  useEffect(() => {
+    if (mode === 'søk' && savedPairs && savedPairs.length > 0) {
+      const treffpunkter = savedPairs.filter(p => p.category === 'Treffpunkt');
+      if (treffpunkter.length > 0) {
+        console.log('Wraparound check:', { selectedTargetIndex, treffpunkterLength: treffpunkter.length });
+        // Hvis index er for høy (f.eks. 999), gå til starten
+        if (selectedTargetIndex >= treffpunkter.length) {
+          console.log('Index too high, resetting to 0');
+          // Bruk callback for å oppdatere selectedTargetIndex i page.tsx
+          onSelectedTargetIndexChange?.(0);
+        }
+        // Hvis index er negativ, gå til slutten
+        if (selectedTargetIndex < 0) {
+          console.log('Index negative, setting to last');
+          onSelectedTargetIndexChange?.(treffpunkter.length - 1);
+        }
+      }
+    }
+  }, [selectedTargetIndex, mode, savedPairs, onSelectedTargetIndexChange]);
+  
+
   
   // Synkroniser MSR-retikkel props med local state
   useEffect(() => {
@@ -747,7 +791,7 @@ export default function MapComponent({
       if (mode === 'søk' && hasSavedPairs && safeSavedPairs.length > 0) {
         // Reverser rekkefølgen slik at index 0 = nyeste, index 1 = nest nyeste, etc.
         const reversedPairs = [...safeSavedPairs].reverse();
-        const selectedTarget = reversedPairs[selectedTargetIndex];
+        const selectedTarget = reversedPairs[adjustedSelectedTargetIndex];
         if (selectedTarget?.id) {
           // Vis kun spor for det valgte treffpunktet
           return allTracks.filter(track => track.shotPairId === selectedTarget.id.toString());
@@ -870,7 +914,7 @@ export default function MapComponent({
       if (mode === 'søk' && hasSavedPairs && safeSavedPairs.length > 0) {
         // Reverser rekkefølgen slik at index 0 = nyeste, index 1 = nest nyeste, etc.
         const reversedPairs = [...safeSavedPairs].reverse();
-        const selectedTarget = reversedPairs[selectedTargetIndex];
+        const selectedTarget = reversedPairs[adjustedSelectedTargetIndex];
         if (selectedTarget?.id) {
           // Vis kun funn for det valgte treffpunktet
           return allFinds.filter(find => find.shotPairId === selectedTarget.id.toString());
@@ -982,7 +1026,7 @@ export default function MapComponent({
     const hasSavedPairs = Array.isArray(savedPairs) && savedPairs.length > 0;
     // Reverser rekkefølgen slik at index 0 = nyeste, index 1 = nest nyeste, etc.
     const reversedPairs = hasSavedPairs ? [...savedPairs].reverse() : [];
-    const lastPair = hasSavedPairs ? reversedPairs[selectedTargetIndex] : undefined;
+    const lastPair = hasSavedPairs ? reversedPairs[adjustedSelectedTargetIndex] : undefined;
     if (!showTargetDirectionUI || !hasSavedPairs) {
       setPreviewTarget(null);
       return;
@@ -999,7 +1043,7 @@ export default function MapComponent({
         compassDeg
       )
     );
-  }, [showTargetDirectionUI, targetRange, targetDirection, savedPairs, selectedTargetIndex]);
+  }, [showTargetDirectionUI, targetRange, targetDirection, savedPairs, adjustedSelectedTargetIndex]);
 
 
 
@@ -1201,7 +1245,7 @@ export default function MapComponent({
   const lastPair = hasSavedPairs 
     ? (mode === 'track' 
         ? safeSavedPairs.filter(p => p.category === 'Skyteplass').pop() // Finn siste skyteplass i track-mode
-        : reversedPairs[selectedTargetIndex]) // Bruk valgt index i søk-modus
+        : reversedPairs[adjustedSelectedTargetIndex]) // Bruk justert index i søk-modus
     : undefined;
 
   // Last lagrede spor når komponenten mountes og når modus endres
@@ -1216,7 +1260,7 @@ export default function MapComponent({
       setSavedTracks([]); // Tøm spor når vi ikke er i søk-modus
       setSavedFinds([]); // Tøm funn når vi ikke er i søk-modus
     }
-  }, [mode, selectedTargetIndex, lastPair?.id]); // Reager på endringer i modus, valgt treffpunkt og skuddpar
+  }, [mode, adjustedSelectedTargetIndex, lastPair?.id]); // Reager på endringer i modus, valgt treffpunkt og skuddpar
 
   // Funksjon for å slette et spesifikt skuddpar
   const handleDeleteShotPair = async (clickedPairId: number) => {
@@ -1317,7 +1361,7 @@ export default function MapComponent({
           ? savedPairs.filter(p => p.category === 'Skyteplass').pop() // Finn siste skyteplass i track-mode
           : (() => {
               const reversedPairs = [...savedPairs].reverse();
-              return reversedPairs[selectedTargetIndex];
+              return reversedPairs[adjustedSelectedTargetIndex];
             })()) // Bruk valgt index i søk-modus
       : undefined;
     
@@ -1780,7 +1824,7 @@ export default function MapComponent({
                     const treffpunkter = safeSavedPairs.filter(p => p.category === 'Treffpunkt');
                     // Reverser rekkefølgen slik at index 0 = nyeste, index 1 = nest nyeste, etc.
                     const reversedTreffpunkter = treffpunkter.length > 0 ? [...treffpunkter].reverse() : [];
-                    const selectedTarget = reversedTreffpunkter[selectedTargetIndex];
+                    const selectedTarget = reversedTreffpunkter[adjustedSelectedTargetIndex];
                     if (!selectedTarget) return null;
                     
                     return (
@@ -2093,26 +2137,26 @@ export default function MapComponent({
               {/* Indikator for valgt treffpunkt */}
               {savedPairs.filter(p => p.category === 'Treffpunkt').length > 0 && (
                 <div className="text-xs text-center text-gray-700 bg-white/90 px-2 py-1 rounded shadow-sm">
-                  {selectedTargetIndex + 1}
+                  {adjustedSelectedTargetIndex + 1}
                 </div>
               )}
               
-              {/* Pil opp - forrige treffpunkt */}
+              {/* Pil venstre - forrige treffpunkt */}
               <button
                 onClick={onPreviousTarget}
                 className="w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white"
                 title="Forrige treffpunkt"
               >
-                ↑
+                ←
               </button>
               
-              {/* Pil ned - neste treffpunkt */}
+              {/* Pil høyre - neste treffpunkt */}
               <button
                 onClick={onNextTarget}
                 className="w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white"
                 title="Neste treffpunkt"
               >
-                ↓
+                →
               </button>
             </>
           )}

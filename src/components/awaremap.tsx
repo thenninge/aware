@@ -63,6 +63,7 @@ interface AwareMapProps {
   selectedTargetIndex?: number;
   onPreviousTarget?: () => void;
   onNextTarget?: () => void;
+  onSelectedTargetIndexChange?: (index: number) => void;
 }
 
 export default function AwareMap({ 
@@ -93,6 +94,7 @@ export default function AwareMap({
   selectedTargetIndex,
   onPreviousTarget,
   onNextTarget,
+  onSelectedTargetIndexChange,
 }: AwareMapProps) {
   const [isClient, setIsClient] = useState(false);
   const [hasError, setHasError] = useState(false);
@@ -156,6 +158,7 @@ export default function AwareMap({
         selectedTargetIndex={selectedTargetIndex}
         onPreviousTarget={onPreviousTarget}
         onNextTarget={onNextTarget}
+        onSelectedTargetIndexChange={onSelectedTargetIndexChange}
       />
     </div>
   );
