@@ -77,10 +77,42 @@ export async function GET(request: NextRequest) {
     ];
 
     // Transform team_members to members for frontend compatibility
-    const teamsWithMembersFormatted = allTeams.map(team => ({
-      ...team,
-      members: team.team_members || []
-    }));
+    // and fetch nicknames for all members
+    const teamsWithMembersFormatted = await Promise.all(
+      allTeams.map(async (team) => {
+        if (!team.team_members || team.team_members.length === 0) {
+          return {
+            ...team,
+            members: []
+          };
+        }
+
+        // Get user profiles for all team members
+        const userIds = team.team_members.map((member: any) => member.userid);
+        const { data: userProfiles, error: profilesError } = await supabase
+          .from('users')
+          .select('google_id, nickname, display_name, email')
+          .in('google_id', userIds);
+
+        if (profilesError) {
+          console.error('Error fetching user profiles:', profilesError);
+        }
+
+        // Merge team members with their user profiles
+        const membersWithProfiles = team.team_members.map((member: any) => {
+          const userProfile = userProfiles?.find(profile => profile.google_id === member.userid);
+          return {
+            ...member,
+            userProfile: userProfile || null
+          };
+        });
+
+        return {
+          ...team,
+          members: membersWithProfiles
+        };
+      })
+    );
 
     return NextResponse.json(teamsWithMembersFormatted);
   } catch (error) {

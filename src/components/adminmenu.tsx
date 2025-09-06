@@ -318,14 +318,7 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
                         <option value="">Velg team...</option>
                         {userTeams.map(team => (
                           <option key={team.id} value={team.id}>
-                            {team.name} ({team.members?.map(m => {
-                              const member = m as any;
-                              if (member.userid === authState.user?.googleId) {
-                                return authState.user?.nickname || authState.user?.displayName || 'You';
-                              } else {
-                                return `User ${member.userid}`;
-                              }
-                            }).join(', ') || 'No members'})
+                            {team.name}
                           </option>
                         ))}
                       </select>
@@ -350,7 +343,7 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
                             if (memberData.userid === authState.user?.googleId) {
                               displayName = authState.user?.nickname || authState.user?.displayName || 'You';
                             } else {
-                              displayName = `User ${memberData.userid}`;
+                              displayName = memberData.userProfile?.nickname || memberData.userProfile?.display_name || memberData.userProfile?.email || `User ${memberData.userid}`;
                             }
                             return (
                               <div key={index} className="text-xs bg-blue-100 px-2 py-1 rounded">
