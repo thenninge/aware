@@ -29,7 +29,14 @@ export async function GET(request: NextRequest) {
     // Hent teams hvor brukeren er eier eller medlem
     const { data: ownedTeams, error: ownedError } = await supabase
       .from('teams')
-      .select('*')
+      .select(`
+        *,
+        team_members (
+          userid,
+          role,
+          joined_at
+        )
+      `)
       .eq('ownerid', userId);
 
     if (ownedError) {
@@ -40,7 +47,16 @@ export async function GET(request: NextRequest) {
     // Hent teams hvor brukeren er medlem (men ikke eier)
     const { data: memberTeams, error: memberError } = await supabase
       .from('team_members')
-      .select('teams(*)')
+      .select(`
+        teams (
+          *,
+          team_members (
+            userid,
+            role,
+            joined_at
+          )
+        )
+      `)
       .eq('userid', userId);
 
     if (memberError) {
@@ -48,13 +64,25 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: memberError.message }, { status: 500 });
     }
 
-    // Kombiner teams
+    // Kombiner teams og fjern duplikater
+    const ownedTeamIds = new Set((ownedTeams || []).map(team => team.id));
+    const uniqueMemberTeams = (memberTeams || [])
+      .map(m => m.teams)
+      .filter(Boolean)
+      .filter(team => !ownedTeamIds.has(team.id)); // Fjern teams som allerede er eid
+
     const allTeams = [
       ...(ownedTeams || []),
-      ...(memberTeams?.map(m => m.teams).filter(Boolean) || [])
+      ...uniqueMemberTeams
     ];
 
-    return NextResponse.json(allTeams);
+    // Transform team_members to members for frontend compatibility
+    const teamsWithMembersFormatted = allTeams.map(team => ({
+      ...team,
+      members: team.team_members || []
+    }));
+
+    return NextResponse.json(teamsWithMembersFormatted);
   } catch (error) {
     console.error('Error in GET /api/teams:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -129,9 +157,75 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: fetchError.message }, { status: 500 });
     }
 
-    return NextResponse.json(teamWithMembers, { status: 201 });
+    // Transform team_members to members for frontend compatibility
+    const teamWithMembersFormatted = {
+      ...teamWithMembers,
+      members: teamWithMembers.team_members || []
+    };
+
+    return NextResponse.json(teamWithMembersFormatted, { status: 201 });
   } catch (error) {
     console.error('Error in POST /api/teams:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+// DELETE - Slett team
+export async function DELETE(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    
+    const userId = session?.user?.googleId || session?.user?.email;
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const teamId = searchParams.get('id');
+
+    if (!teamId) {
+      return NextResponse.json({ error: 'Team ID is required' }, { status: 400 });
+    }
+
+    const supabase = getAuthenticatedSupabase();
+
+    // Sjekk om brukeren er eier av teamet
+    const { data: team, error: teamError } = await supabase
+      .from('teams')
+      .select('*')
+      .eq('id', teamId)
+      .eq('ownerid', userId)
+      .single();
+
+    if (teamError || !team) {
+      return NextResponse.json({ error: 'Team not found or you are not the owner' }, { status: 404 });
+    }
+
+    // Slett team_members først (foreign key constraint)
+    const { error: membersError } = await supabase
+      .from('team_members')
+      .delete()
+      .eq('teamid', teamId);
+
+    if (membersError) {
+      console.error('Error deleting team members:', membersError);
+      return NextResponse.json({ error: membersError.message }, { status: 500 });
+    }
+
+    // Slett teamet
+    const { error: deleteError } = await supabase
+      .from('teams')
+      .delete()
+      .eq('id', teamId);
+
+    if (deleteError) {
+      console.error('Error deleting team:', deleteError);
+      return NextResponse.json({ error: deleteError.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true, message: 'Team deleted successfully' });
+  } catch (error: any) {
+    console.error('Error in DELETE /api/teams:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

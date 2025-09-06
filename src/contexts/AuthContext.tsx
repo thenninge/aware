@@ -21,6 +21,7 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps) {
   const { data: session, status } = useSession();
   const [activeTeam, setActiveTeamState] = useState<Team | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
 
   // Convert NextAuth session to our UserProfile format
   const convertSessionToUserProfile = (session: any): UserProfile | null => {
@@ -36,7 +37,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     };
   };
 
-  // Load active team from localStorage
+  // Load active team and user profile from localStorage and API
   useEffect(() => {
     const loadActiveTeam = () => {
       try {
@@ -49,12 +50,40 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
     };
 
+    const loadUserProfile = async () => {
+      try {
+        // First try to load from localStorage
+        const savedProfile = localStorage.getItem('aware_user_profile');
+        if (savedProfile) {
+          setUserProfile(JSON.parse(savedProfile));
+        }
+
+        // Load from API
+        if (session?.user) {
+          const response = await fetch('/api/user-profile');
+          if (response.ok) {
+            const apiProfile = await response.json();
+            if (apiProfile) {
+              setUserProfile(apiProfile);
+              localStorage.setItem('aware_user_profile', JSON.stringify(apiProfile));
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error loading user profile:', error);
+      }
+    };
+
     loadActiveTeam();
-  }, []);
+    loadUserProfile();
+  }, [session?.user]);
 
   // Update auth state when session changes
+  const baseUser = convertSessionToUserProfile(session);
+  const finalUser = userProfile && baseUser ? { ...baseUser, ...userProfile } : baseUser;
+  
   const authState: AuthState = {
-    user: convertSessionToUserProfile(session),
+    user: finalUser,
     activeTeam,
     isAuthenticated: !!session,
     isLoading: status === 'loading',
@@ -66,7 +95,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const logout = async () => {
     localStorage.removeItem('aware_active_team');
+    localStorage.removeItem('aware_user_profile');
     setActiveTeamState(null);
+    setUserProfile(null);
     await signOut();
   };
 
@@ -87,6 +118,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     
     const updatedUser = { ...authState.user, ...updates };
     localStorage.setItem('aware_user_profile', JSON.stringify(updatedUser));
+    setUserProfile(updatedUser);
   };
 
   const value: AuthContextType = {

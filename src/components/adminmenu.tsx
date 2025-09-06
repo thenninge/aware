@@ -10,7 +10,7 @@ interface AdminMenuProps {
 }
 
 export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
-  const { authState, login, logout } = useAuth();
+  const { authState, login, logout, updateUserProfile } = useAuth();
   const [activeTab, setActiveTab] = useState<'team' | 'users' | 'settings'>('team');
   const [activeTeam, setActiveTeam] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -22,11 +22,23 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
   // Team creation state
   const [newTeamName, setNewTeamName] = useState('');
   const [isCreatingTeam, setIsCreatingTeam] = useState(false);
+  
+  // Team deletion state
+  const [isDeletingTeam, setIsDeletingTeam] = useState(false);
+  
+  // Team invitation state
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [isSendingInvite, setIsSendingInvite] = useState(false);
+  
+  // User nickname state
+  const [nickname, setNickname] = useState('');
+  const [isUpdatingNickname, setIsUpdatingNickname] = useState(false);
 
   // Load teams when user is authenticated
   useEffect(() => {
     if (authState.isAuthenticated && authState.user) {
       loadUserTeams();
+      setNickname(authState.user.nickname || '');
     }
   }, [authState.isAuthenticated, authState.user]);
 
@@ -106,6 +118,111 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
     }
   };
 
+  const handleDeleteTeam = async () => {
+    if (!activeTeam || !authState.user) return;
+    
+    const teamToDelete = userTeams.find(t => t.id === activeTeam);
+    if (!teamToDelete) return;
+    
+    const confirmed = window.confirm(`Er du sikker på at du vil slette teamet "${teamToDelete.name}"? Denne handlingen kan ikke angres.`);
+    if (!confirmed) return;
+    
+    setIsDeletingTeam(true);
+    
+    try {
+      const response = await fetch(`/api/teams?id=${activeTeam}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete team');
+      }
+
+      // Remove team from local state
+      setUserTeams(prev => prev.filter(t => t.id !== activeTeam));
+      
+      // Clear active team if it was the deleted one
+      setActiveTeam(null);
+      
+      alert('Team slettet!');
+      
+    } catch (error) {
+      console.error('Error deleting team:', error);
+      alert('Feil ved sletting av team. Prøv igjen.');
+    } finally {
+      setIsDeletingTeam(false);
+    }
+  };
+
+  const handleSendInvite = async () => {
+    if (!inviteEmail.trim() || !activeTeam || !authState.user) return;
+    
+    setIsSendingInvite(true);
+    
+    try {
+      const response = await fetch('/api/team-invitations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          teamId: activeTeam,
+          email: inviteEmail.trim(),
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to send invitation');
+      }
+
+      const result = await response.json();
+      setInviteEmail('');
+      alert('Invitasjon sendt!');
+      
+    } catch (error: any) {
+      console.error('Error sending invitation:', error);
+      alert(`Feil ved sending av invitasjon: ${error.message}`);
+    } finally {
+      setIsSendingInvite(false);
+    }
+  };
+
+  const handleUpdateNickname = async () => {
+    if (!nickname.trim() || !authState.user) return;
+    
+    setIsUpdatingNickname(true);
+    
+    try {
+      // Update nickname in database
+      const response = await fetch('/api/user-profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          nickname: nickname.trim(),
+          display_name: authState.user.displayName
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update nickname');
+      }
+
+      // Update nickname in AuthContext
+      updateUserProfile({ nickname: nickname.trim() });
+      
+      alert('Nickname updated!');
+      
+    } catch (error: any) {
+      console.error('Error updating nickname:', error);
+      alert('Feil ved oppdatering av nickname. Prøv igjen.');
+    } finally {
+      setIsUpdatingNickname(false);
+    }
+  };
+
   if (!isExpanded) return null;
 
   return (
@@ -149,7 +266,7 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
                 : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
             }`}
           >
-            Users
+            User
           </button>
           <button
             onClick={() => setActiveTab('settings')}
@@ -164,7 +281,7 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
         </div>
 
         {/* Content */}
-        <div className="p-6">
+        <div className="p-6 overflow-y-auto max-h-[60vh]">
           {activeTab === 'team' && (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-gray-800">Team Management</h3>
@@ -201,7 +318,14 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
                         <option value="">Velg team...</option>
                         {userTeams.map(team => (
                           <option key={team.id} value={team.id}>
-                            {team.name} ({team.members?.length || 0} medlemmer)
+                            {team.name} ({team.members?.map(m => {
+                              const member = m as any;
+                              if (member.userid === authState.user?.googleId) {
+                                return authState.user?.nickname || authState.user?.displayName || 'You';
+                              } else {
+                                return `User ${member.userid}`;
+                              }
+                            }).join(', ') || 'No members'})
                           </option>
                         ))}
                       </select>
@@ -217,7 +341,25 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
                     <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                       <h4 className="font-medium text-blue-800 mb-2">Active Team</h4>
                       <p className="text-sm text-blue-700">Team: <span className="font-medium">{userTeams.find(t => t.id === activeTeam)?.name}</span></p>
-                      <p className="text-sm text-blue-700">Members: <span className="font-medium">{userTeams.find(t => t.id === activeTeam)?.members?.length || 0}</span></p>
+                      <div className="text-sm text-blue-700">
+                        <span className="font-medium">Members:</span>
+                        <div className="mt-1 space-y-1">
+                          {userTeams.find(t => t.id === activeTeam)?.members?.map((member, index) => {
+                            const memberData = member as any;
+                            let displayName;
+                            if (memberData.userid === authState.user?.googleId) {
+                              displayName = authState.user?.nickname || authState.user?.displayName || 'You';
+                            } else {
+                              displayName = `User ${memberData.userid}`;
+                            }
+                            return (
+                              <div key={index} className="text-xs bg-blue-100 px-2 py-1 rounded">
+                                {displayName} ({member.role})
+                              </div>
+                            );
+                          }) || <span className="text-xs text-gray-500">No members</span>}
+                        </div>
+                      </div>
                       <p className="text-sm text-blue-600 mt-2">All data (skuddpar, søkespor, funn) vises for dette teamet</p>
                     </div>
                   )}
@@ -243,17 +385,40 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
                   </div>
 
                   {/* Invite Members */}
-                  <div className="space-y-3">
-                    <h4 className="font-medium text-gray-700">Invite Members</h4>
-                    <input
-                      type="email"
-                      placeholder="Email address"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <button className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors">
-                      Send Invite
-                    </button>
-                  </div>
+                  {activeTeam && (
+                    <div className="space-y-3">
+                      <h4 className="font-medium text-gray-700">Invite Members</h4>
+                      <input
+                        type="email"
+                        placeholder="Email address"
+                        value={inviteEmail}
+                        onChange={(e) => setInviteEmail(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        disabled={isSendingInvite}
+                      />
+                      <button 
+                        onClick={handleSendInvite}
+                        disabled={!inviteEmail.trim() || isSendingInvite}
+                        className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 disabled:bg-gray-400 transition-colors"
+                      >
+                        {isSendingInvite ? 'Sender...' : 'Send Invite'}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Delete Active Team */}
+                  {activeTeam && userTeams.find(t => t.id === activeTeam) && (
+                    <div className="space-y-3 pt-6 pb-6">
+                      <h4 className="font-medium text-gray-700">Delete Active Team</h4>
+                      <button 
+                        onClick={handleDeleteTeam}
+                        disabled={isDeletingTeam}
+                        className="w-full bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 disabled:bg-gray-400 transition-colors"
+                      >
+                        {isDeletingTeam ? 'Sletter...' : `Delete "${userTeams.find(t => t.id === activeTeam)?.name}"`}
+                      </button>
+                    </div>
+                  )}
                 </>
               )}
             </div>
@@ -284,6 +449,26 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
                     <p className="text-sm text-gray-600">Email: <span className="font-medium">{authState.user?.email}</span></p>
                     <p className="text-sm text-gray-600">Nickname: <span className="font-medium">{authState.user?.nickname || 'Ikke satt'}</span></p>
                     <p className="text-sm text-gray-600">Teams: <span className="font-medium">{userTeams.length}</span></p>
+                  </div>
+
+                  {/* Update Nickname */}
+                  <div className="space-y-3">
+                    <h4 className="font-medium text-gray-700">Update Nickname</h4>
+                    <input
+                      type="text"
+                      placeholder="Enter your nickname"
+                      value={nickname}
+                      onChange={(e) => setNickname(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      disabled={isUpdatingNickname}
+                    />
+                    <button 
+                      onClick={handleUpdateNickname}
+                      disabled={!nickname.trim() || isUpdatingNickname}
+                      className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 disabled:bg-gray-400 transition-colors"
+                    >
+                      {isUpdatingNickname ? 'Updating...' : 'Update Nickname'}
+                    </button>
                   </div>
 
                   {/* Logout Button */}
