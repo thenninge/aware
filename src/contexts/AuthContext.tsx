@@ -1,12 +1,13 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useSession, signIn, signOut } from 'next-auth/react';
 import { AuthState, UserProfile, Team } from '@/types/auth';
 
 interface AuthContextType {
   authState: AuthState;
-  login: (user: UserProfile) => void;
-  logout: () => void;
+  login: () => Promise<void>;
+  logout: () => Promise<void>;
   setActiveTeam: (team: Team | null) => void;
   updateUserProfile: (updates: Partial<UserProfile>) => void;
 }
@@ -18,61 +19,55 @@ interface AuthProviderProps {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const [authState, setAuthState] = useState<AuthState>({
-    user: null,
-    activeTeam: null,
-    isAuthenticated: false,
-    isLoading: true,
-  });
+  const { data: session, status } = useSession();
+  const [activeTeam, setActiveTeamState] = useState<Team | null>(null);
 
-  // Load auth state from localStorage on mount
+  // Convert NextAuth session to our UserProfile format
+  const convertSessionToUserProfile = (session: any): UserProfile | null => {
+    if (!session?.user) return null;
+    
+    return {
+      googleId: session.user.googleId || session.user.email,
+      email: session.user.email,
+      displayName: session.user.name || session.user.email,
+      nickname: session.user.nickname,
+      createdAt: new Date(),
+      lastActive: new Date(),
+    };
+  };
+
+  // Load active team from localStorage
   useEffect(() => {
-    const loadAuthState = () => {
+    const loadActiveTeam = () => {
       try {
-        const savedUser = localStorage.getItem('aware_user');
         const savedTeam = localStorage.getItem('aware_active_team');
-        
-        if (savedUser) {
-          const user = JSON.parse(savedUser);
-          const team = savedTeam ? JSON.parse(savedTeam) : null;
-          
-          setAuthState({
-            user,
-            activeTeam: team,
-            isAuthenticated: true,
-            isLoading: false,
-          });
-        } else {
-          setAuthState(prev => ({ ...prev, isLoading: false }));
+        if (savedTeam) {
+          setActiveTeamState(JSON.parse(savedTeam));
         }
       } catch (error) {
-        console.error('Error loading auth state:', error);
-        setAuthState(prev => ({ ...prev, isLoading: false }));
+        console.error('Error loading active team:', error);
       }
     };
 
-    loadAuthState();
+    loadActiveTeam();
   }, []);
 
-  const login = (user: UserProfile) => {
-    localStorage.setItem('aware_user', JSON.stringify(user));
-    setAuthState({
-      user,
-      activeTeam: null,
-      isAuthenticated: true,
-      isLoading: false,
-    });
+  // Update auth state when session changes
+  const authState: AuthState = {
+    user: convertSessionToUserProfile(session),
+    activeTeam,
+    isAuthenticated: !!session,
+    isLoading: status === 'loading',
   };
 
-  const logout = () => {
-    localStorage.removeItem('aware_user');
+  const login = async () => {
+    await signIn('google');
+  };
+
+  const logout = async () => {
     localStorage.removeItem('aware_active_team');
-    setAuthState({
-      user: null,
-      activeTeam: null,
-      isAuthenticated: false,
-      isLoading: false,
-    });
+    setActiveTeamState(null);
+    await signOut();
   };
 
   const setActiveTeam = (team: Team | null) => {
@@ -82,22 +77,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
       localStorage.removeItem('aware_active_team');
     }
     
-    setAuthState(prev => ({
-      ...prev,
-      activeTeam: team,
-    }));
+    setActiveTeamState(team);
   };
 
   const updateUserProfile = (updates: Partial<UserProfile>) => {
+    // For now, we'll store user profile updates in localStorage
+    // In the future, this could sync with a database
     if (!authState.user) return;
     
     const updatedUser = { ...authState.user, ...updates };
-    localStorage.setItem('aware_user', JSON.stringify(updatedUser));
-    
-    setAuthState(prev => ({
-      ...prev,
-      user: updatedUser,
-    }));
+    localStorage.setItem('aware_user_profile', JSON.stringify(updatedUser));
   };
 
   const value: AuthContextType = {

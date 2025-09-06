@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { UserProfile } from '@/types/auth';
+import { UserProfile, Team } from '@/types/auth';
 
 interface AdminMenuProps {
   isExpanded: boolean;
@@ -12,39 +12,97 @@ interface AdminMenuProps {
 export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
   const { authState, login, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<'team' | 'users' | 'settings'>('team');
-  const [activeTeam, setActiveTeam] = useState('team1');
+  const [activeTeam, setActiveTeam] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Mock data for teams - senere kobles dette til database
-  const userTeams = [
-    { id: 'team1', name: 'Elgjaktlaget', members: 4, isActive: true },
-    { id: 'team2', name: 'Fuglejaktlaget', members: 3, isActive: false },
-    { id: 'team3', name: 'Viltjaktlaget', members: 6, isActive: false }
-  ];
+  // Teams will be loaded from database
+  const [userTeams, setUserTeams] = useState<Team[]>([]);
+  const [isLoadingTeams, setIsLoadingTeams] = useState(false);
+  
+  // Team creation state
+  const [newTeamName, setNewTeamName] = useState('');
+  const [isCreatingTeam, setIsCreatingTeam] = useState(false);
 
-  // Mock Google OAuth login - senere kobles dette til ekte Google OAuth
+  // Load teams when user is authenticated
+  useEffect(() => {
+    if (authState.isAuthenticated && authState.user) {
+      loadUserTeams();
+    }
+  }, [authState.isAuthenticated, authState.user]);
+
+  const loadUserTeams = async () => {
+    if (!authState.user) return;
+    
+    setIsLoadingTeams(true);
+    
+    try {
+      const response = await fetch('/api/teams');
+      
+      if (!response.ok) {
+        throw new Error('Failed to load teams');
+      }
+
+      const teams = await response.json();
+      setUserTeams(teams);
+      
+      // Auto-select first team if none is selected
+      if (teams.length > 0 && !activeTeam) {
+        setActiveTeam(teams[0].id);
+      }
+      
+    } catch (error) {
+      console.error('Error loading teams:', error);
+    } finally {
+      setIsLoadingTeams(false);
+    }
+  };
+
+  // Google OAuth login
   const handleGoogleLogin = async () => {
     setIsLoading(true);
     
     try {
-      // Simuler Google OAuth prosess
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Mock bruker data
-      const mockUser: UserProfile = {
-        googleId: `google_${Date.now()}`,
-        email: 'test@example.com',
-        displayName: 'Test User',
-        nickname: 'TestJeger',
-        createdAt: new Date(),
-        lastActive: new Date(),
-      };
-      
-      login(mockUser);
+      await login();
     } catch (error) {
       console.error('Login failed:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Create new team
+  const handleCreateTeam = async () => {
+    if (!newTeamName.trim() || !authState.user) return;
+    
+    setIsCreatingTeam(true);
+    
+    try {
+      const response = await fetch('/api/teams', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: newTeamName.trim(),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create team');
+      }
+
+      const newTeam = await response.json();
+      setUserTeams(prev => [...prev, newTeam]);
+      setNewTeamName('');
+      
+      // Auto-select the new team
+      setActiveTeam(newTeam.id);
+      
+    } catch (error) {
+      console.error('Error creating team:', error);
+      alert('Feil ved opprettelse av team. Prøv igjen.');
+    } finally {
+      setIsCreatingTeam(false);
     }
   };
 
@@ -130,30 +188,39 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
                   {/* Team Selector */}
                   <div className="space-y-3">
                     <h4 className="font-medium text-gray-700">Active Team</h4>
-                    <select
-                      value={activeTeam}
-                      onChange={(e) => setActiveTeam(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      {userTeams.map(team => (
-                        <option key={team.id} value={team.id}>
-                          {team.name} ({team.members} medlemmer)
-                        </option>
-                      ))}
-                    </select>
+                    {isLoadingTeams ? (
+                      <div className="text-center py-4 text-gray-500">
+                        <p>Laster teams...</p>
+                      </div>
+                    ) : userTeams.length > 0 ? (
+                      <select
+                        value={activeTeam || ''}
+                        onChange={(e) => setActiveTeam(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Velg team...</option>
+                        {userTeams.map(team => (
+                          <option key={team.id} value={team.id}>
+                            {team.name} ({team.members?.length || 0} medlemmer)
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <div className="text-center py-4 text-gray-500">
+                        <p>Ingen teams ennå. Opprett ditt første team nedenfor!</p>
+                      </div>
+                    )}
                   </div>
 
                   {/* Current Team Info */}
-                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                    <h4 className="font-medium text-blue-800 mb-2">Active Team</h4>
-                    {userTeams.find(t => t.id === activeTeam) && (
-                      <>
-                        <p className="text-sm text-blue-700">Team: <span className="font-medium">{userTeams.find(t => t.id === activeTeam)?.name}</span></p>
-                        <p className="text-sm text-blue-700">Members: <span className="font-medium">{userTeams.find(t => t.id === activeTeam)?.members}</span></p>
-                        <p className="text-sm text-blue-600 mt-2">All data (skuddpar, søkespor, funn) vises for dette teamet</p>
-                      </>
-                    )}
-                  </div>
+                  {activeTeam && userTeams.find(t => t.id === activeTeam) && (
+                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                      <h4 className="font-medium text-blue-800 mb-2">Active Team</h4>
+                      <p className="text-sm text-blue-700">Team: <span className="font-medium">{userTeams.find(t => t.id === activeTeam)?.name}</span></p>
+                      <p className="text-sm text-blue-700">Members: <span className="font-medium">{userTeams.find(t => t.id === activeTeam)?.members?.length || 0}</span></p>
+                      <p className="text-sm text-blue-600 mt-2">All data (skuddpar, søkespor, funn) vises for dette teamet</p>
+                    </div>
+                  )}
 
                   {/* Create Team */}
                   <div className="space-y-3">
@@ -161,10 +228,17 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
                     <input
                       type="text"
                       placeholder="Team name"
+                      value={newTeamName}
+                      onChange={(e) => setNewTeamName(e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      disabled={isCreatingTeam}
                     />
-                    <button className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">
-                      Create Team
+                    <button 
+                      onClick={handleCreateTeam}
+                      disabled={!newTeamName.trim() || isCreatingTeam}
+                      className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 transition-colors"
+                    >
+                      {isCreatingTeam ? 'Oppretter...' : 'Create Team'}
                     </button>
                   </div>
 
