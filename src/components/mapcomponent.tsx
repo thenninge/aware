@@ -8,7 +8,7 @@ import 'leaflet/dist/leaflet.css';
 import React from 'react';
 import PieChart from './piechart';
 import SettingsMenu from './settingsmenu';
-import { supabase } from '../lib/supabaseClient';
+// Database operations now go through Next.js API routes
 import { Dialog } from '@headlessui/react';
 import { createPortal } from 'react-dom';
 
@@ -49,6 +49,7 @@ interface MapComponentProps {
   showOnlyLastShot?: boolean;
   isTracking?: boolean;
   onTrackingChange?: (isTracking: boolean) => void;
+  activeTeam?: string | null;
   trackingPoints?: Position[];
   onTrackingPointsChange?: (points: Position[]) => void;
   showMSRRetikkel?: boolean;
@@ -649,6 +650,7 @@ export default function MapComponent({
   onSelectedTargetIndexChange,
   showAllTracksAndFinds = false,
   showObservations = true,
+  activeTeam = null,
 }: MapComponentProps) {
   const [showTargetDialog, setShowTargetDialog] = useState(false);
   const instanceId = useRef(Math.random());
@@ -1215,25 +1217,38 @@ export default function MapComponent({
     });
   }, []);
 
-  // Sett base-URL for backend
-  const BACKEND_URL = 'http://localhost:5000/api/posts';
+  // All database operations now go through Next.js API routes
 
-  // Hent alle poster fra Supabase
+  // Hent alle poster fra API
   const fetchPosts = async () => {
-    const { data, error } = await supabase.from('posts').select('*').order('created_at', { ascending: true });
-    if (error) {
+    try {
+      const response = await fetch('/api/posts');
+      if (!response.ok) {
+        throw new Error('Failed to fetch posts');
+      }
+      const data = await response.json();
+      
+      if (Array.isArray(data)) {
+        // Parse content field to extract coordinates and category
+        setSavedPairs(data.map(post => {
+          const content = post.content || '';
+          const latMatch = content.match(/Lat: ([\d.-]+)/);
+          const lngMatch = content.match(/Lng: ([\d.-]+)/);
+          const targetLatMatch = content.match(/Target: ([\d.-]+), ([\d.-]+)/);
+          const categoryMatch = content.match(/Category: (\w+)/);
+          
+          return {
+            current: latMatch && lngMatch ? { lat: parseFloat(latMatch[1]), lng: parseFloat(lngMatch[1]) } : undefined,
+            target: targetLatMatch ? { lat: parseFloat(targetLatMatch[1]), lng: parseFloat(targetLatMatch[2]) } : undefined,
+            category: categoryMatch ? categoryMatch[1] : 'general',
+            id: post.id,
+            created_at: post.created_at,
+          };
+        }));
+      }
+    } catch (error) {
       console.error('Error fetching posts:', error);
       alert('Kunne ikke hente poster fra backend.');
-      return;
-    }
-    if (Array.isArray(data)) {
-      setSavedPairs(data.map(post => ({
-        current: post.current_lat && post.current_lng ? { lat: post.current_lat, lng: post.current_lng } : undefined,
-        target: post.target_lat && post.target_lng ? { lat: post.target_lat, lng: post.target_lng } : undefined,
-        category: post.category,
-        id: post.id,
-        created_at: post.created_at,
-      })));
     }
   };
 
@@ -1256,47 +1271,61 @@ export default function MapComponent({
   // Oppdater canAddTreff til true når Skudd lagres
   const handleSaveCurrentPos = async () => {
     if (currentPosition) {
-      const { data, error } = await supabase.from('posts').insert([
-        {
-          current_lat: currentPosition.lat,
-          current_lng: currentPosition.lng,
-          category: 'Skyteplass',
-          created_at: new Date().toISOString(),
-        },
-      ]).select();
-      if (error) {
-        console.error('Failed to save current pos:', error);
-        alert('Feil ved lagring av Skyteplass: ' + error.message);
-        return;
-      }
-      if (data && data[0]) {
-        setSavedPairs(prev => [...prev, { current: { ...currentPosition }, category: 'Skyteplass', id: data[0].id }]);
+      try {
+        const response = await fetch('/api/posts', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            title: 'Skyteplass',
+            content: `Lat: ${currentPosition.lat}, Lng: ${currentPosition.lng}, Category: Skyteplass`,
+            teamId: activeTeam
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to save post');
+        }
+
+        const data = await response.json();
+        setSavedPairs(prev => [...prev, { current: { ...currentPosition }, category: 'Skyteplass', id: data.id }]);
         fetchPosts();
         setCanAddTreff(true); // Aktiver Treff-knappen
         setIsTargetModeActive(true); // Aktiver Target-modus når Shot lagres
+      } catch (error) {
+        console.error('Failed to save current pos:', error);
+        alert('Feil ved lagring av Skyteplass: ' + (error as Error).message);
       }
     }
   };
 
-  // 3. Lagre target-posisjon til Supabase
+  // 3. Lagre target-posisjon til API
   const handleSaveTargetPos = async () => {
     if (currentPosition) {
-      const { data, error } = await supabase.from('posts').insert([
-        {
-          target_lat: currentPosition.lat,
-          target_lng: currentPosition.lng,
-          category: 'Treffpunkt',
-          created_at: new Date().toISOString(),
-        },
-      ]).select();
-      if (error) {
-        console.error('Failed to save target pos:', error);
-        alert('Feil ved lagring av Treffpunkt: ' + error.message);
-        return;
-      }
-      if (data && data[0]) {
-        setSavedPairs(prev => [...prev, { target: { ...currentPosition }, category: 'Treffpunkt', id: data[0].id }]);
+      try {
+        const response = await fetch('/api/posts', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            title: 'Treffpunkt',
+            content: `Target: ${currentPosition.lat}, ${currentPosition.lng}, Category: Treffpunkt`,
+            teamId: activeTeam
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to save post');
+        }
+
+        const data = await response.json();
+        setSavedPairs(prev => [...prev, { target: { ...currentPosition }, category: 'Treffpunkt', id: data.id }]);
         fetchPosts();
+      } catch (error) {
+        console.error('Failed to save target pos:', error);
+        alert('Feil ved lagring av Treffpunkt: ' + (error as Error).message);
       }
     }
   };
@@ -1326,25 +1355,32 @@ export default function MapComponent({
   // 2. Når bruker lagrer ny post, send insert til Supabase
   const handleSaveNewPost = async () => {
     if (newPostPosition && newPostName.trim()) {
-      const { data, error } = await supabase.from('posts').insert([
-        {
-          name: newPostName.trim(),
-          current_lat: newPostPosition.lat,
-          current_lng: newPostPosition.lng,
-          category: 'Post',
-          created_at: new Date().toISOString(),
-        },
-      ]).select();
-      if (error) {
-        console.error('Failed to save new post:', error);
-        alert('Feil ved lagring av post: ' + error.message);
-        return;
-      }
-      if (data && data[0]) {
-        setSavedPairs(prev => [...prev, { current: { ...newPostPosition }, category: 'Post', id: data[0].id }]);
+      try {
+        const response = await fetch('/api/posts', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            title: newPostName.trim(),
+            content: `Lat: ${newPostPosition.lat}, Lng: ${newPostPosition.lng}, Category: Post`,
+            teamId: activeTeam
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to save post');
+        }
+
+        const data = await response.json();
+        setSavedPairs(prev => [...prev, { current: { ...newPostPosition }, category: 'Post', id: data.id }]);
         setShowNewPostDialog(false);
         setNewPostName('');
         setNewPostPosition(null);
+        fetchPosts();
+      } catch (error) {
+        console.error('Failed to save new post:', error);
+        alert('Feil ved lagring av post: ' + (error as Error).message);
       }
     }
   };
@@ -1356,22 +1392,29 @@ export default function MapComponent({
     if (!base) return; // Guard mot undefined
     const bearing = ((targetDirection + 360) % 360);
     const pos = destinationPoint(base.lat, base.lng, targetRange, bearing);
-    const { data, error } = await supabase.from('posts').insert([
-      {
-        target_lat: pos.lat,
-        target_lng: pos.lng,
-        category: 'Treffpunkt',
-        created_at: new Date().toISOString(),
-      },
-    ]).select();
-    if (error) {
-      alert('Feil ved lagring av Treffpunkt: ' + error.message);
-      setShowTargetDialog(false);
-      return;
-    }
-    if (data && data[0]) {
-      setSavedPairs(prev => [...prev, { target: { ...pos }, category: 'Treffpunkt', id: data[0].id }]);
+    try {
+      const response = await fetch('/api/posts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: 'Treffpunkt',
+          content: `Target: ${pos.lat}, ${pos.lng}, Category: Treffpunkt`,
+          teamId: activeTeam
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save post');
+      }
+
+      const data = await response.json();
+      setSavedPairs(prev => [...prev, { target: { ...pos }, category: 'Treffpunkt', id: data.id }]);
       fetchPosts();
+    } catch (error) {
+      alert('Feil ved lagring av Treffpunkt: ' + (error as Error).message);
+      setShowTargetDialog(false);
     }
     setShowTargetDialog(false);
     setIsTargetModeActive(false); // Deaktiver Target-modus (reaktiverer Shot-knappen)
@@ -1432,11 +1475,18 @@ export default function MapComponent({
         return;
       }
       
-      // Slett alle relaterte poster fra Supabase
+      // Slett alle relaterte poster fra API
       const pairIds = relatedPairs.map(p => p.id);
-      const { error } = await supabase.from('posts').delete().in('id', pairIds);
-      if (error) {
-        alert('Feil ved sletting: ' + error.message);
+      try {
+        const response = await fetch(`/api/posts?ids=${pairIds.join(',')}`, {
+          method: 'DELETE',
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to delete posts');
+        }
+      } catch (error) {
+        alert('Feil ved sletting: ' + (error as Error).message);
         return;
       }
       
@@ -1482,10 +1532,32 @@ export default function MapComponent({
   type ShotCategory = 'Skyteplass' | 'Treffpunkt';
   const handleDeleteAllShots = async () => {
     if (!window.confirm('Er du sikker på at du vil slette alle skuddpar?')) return;
-    // Slett fra Supabase
-    const { error } = await supabase.from('posts').delete().in('category', ['Skyteplass', 'Treffpunkt']);
-    if (error) {
-      alert('Feil ved sletting: ' + error.message);
+    // Slett fra API - delete posts that contain Skyteplass or Treffpunkt in content
+    try {
+      // Get all posts first to find the ones to delete
+      const response = await fetch('/api/posts');
+      if (!response.ok) {
+        throw new Error('Failed to fetch posts');
+      }
+      const posts = await response.json();
+      
+      // Filter posts that contain Skyteplass or Treffpunkt
+      const postsToDelete = posts.filter((post: any) => 
+        post.content && (post.content.includes('Skyteplass') || post.content.includes('Treffpunkt'))
+      );
+      
+      if (postsToDelete.length > 0) {
+        const ids = postsToDelete.map((post: any) => post.id);
+        const deleteResponse = await fetch(`/api/posts?ids=${ids.join(',')}`, {
+          method: 'DELETE',
+        });
+
+        if (!deleteResponse.ok) {
+          throw new Error('Failed to delete posts');
+        }
+      }
+    } catch (error) {
+      alert('Feil ved sletting: ' + (error as Error).message);
       return;
     }
     // Oppdater lokal state
@@ -1520,22 +1592,30 @@ export default function MapComponent({
       targetRange,
       targetDirection
     );
-    const { data, error } = await supabase.from('posts').insert([
-      {
-        target_lat: pos.lat,
-        target_lng: pos.lng,
-        category: 'Treffpunkt',
-        created_at: new Date().toISOString(),
-      },
-    ]).select();
-    if (error) {
-      alert('Feil ved lagring av Treffpunkt: ' + error.message);
+    try {
+      const response = await fetch('/api/posts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: 'Treffpunkt',
+          content: `Target: ${pos.lat}, ${pos.lng}, Category: Treffpunkt`,
+          teamId: activeTeam
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save post');
+      }
+
+      const data = await response.json();
+      setSavedPairs(prev => [...prev, { target: { ...pos }, category: 'Treffpunkt', id: data.id }]);
+      fetchPosts();
+    } catch (error) {
+      alert('Feil ved lagring av Treffpunkt: ' + (error as Error).message);
       setShowTargetDirectionUI(false);
       return;
-    }
-    if (data && data[0]) {
-      setSavedPairs(prev => [...prev, { target: { ...pos }, category: 'Treffpunkt', id: data[0].id }]);
-      fetchPosts();
     }
     setShowTargetDirectionUI(false);
     setCanAddTreff(false); // Deaktiver Treff-knappen

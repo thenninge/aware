@@ -5,6 +5,7 @@ import AwareMap from '@/components/awaremap';
 import SettingsMenu from '@/components/settingsmenu';
 import FilterMenu from '@/components/filtermenu';
 import AdminMenu from '@/components/adminmenu';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Position {
   lat: number;
@@ -33,6 +34,7 @@ type Post = {
 };
 
 export default function Home() {
+  const { authState } = useAuth();
   const [mode, setMode] = useState<'aware' | 'track' | 'søk'>('aware');
   const [radius, setRadius] = useState(3000); // Default 3000m
   const [, setCurrentPosition] = useState<Position | null>(null);
@@ -394,6 +396,7 @@ export default function Home() {
         onSelectedTargetIndexChange={setSelectedTargetIndex}
         showAllTracksAndFinds={showAllTracksAndFinds}
         showObservations={showObservations}
+        activeTeam={authState.activeTeam?.id || null}
       />
 
       {/* Admin Menu */}

@@ -48,6 +48,7 @@ interface AwareMapProps {
   angleRange?: number;
   onAngleRangeChange?: (angleRange: number) => void;
   showMarkers?: boolean;
+  activeTeam?: string | null;
   onShowMarkersChange?: (show: boolean) => void;
   isLiveMode?: boolean;
   onLiveModeChange?: (isLive: boolean) => void;
@@ -68,11 +69,11 @@ interface AwareMapProps {
   showObservations?: boolean;
 }
 
-export default function AwareMap({ 
-  radius, 
-  onPositionChange, 
-  categoryFilters, 
-  categoryConfigs, 
+export default function AwareMap({
+  radius,
+  onPositionChange,
+  categoryFilters,
+  categoryConfigs,
   shouldScan,
   onCategoryChange,
   onScanArea,
@@ -81,6 +82,7 @@ export default function AwareMap({
   angleRange,
   onAngleRangeChange,
   showMarkers,
+  activeTeam,
   onShowMarkersChange,
   isLiveMode,
   onLiveModeChange,
@@ -148,6 +150,7 @@ export default function AwareMap({
         onAngleRangeChange={onAngleRangeChange}
         showMarkers={showMarkers}
         onShowMarkersChange={onShowMarkersChange}
+        activeTeam={activeTeam}
         isLiveMode={isLiveMode}
         onLiveModeChange={onLiveModeChange}
         mode={mode}
