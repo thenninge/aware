@@ -113,10 +113,7 @@ export async function POST(request: NextRequest) {
         teamid: teamId,
         createdby: userId,
         name: name || 'Unnamed Track',
-        points: JSON.stringify(points || []),
-        color: color || '#3b82f6',
-        shotpairid: shotPairId || null,
-        mode: mode || 'søk'
+        color: color || '#3b82f6'
       })
       .select()
       .single();

@@ -60,6 +60,8 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
       // Auto-select first team if none is selected
       if (teams.length > 0 && !activeTeam) {
         setActiveTeam(teams[0].id);
+        // Save to localStorage
+        localStorage.setItem('aware_active_team', JSON.stringify(teams[0]));
       }
       
     } catch (error) {
@@ -109,6 +111,8 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
       
       // Auto-select the new team
       setActiveTeam(newTeam.id);
+      // Save to localStorage
+      localStorage.setItem('aware_active_team', JSON.stringify(newTeam));
       
     } catch (error) {
       console.error('Error creating team:', error);
@@ -143,6 +147,7 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
       
       // Clear active team if it was the deleted one
       setActiveTeam(null);
+      localStorage.removeItem('aware_active_team');
       
       alert('Team slettet!');
       
@@ -312,7 +317,18 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
                     ) : userTeams.length > 0 ? (
                       <select
                         value={activeTeam || ''}
-                        onChange={(e) => setActiveTeam(e.target.value)}
+                        onChange={(e) => {
+                          setActiveTeam(e.target.value);
+                          // Save to localStorage
+                          if (e.target.value) {
+                            const selectedTeam = userTeams.find(t => t.id === e.target.value);
+                            if (selectedTeam) {
+                              localStorage.setItem('aware_active_team', JSON.stringify(selectedTeam));
+                            }
+                          } else {
+                            localStorage.removeItem('aware_active_team');
+                          }
+                        }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
                         <option value="">Velg team...</option>

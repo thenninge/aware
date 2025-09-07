@@ -846,14 +846,45 @@ export default function MapComponent({
   };
 
   // Håndter lagring til database
-  const handleSaveToDatabase = () => {
+  const handleSaveToDatabase = async () => {
     if (savedTracks.length === 0) return;
     
     const shouldSave = window.confirm('Lagre synlige spor til database?');
     if (shouldSave) {
-      // TODO: Implementer faktisk lagring til database senere
-      console.log('Lagrer spor til database:', savedTracks);
-      alert('Spor lagret til database! (placeholder - implementeres senere)');
+      // Debug: Log activeTeam value
+      console.log('Active team for track saving:', activeTeam);
+      
+      if (!activeTeam) {
+        alert('Ingen aktivt team valgt. Vennligst velg et team i admin-menyen først.');
+        return;
+      }
+      
+      try {
+        // Lagre hvert spor til database via API
+        for (const track of savedTracks) {
+          const response = await fetch('/api/team-data/tracks', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              teamId: activeTeam,
+              name: track.name,
+              color: track.color
+            }),
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+            throw new Error(`Failed to save track: ${track.name} - ${errorData.error || response.statusText}`);
+          }
+        }
+        
+        alert(`Spor lagret til database! (${savedTracks.length} spor lagret)`);
+      } catch (error) {
+        console.error('Error saving tracks to database:', error);
+        alert('Feil ved lagring av spor til database: ' + (error as Error).message);
+      }
     }
   };
 
