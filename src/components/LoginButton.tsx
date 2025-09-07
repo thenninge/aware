@@ -26,7 +26,7 @@ export default function LoginButton() {
         lastActive: new Date(),
       };
       
-      login(mockUser);
+      login();
     } catch (error) {
       console.error('Login failed:', error);
     } finally {

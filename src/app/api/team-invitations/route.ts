@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../auth/[...nextauth]/route';
+import { authOptions } from '@/lib/auth';
 import nodemailer from 'nodemailer';
 
 // Create admin Supabase client with service role key
-export const supabaseAdmin = createClient(
+const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
@@ -21,7 +21,7 @@ const transporter = nodemailer.createTransport({
 
 // Send invitation email
 async function sendInvitationEmail(email: string, teamId: string, invitationId: string) {
-  const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/invite/${invitationId}`;
+  const inviteLink = `${process.env.NEXTAUTH_URL || process.env.VERCEL_URL || 'http://localhost:3000'}/invite/${invitationId}`;
   
   const mailOptions = {
     from: process.env.EMAIL_USER,

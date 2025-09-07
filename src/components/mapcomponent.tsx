@@ -876,7 +876,7 @@ export default function MapComponent({
       if (syncResults.pulled) {
         // Load tracks for this team
         if (syncResults.pulled.tracks) {
-          const teamTracks: { [key: string]: any } = {};
+          const teamTracks: { [key: string]: SavedTrack } = {};
           
           syncResults.pulled.tracks.forEach((track: any) => {
             const trackId = track.local_id; // Always use local_id as our local ID
@@ -901,7 +901,7 @@ export default function MapComponent({
 
         // Load finds for this team
         if (syncResults.pulled.finds) {
-          const teamFinds: { [key: string]: any } = {};
+          const teamFinds: { [key: string]: SavedFind } = {};
           
           syncResults.pulled.finds.forEach((find: any) => {
             const findId = find.local_id; // Always use local_id as our local ID
@@ -915,7 +915,8 @@ export default function MapComponent({
               position: find.position ? JSON.parse(find.position) : { lat: 0, lng: 0 },
               shotPairId: find.shot_pair_id || 'unknown',
               color: find.color || '#10b981',
-              createdAt: new Date().toISOString()
+              createdAt: new Date().toISOString(),
+              mode: 'søk'
             };
           });
           
@@ -925,7 +926,7 @@ export default function MapComponent({
 
         // Load observations for this team
         if (syncResults.pulled.observations) {
-          const teamObservations: { [key: string]: any } = {};
+          const teamObservations: { [key: string]: SavedObservation } = {};
           
           syncResults.pulled.observations.forEach((obs: any) => {
             const obsId = obs.local_id; // Always use local_id as our local ID
@@ -939,7 +940,8 @@ export default function MapComponent({
               position: obs.position ? JSON.parse(obs.position) : { lat: 0, lng: 0 },
               shotPairId: obs.shot_pair_id || 'unknown',
               color: obs.color || '#F59E0B',
-              createdAt: new Date().toISOString()
+              createdAt: new Date().toISOString(),
+              mode: 'søk'
             };
           });
           
@@ -989,10 +991,10 @@ export default function MapComponent({
       const localObservations = JSON.parse(localStorage.getItem('searchObservations') || '{}');
       
       const localData = {
-        tracks: Object.values(localTracks).map(track => ({ ...track, id: track.id, points: track.points, shotPairId: track.shotPairId })),
-        finds: Object.values(localFinds).map(find => ({ ...find, id: find.id, shotPairId: find.shotPairId, position: find.position, color: find.color })),
-        observations: Object.values(localObservations).map(obs => ({ ...obs, id: obs.id, position: obs.position, color: obs.color })),
-        posts: (safeSavedPairs || []).map(post => ({ ...post, id: post.id }))
+        tracks: Object.values(localTracks).map((track: any) => ({ ...track, id: track.id, points: track.points, shotPairId: track.shotPairId })),
+        finds: Object.values(localFinds).map((find: any) => ({ ...find, id: find.id, shotPairId: find.shotPairId, position: find.position, color: find.color })),
+        observations: Object.values(localObservations).map((obs: any) => ({ ...obs, id: obs.id, position: obs.position, color: obs.color })),
+        posts: (safeSavedPairs || []).map((post: any) => ({ ...post, id: post.id }))
       };
       
       console.log('Auto-sync sending data:', {
@@ -1032,7 +1034,7 @@ export default function MapComponent({
       if (syncResults.pulled) {
         // Load tracks for this team
         if (syncResults.pulled.tracks) {
-          const teamTracks: { [key: string]: any } = {};
+          const teamTracks: { [key: string]: SavedTrack } = {};
           
           syncResults.pulled.tracks.forEach((track: any) => {
             const trackId = track.local_id; // Always use local_id as our local ID
@@ -1057,7 +1059,7 @@ export default function MapComponent({
 
         // Load finds for this team
         if (syncResults.pulled.finds) {
-          const teamFinds: { [key: string]: any } = {};
+          const teamFinds: { [key: string]: SavedFind } = {};
           
           syncResults.pulled.finds.forEach((find: any) => {
             const findId = find.local_id; // Always use local_id as our local ID
@@ -1071,7 +1073,8 @@ export default function MapComponent({
               position: find.position ? JSON.parse(find.position) : { lat: 0, lng: 0 },
               shotPairId: find.shot_pair_id || 'unknown',
               color: find.color || '#10b981',
-              createdAt: new Date().toISOString()
+              createdAt: new Date().toISOString(),
+              mode: 'søk'
             };
           });
           
@@ -1081,7 +1084,7 @@ export default function MapComponent({
 
         // Load observations for this team
         if (syncResults.pulled.observations) {
-          const teamObservations: { [key: string]: any } = {};
+          const teamObservations: { [key: string]: SavedObservation } = {};
           
           syncResults.pulled.observations.forEach((obs: any) => {
             const obsId = obs.local_id; // Always use local_id as our local ID
@@ -1095,7 +1098,8 @@ export default function MapComponent({
               position: obs.position ? JSON.parse(obs.position) : { lat: 0, lng: 0 },
               shotPairId: obs.shot_pair_id || 'unknown',
               color: obs.color || '#F59E0B',
-              createdAt: new Date().toISOString()
+              createdAt: new Date().toISOString(),
+              mode: 'søk'
             };
           });
           
@@ -1143,7 +1147,7 @@ export default function MapComponent({
           tracks: (savedTracks || []).map(track => ({ ...track, id: track.id, points: track.points, shotPairId: track.shotPairId })),
           finds: (savedFinds || []).map(find => ({ ...find, id: find.id, shotPairId: find.shotPairId, position: find.position, color: find.color })),
           observations: (savedObservations || []).map(obs => ({ ...obs, id: obs.id, position: obs.position, color: obs.color })),
-          posts: (safeSavedPairs || []).map(post => ({ ...post, id: post.id }))
+          posts: (safeSavedPairs || []).map((post: any) => ({ ...post, id: post.id }))
         };
 
         const response = await fetch('/api/sync', {
@@ -1169,7 +1173,7 @@ export default function MapComponent({
         if (syncResults.pulled) {
           // Load tracks for this team
           if (syncResults.pulled.tracks) {
-            const teamTracks: { [key: string]: any } = {};
+            const teamTracks: { [key: string]: SavedTrack } = {};
             
             syncResults.pulled.tracks.forEach((track: any) => {
               const trackId = track.local_id || track.id;
@@ -1190,7 +1194,7 @@ export default function MapComponent({
 
           // Load finds for this team
           if (syncResults.pulled.finds) {
-            const teamFinds: { [key: string]: any } = {};
+            const teamFinds: { [key: string]: SavedFind } = {};
             
             syncResults.pulled.finds.forEach((find: any) => {
               const findId = find.local_id || find.id;
@@ -1200,7 +1204,8 @@ export default function MapComponent({
                 position: find.position ? JSON.parse(find.position) : { lat: 0, lng: 0 },
                 shotPairId: find.shot_pair_id || 'unknown',
                 color: find.color || '#10b981',
-                createdAt: new Date().toISOString()
+                createdAt: new Date().toISOString(),
+                mode: 'søk'
               };
             });
             
@@ -1210,7 +1215,7 @@ export default function MapComponent({
 
           // Load observations for this team
           if (syncResults.pulled.observations) {
-            const teamObservations: { [key: string]: any } = {};
+            const teamObservations: { [key: string]: SavedObservation } = {};
             
             syncResults.pulled.observations.forEach((obs: any) => {
               const obsId = obs.local_id || obs.id;
@@ -1220,7 +1225,8 @@ export default function MapComponent({
                 position: obs.position ? JSON.parse(obs.position) : { lat: 0, lng: 0 },
                 shotPairId: obs.shot_pair_id || 'unknown',
                 color: obs.color || '#F59E0B',
-                createdAt: new Date().toISOString()
+                createdAt: new Date().toISOString(),
+                mode: 'søk'
               };
             });
             

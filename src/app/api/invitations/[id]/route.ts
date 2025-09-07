@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../../auth/[...nextauth]/route';
+import { authOptions } from '@/lib/auth';
 
 // Create admin Supabase client with service role key
-export const supabaseAdmin = createClient(
+const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
@@ -12,10 +12,10 @@ export const supabaseAdmin = createClient(
 // GET - Get invitation details
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const invitationId = params.id;
+    const { id: invitationId } = await params;
 
     const { data: invitation, error } = await supabaseAdmin
       .from('team_invitations')
@@ -42,7 +42,7 @@ export async function GET(
 // POST - Accept invitation
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -52,7 +52,7 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const invitationId = params.id;
+    const { id: invitationId } = await params;
 
     // Get invitation details
     const { data: invitation, error: inviteError } = await supabaseAdmin

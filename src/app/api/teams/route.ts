@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../auth/[...nextauth]/route';
+import { authOptions } from '@/lib/auth';
 
 // Create admin Supabase client with service role key
-export const supabaseAdmin = createClient(
+const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!  // NB! Service role key, not anon key
 );
@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
     const uniqueMemberTeams = (memberTeams || [])
       .map(m => m.teams)
       .filter(Boolean)
-      .filter(team => !ownedTeamIds.has(team.id)); // Fjern teams som allerede er eid
+      .filter((team: any) => !ownedTeamIds.has(team.id)); // Fjern teams som allerede er eid
 
     const allTeams = [
       ...(ownedTeams || []),

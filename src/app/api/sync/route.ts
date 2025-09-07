@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../auth/[...nextauth]/route';
-import { supabaseAdmin } from '../teams/route';
+import { authOptions } from '@/lib/auth';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 // POST - Sync all data (push local data to DB, pull server data to local)
 export async function POST(request: NextRequest) {
@@ -47,15 +52,15 @@ export async function POST(request: NextRequest) {
 
     const results = {
       pushed: { tracks: 0, finds: 0, observations: 0, posts: 0 },
-      pulled: { tracks: [], finds: [], observations: [], posts: [] },
-      errors: []
+      pulled: { tracks: [] as any[], finds: [] as any[], observations: [] as any[], posts: [] as any[] },
+      errors: [] as string[]
     };
 
     // PUSH PHASE: Push local data to database (only if localData is provided)
     if (localData && localData !== null) {
       // Push tracks
       if (localData.tracks && localData.tracks.length > 0) {
-        for (const track of localData.tracks) {
+        for (const track of localData.tracks as any[]) {
           try {
             // Check if track with this local_id already exists
             const { data: existingTrack } = await supabaseAdmin
@@ -79,20 +84,20 @@ export async function POST(request: NextRequest) {
                 });
 
               if (trackError) {
-                results.errors.push(`Track ${track.name}: ${trackError.message}`);
+                results.errors.push(`Track ${(track as any).name}: ${trackError.message}`);
               } else {
                 results.pushed.tracks++;
               }
             }
           } catch (error: any) {
-            results.errors.push(`Track ${track.name}: ${error.message}`);
+            results.errors.push(`Track ${(track as any).name}: ${error.message}`);
           }
         }
       }
 
       // Push finds
       if (localData.finds && localData.finds.length > 0) {
-        for (const find of localData.finds) {
+        for (const find of localData.finds as any[]) {
           try {
             // Check if find with this local_id already exists
             const { data: existingFind } = await supabaseAdmin
@@ -129,7 +134,7 @@ export async function POST(request: NextRequest) {
 
       // Push observations
       if (localData.observations && localData.observations.length > 0) {
-        for (const observation of localData.observations) {
+        for (const observation of localData.observations as any[]) {
           try {
             // Check if observation with this local_id already exists
             const { data: existingObservation } = await supabaseAdmin
@@ -165,7 +170,7 @@ export async function POST(request: NextRequest) {
 
       // Push posts (skuddpar)
       if (localData.posts && localData.posts.length > 0) {
-        for (const post of localData.posts) {
+        for (const post of localData.posts as any[]) {
           try {
             // Check if post with this local_id already exists
             const { data: existingPost } = await supabaseAdmin
@@ -245,12 +250,12 @@ export async function POST(request: NextRequest) {
         results.pulled.posts = serverPosts;
       }
 
-    } catch (error: any) {
-      results.errors.push(`Pull error: ${error.message}`);
+    } catch (error: unknown) {
+      results.errors.push(`Pull error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 
     return NextResponse.json(results);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in sync:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }

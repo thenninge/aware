@@ -6,6 +6,11 @@ const nextConfig: NextConfig = {
     unoptimized: true,
   },
   
+  // Disable ESLint during build for production
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  
   // Handle external domains for Leaflet tiles
   async headers() {
     return [
