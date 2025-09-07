@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { teamId, name, lat, lng, description, color, category } = body;
+    const { teamId, name, localId } = body;
 
     if (!teamId) {
       return NextResponse.json({ error: 'Team ID is required' }, { status: 400 });
@@ -106,18 +106,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    // Create new find
+    // Create new find - only use columns that actually exist
     const { data: newFind, error: createError } = await supabaseAdmin
       .from('finds')
       .insert({
         teamid: teamId,
         createdby: userId,
         name: name || 'Unnamed Find',
-        lat,
-        lng,
-        description: description || '',
-        color: color || '#10b981',
-        category: category || 'general'
+        local_id: localId
       })
       .select()
       .single();

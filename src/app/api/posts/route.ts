@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { title, content, teamId } = body;
+    const { title, content, teamId, localId } = body;
 
     // Create new post
     const { data: newPost, error: createError } = await supabaseAdmin
@@ -51,7 +51,8 @@ export async function POST(request: NextRequest) {
         title: title || 'Unnamed Post',
         content: content || '',
         createdby: userId,
-        teamid: teamId || null
+        teamid: teamId || null,
+        local_id: localId
       })
       .select()
       .single();

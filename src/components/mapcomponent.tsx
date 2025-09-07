@@ -819,7 +819,7 @@ export default function MapComponent({
   const loadSavedTracks = (): SavedTrack[] => {
     try {
       const savedTracks = JSON.parse(localStorage.getItem('searchTracks') || '{}');
-      const allTracks = Object.values(savedTracks) as SavedTrack[];
+      const allTracks = Object.values(savedTracks) as SavedTrack[] || [];
       
       // I søk-modus: vis kun spor for det valgte treffpunktet, eller alle hvis showAllTracksAndFinds er aktiv
       if (mode === 'søk' && hasSavedPairs && safeSavedPairs.length > 0) {
@@ -845,45 +845,286 @@ export default function MapComponent({
     }
   };
 
-  // Håndter lagring til database
-  const handleSaveToDatabase = async () => {
-    if (savedTracks.length === 0) return;
+  // Synkroniser team-data (kun hent data, ikke push)
+  const syncTeamData = async () => {
+    if (!activeTeam) return;
     
-    const shouldSave = window.confirm('Lagre synlige spor til database?');
-    if (shouldSave) {
-      // Debug: Log activeTeam value
-      console.log('Active team for track saving:', activeTeam);
-      
-      if (!activeTeam) {
-        alert('Ingen aktivt team valgt. Vennligst velg et team i admin-menyen først.');
+    try {
+      const response = await fetch('/api/sync', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          teamId: activeTeam,
+          localData: null // Only pull, don't push
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('Sync failed:', errorData.error || response.statusText);
         return;
       }
-      
-      try {
-        // Lagre hvert spor til database via API
-        for (const track of savedTracks) {
-          const response = await fetch('/api/team-data/tracks', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              teamId: activeTeam,
-              name: track.name,
-              color: track.color
-            }),
-          });
 
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-            throw new Error(`Failed to save track: ${track.name} - ${errorData.error || response.statusText}`);
+      const syncResults = await response.json();
+      
+      // Update localStorage with server data (preserve existing filtering logic)
+      if (syncResults.pulled) {
+        // Update tracks in localStorage (merge with existing local data)
+        if (syncResults.pulled.tracks) {
+          const existingTracks = JSON.parse(localStorage.getItem('searchTracks') || '{}');
+          const mergedTracks = { ...existingTracks };
+          
+          syncResults.pulled.tracks.forEach((track: any) => {
+            const trackId = track.local_id || track.id;
+            // Only add if not already exists locally (preserve local data with points)
+            if (!mergedTracks[trackId]) {
+              mergedTracks[trackId] = {
+                id: trackId,
+                name: track.name,
+                color: track.color,
+                shotPairId: 'unknown',
+                points: [] // Empty points array for server tracks
+              };
+            }
+          });
+          localStorage.setItem('searchTracks', JSON.stringify(mergedTracks));
+        }
+
+        // Update finds in localStorage (merge with existing local data)
+        if (syncResults.pulled.finds) {
+          const existingFinds = JSON.parse(localStorage.getItem('searchFinds') || '{}');
+          const mergedFinds = { ...existingFinds };
+          
+          syncResults.pulled.finds.forEach((find: any) => {
+            const findId = find.local_id || find.id;
+            // Only add if not already exists locally (preserve local data with position)
+            if (!mergedFinds[findId]) {
+              mergedFinds[findId] = {
+                id: findId,
+                name: find.name,
+                position: { lat: 0, lng: 0 }, // Default position for server finds
+                shotPairId: 'unknown',
+                color: '#10b981'
+              };
+            }
+          });
+          localStorage.setItem('searchFinds', JSON.stringify(mergedFinds));
+        }
+
+        // Update observations in localStorage (merge with existing local data)
+        if (syncResults.pulled.observations) {
+          const existingObservations = JSON.parse(localStorage.getItem('searchObservations') || '{}');
+          const mergedObservations = { ...existingObservations };
+          
+          syncResults.pulled.observations.forEach((obs: any) => {
+            const obsId = obs.local_id || obs.id;
+            // Only add if not already exists locally (preserve local data with position)
+            if (!mergedObservations[obsId]) {
+              mergedObservations[obsId] = {
+                id: obsId,
+                name: obs.name,
+                position: { lat: 0, lng: 0 }, // Default position for server observations
+                shotPairId: 'unknown',
+                color: '#F59E0B'
+              };
+            }
+          });
+          localStorage.setItem('searchObservations', JSON.stringify(mergedObservations));
+        }
+
+        // Update posts (skuddpar) in localStorage
+        if (syncResults.pulled.posts) {
+          const serverPosts = syncResults.pulled.posts.map((post: any) => {
+            const contentParts = post.content.split('|');
+            const current = contentParts[0] ? contentParts[0].split(',') : ['0', '0'];
+            const target = contentParts[1] ? contentParts[1].split(',') : ['0', '0'];
+            const category = contentParts[2] || 'Skyteplass';
+
+            return {
+              id: post.local_id || post.id,
+              current: { lat: parseFloat(current[0]), lng: parseFloat(current[1]) },
+              target: { lat: parseFloat(target[0]), lng: parseFloat(target[1]) },
+              category: category
+            };
+          });
+          localStorage.setItem('savedPairs', JSON.stringify(serverPosts));
+        }
+      }
+
+      // Trigger re-load of data using existing logic
+      if (mode === 'søk') {
+        const tracks = loadSavedTracks();
+        setSavedTracks(tracks);
+        
+        const finds = loadSavedFinds();
+        setSavedFinds(finds);
+        
+        const observations = loadSavedObservations();
+        setSavedObservations(observations);
+      }
+
+      console.log('Team data synced successfully');
+    } catch (error) {
+      console.error('Error syncing team data:', error);
+    }
+  };
+
+  // Håndter synkronisering med database (push + pull)
+  const handleSyncData = async () => {
+    if (!activeTeam) {
+      alert('Ingen aktivt team valgt. Vennligst velg et team i admin-menyen først.');
+      return;
+    }
+    
+    const shouldSync = window.confirm('Synkroniser alle data med teamet? Dette vil pushe dine lokale data og hente alle team-data.');
+    if (shouldSync) {
+      try {
+        // Prepare local data for sync
+        const localData = {
+          tracks: (savedTracks || []).map(track => ({ ...track, localId: track.id })),
+          finds: (savedFinds || []).map(find => ({ ...find, localId: find.id })),
+          observations: (savedObservations || []).map(obs => ({ ...obs, localId: obs.id })),
+          posts: (safeSavedPairs || []).map(post => ({ ...post, localId: post.id }))
+        };
+
+        const response = await fetch('/api/sync', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            teamId: activeTeam,
+            localData: localData
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+          throw new Error(`Sync failed: ${errorData.error || response.statusText}`);
+        }
+
+        const syncResults = await response.json();
+        
+        // Update localStorage with server data (preserve existing filtering logic)
+        if (syncResults.pulled) {
+          // Update tracks in localStorage (merge with existing local data)
+          if (syncResults.pulled.tracks) {
+            const existingTracks = JSON.parse(localStorage.getItem('searchTracks') || '{}');
+            const mergedTracks = { ...existingTracks };
+            
+            syncResults.pulled.tracks.forEach((track: any) => {
+              const trackId = track.local_id || track.id;
+              // Only add if not already exists locally (preserve local data with points)
+              if (!mergedTracks[trackId]) {
+                mergedTracks[trackId] = {
+                  id: trackId,
+                  name: track.name,
+                  color: track.color,
+                  shotPairId: 'unknown',
+                  points: [] // Empty points array for server tracks
+                };
+              }
+            });
+            localStorage.setItem('searchTracks', JSON.stringify(mergedTracks));
+          }
+
+          // Update finds in localStorage (merge with existing local data)
+          if (syncResults.pulled.finds) {
+            const existingFinds = JSON.parse(localStorage.getItem('searchFinds') || '{}');
+            const mergedFinds = { ...existingFinds };
+            
+            syncResults.pulled.finds.forEach((find: any) => {
+              const findId = find.local_id || find.id;
+              // Only add if not already exists locally (preserve local data with position)
+              if (!mergedFinds[findId]) {
+                mergedFinds[findId] = {
+                  id: findId,
+                  name: find.name,
+                  position: { lat: 0, lng: 0 }, // Default position for server finds
+                  shotPairId: 'unknown',
+                  color: '#10b981'
+                };
+              }
+            });
+            localStorage.setItem('searchFinds', JSON.stringify(mergedFinds));
+          }
+
+          // Update observations in localStorage (merge with existing local data)
+          if (syncResults.pulled.observations) {
+            const existingObservations = JSON.parse(localStorage.getItem('searchObservations') || '{}');
+            const mergedObservations = { ...existingObservations };
+            
+            syncResults.pulled.observations.forEach((obs: any) => {
+              const obsId = obs.local_id || obs.id;
+              // Only add if not already exists locally (preserve local data with position)
+              if (!mergedObservations[obsId]) {
+                mergedObservations[obsId] = {
+                  id: obsId,
+                  name: obs.name,
+                  position: { lat: 0, lng: 0 }, // Default position for server observations
+                  shotPairId: 'unknown',
+                  color: '#F59E0B'
+                };
+              }
+            });
+            localStorage.setItem('searchObservations', JSON.stringify(mergedObservations));
+          }
+
+          // Update posts (skuddpar) in localStorage
+          if (syncResults.pulled.posts) {
+            const serverPosts = syncResults.pulled.posts.map((post: any) => {
+              const contentParts = post.content.split('|');
+              const current = contentParts[0] ? contentParts[0].split(',') : ['0', '0'];
+              const target = contentParts[1] ? contentParts[1].split(',') : ['0', '0'];
+              const category = contentParts[2] || 'Skyteplass';
+
+              return {
+                id: post.local_id || post.id,
+                current: { lat: parseFloat(current[0]), lng: parseFloat(current[1]) },
+                target: { lat: parseFloat(target[0]), lng: parseFloat(target[1]) },
+                category: category
+              };
+            });
+            localStorage.setItem('savedPairs', JSON.stringify(serverPosts));
           }
         }
-        
-        alert(`Spor lagret til database! (${savedTracks.length} spor lagret)`);
+
+        // Trigger re-load of data using existing logic
+        if (mode === 'søk') {
+          const tracks = loadSavedTracks();
+          setSavedTracks(tracks);
+          
+          const finds = loadSavedFinds();
+          setSavedFinds(finds);
+          
+          const observations = loadSavedObservations();
+          setSavedObservations(observations);
+        }
+
+        // Show sync results
+        const pushMessage = [];
+        if (syncResults.pushed.tracks > 0) pushMessage.push(`${syncResults.pushed.tracks} spor`);
+        if (syncResults.pushed.finds > 0) pushMessage.push(`${syncResults.pushed.finds} funn`);
+        if (syncResults.pushed.observations > 0) pushMessage.push(`${syncResults.pushed.observations} observasjoner`);
+        if (syncResults.pushed.posts > 0) pushMessage.push(`${syncResults.pushed.posts} skuddpar`);
+
+        const pullMessage = [];
+        if (syncResults.pulled.tracks.length > 0) pullMessage.push(`${syncResults.pulled.tracks.length} spor`);
+        if (syncResults.pulled.finds.length > 0) pullMessage.push(`${syncResults.pulled.finds.length} funn`);
+        if (syncResults.pulled.observations.length > 0) pullMessage.push(`${syncResults.pulled.observations.length} observasjoner`);
+        if (syncResults.pulled.posts.length > 0) pullMessage.push(`${syncResults.pulled.posts.length} skuddpar`);
+
+        let message = 'Synkronisering fullført!';
+        if (pushMessage.length > 0) message += `\nPushet: ${pushMessage.join(', ')}`;
+        if (pullMessage.length > 0) message += `\nHentet: ${pullMessage.join(', ')}`;
+        if (syncResults.errors.length > 0) message += `\nFeil: ${syncResults.errors.length}`;
+
+        alert(message);
       } catch (error) {
-        console.error('Error saving tracks to database:', error);
-        alert('Feil ved lagring av spor til database: ' + (error as Error).message);
+        console.error('Error syncing data:', error);
+        alert('Feil ved synkronisering: ' + (error as Error).message);
       }
     }
   };
@@ -989,7 +1230,7 @@ export default function MapComponent({
   const loadSavedFinds = (): SavedFind[] => {
     try {
       const savedFinds = JSON.parse(localStorage.getItem('searchFinds') || '{}');
-      const allFinds = Object.values(savedFinds) as SavedFind[];
+      const allFinds = Object.values(savedFinds) as SavedFind[] || [];
       
       // I søk-modus: vis kun funn for det valgte treffpunktet, eller alle hvis showAllTracksAndFinds er aktiv
       if (mode === 'søk' && hasSavedPairs && safeSavedPairs.length > 0) {
@@ -1011,6 +1252,36 @@ export default function MapComponent({
       return allFinds;
     } catch (error) {
       console.error('Feil ved lasting av lagrede funn:', error);
+      return [];
+    }
+  };
+
+  // Last alle lagrede observasjoner fra localStorage
+  const loadSavedObservations = (): SavedObservation[] => {
+    try {
+      const savedObservations = JSON.parse(localStorage.getItem('searchObservations') || '{}');
+      const allObservations = Object.values(savedObservations) as SavedObservation[] || [];
+      
+      // I søk-modus: vis kun observasjoner for det valgte treffpunktet, eller alle hvis showAllTracksAndFinds er aktiv
+      if (mode === 'søk' && hasSavedPairs && safeSavedPairs.length > 0) {
+        // Hvis showAllTracksAndFinds er aktiv, vis alle observasjoner
+        if (showAllTracksAndFinds) {
+          return allObservations;
+        }
+        
+        // Ellers vis kun observasjoner for det valgte treffpunktet
+        const treffpunkter = safeSavedPairs.filter(p => p.category === 'Treffpunkt');
+        const reversedTreffpunkter = treffpunkter.length > 0 ? [...treffpunkter].reverse() : [];
+        const selectedTarget = reversedTreffpunkter[adjustedSelectedTargetIndex];
+        if (selectedTarget?.id) {
+          // Vis kun observasjoner for det valgte treffpunktet
+          return allObservations.filter(obs => obs.shotPairId === selectedTarget.id.toString());
+        }
+      }
+      // Vis alle observasjoner i andre moduser
+      return allObservations;
+    } catch (error) {
+      console.error('Feil ved lasting av lagrede observasjoner:', error);
       return [];
     }
   };
@@ -1259,7 +1530,7 @@ export default function MapComponent({
       }
       const data = await response.json();
       
-      if (Array.isArray(data)) {
+    if (Array.isArray(data)) {
         // Parse content field to extract coordinates and category
         setSavedPairs(data.map(post => {
           const content = post.content || '';
@@ -1272,8 +1543,8 @@ export default function MapComponent({
             current: latMatch && lngMatch ? { lat: parseFloat(latMatch[1]), lng: parseFloat(lngMatch[1]) } : undefined,
             target: targetLatMatch ? { lat: parseFloat(targetLatMatch[1]), lng: parseFloat(targetLatMatch[2]) } : undefined,
             category: categoryMatch ? categoryMatch[1] : 'general',
-            id: post.id,
-            created_at: post.created_at,
+        id: post.id,
+        created_at: post.created_at,
           };
         }));
       }
@@ -1287,6 +1558,20 @@ export default function MapComponent({
   useEffect(() => {
     fetchPosts();
   }, []);
+
+  // Synkroniser team-data når activeTeam endres
+  useEffect(() => {
+    if (activeTeam) {
+      console.log('Active team changed, syncing team data:', activeTeam);
+      syncTeamData();
+    } else {
+      // Clear all data when no team is selected
+      setSavedTracks([]);
+      setSavedFinds([]);
+      setSavedObservations([]);
+      setSavedPairs([]);
+    }
+  }, [activeTeam]);
 
   // Legg til state for å styre om Treff-knappen er aktiv
   const [canAddTreff, setCanAddTreff] = useState(false);
@@ -1786,7 +2071,7 @@ export default function MapComponent({
         )}
         
         {/* Tracking points i søk-modus */}
-        {mode === 'søk' && trackingPoints.length > 0 && (
+        {mode === 'søk' && trackingPoints && trackingPoints.length > 0 && (
           <>
             {/* Gule sirkler for hvert tracking punkt */}
             {trackingPoints.map((point, index) => (
@@ -1822,7 +2107,7 @@ export default function MapComponent({
             ))}
             
             {/* Gul linje mellom tracking punktene */}
-            {trackingPoints.length > 1 && (
+            {trackingPoints && trackingPoints.length > 1 && (
               <Polyline
                 positions={trackingPoints.map(point => [point.lat, point.lng])}
                 pathOptions={{ 
@@ -1854,12 +2139,12 @@ export default function MapComponent({
         )}
 
         {/* Alle lagrede spor i søk-modus */}
-        {mode === 'søk' && savedTracks.length > 0 && (
+        {mode === 'søk' && savedTracks && savedTracks.length > 0 && (
           <>
             {savedTracks.map((track) => (
               <React.Fragment key={`saved-track-${track.id}`}>
                 {/* Fargede sirkler for hvert lagret spor */}
-                {track.points.map((point: Position, index: number) => (
+                {track.points && track.points.map((point: Position, index: number) => (
                   <Circle
                     key={`saved-track-${track.id}-point-${index}`}
                     center={[point.lat, point.lng]}
@@ -1892,7 +2177,7 @@ export default function MapComponent({
                 ))}
                 
                 {/* Farget linje mellom punktene i lagret spor */}
-                {track.points.length > 1 && (
+                {track.points && track.points.length > 1 && (
                   <Polyline
                     positions={track.points.map((point: Position) => [point.lat, point.lng])}
                     pathOptions={{ 
@@ -1926,7 +2211,7 @@ export default function MapComponent({
         )}
 
         {/* Alle lagrede funn i søk-modus */}
-        {mode === 'søk' && savedFinds.length > 0 && (
+        {mode === 'søk' && savedFinds && savedFinds.length > 0 && (
           <>
             {savedFinds.map((find) => (
               <Marker
@@ -1965,7 +2250,7 @@ export default function MapComponent({
         )}
         
         {/* Alle lagrede observasjoner i søk-modus */}
-        {mode === 'søk' && showObservations && savedObservations.length > 0 && (
+        {mode === 'søk' && showObservations && savedObservations && savedObservations.length > 0 && (
           <>
             {savedObservations.map((observation) => (
               <Circle
@@ -2391,18 +2676,13 @@ export default function MapComponent({
                         {/* Start/Stopp spor knapp kun i søk-modus */}
         {mode === 'søk' && (
           <div className="fixed bottom-4 inset-x-0 z-[2001] flex flex-wrap justify-center items-center gap-2 px-2">
-            {/* Lagre til database knapp */}
+            {/* Synkroniser knapp */}
             <button
-              onClick={handleSaveToDatabase}
-              disabled={savedTracks.length === 0}
-              className={`w-9 h-9 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex items-center justify-center ${
-                savedTracks.length > 0
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white border-blue-700'
-                  : 'bg-gray-400 text-gray-200 border-gray-300 cursor-not-allowed'
-              }`}
-              title="Lagre synlige spor til database"
+              onClick={handleSyncData}
+              className="w-9 h-9 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white border-blue-700"
+              title="Synkroniser alle data med teamet"
             >
-                      💾
+                      🔄
                     </button>
 
                     {/* Obs-knapp */}

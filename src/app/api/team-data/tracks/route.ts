@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { teamId, name, points, color, shotPairId, mode } = body;
+    const { teamId, name, points, color, shotPairId, mode, localId } = body;
 
     if (!teamId) {
       return NextResponse.json({ error: 'Team ID is required' }, { status: 400 });
@@ -113,7 +113,8 @@ export async function POST(request: NextRequest) {
         teamid: teamId,
         createdby: userId,
         name: name || 'Unnamed Track',
-        color: color || '#3b82f6'
+        color: color || '#3b82f6',
+        local_id: localId
       })
       .select()
       .single();
