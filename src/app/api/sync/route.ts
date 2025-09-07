@@ -73,7 +73,8 @@ export async function POST(request: NextRequest) {
                   createdby: userId,
                   name: track.name,
                   color: track.color,
-                  local_id: track.id
+                  local_id: track.id,
+                  points: track.points ? JSON.stringify(track.points) : null
                 });
 
               if (trackError) {

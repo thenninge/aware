@@ -10,9 +10,9 @@ interface AdminMenuProps {
 }
 
 export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
-  const { authState, login, logout, updateUserProfile } = useAuth();
+  const { authState, login, logout, updateUserProfile, setActiveTeam } = useAuth();
   const [activeTab, setActiveTab] = useState<'team' | 'users' | 'settings'>('team');
-  const [activeTeam, setActiveTeam] = useState<string | null>(null);
+  const [localActiveTeam, setLocalActiveTeam] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   // Teams will be loaded from database
@@ -42,6 +42,15 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
     }
   }, [authState.isAuthenticated, authState.user]);
 
+  // Sync localActiveTeam with authState.activeTeam
+  useEffect(() => {
+    if (authState.activeTeam) {
+      setLocalActiveTeam(authState.activeTeam.id);
+    } else {
+      setLocalActiveTeam(null);
+    }
+  }, [authState.activeTeam]);
+
   const loadUserTeams = async () => {
     if (!authState.user) return;
     
@@ -58,10 +67,9 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
       setUserTeams(teams);
       
       // Auto-select first team if none is selected
-      if (teams.length > 0 && !activeTeam) {
-        setActiveTeam(teams[0].id);
-        // Save to localStorage
-        localStorage.setItem('aware_active_team', JSON.stringify(teams[0]));
+      if (teams.length > 0 && !localActiveTeam) {
+        setLocalActiveTeam(teams[0].id);
+        setActiveTeam(teams[0]); // Update AuthContext
       }
       
     } catch (error) {
@@ -110,9 +118,8 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
       setNewTeamName('');
       
       // Auto-select the new team
-      setActiveTeam(newTeam.id);
-      // Save to localStorage
-      localStorage.setItem('aware_active_team', JSON.stringify(newTeam));
+      setLocalActiveTeam(newTeam.id);
+      setActiveTeam(newTeam); // Update AuthContext
       
     } catch (error) {
       console.error('Error creating team:', error);
@@ -123,9 +130,9 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
   };
 
   const handleDeleteTeam = async () => {
-    if (!activeTeam || !authState.user) return;
+    if (!localActiveTeam || !authState.user) return;
     
-    const teamToDelete = userTeams.find(t => t.id === activeTeam);
+    const teamToDelete = userTeams.find(t => t.id === localActiveTeam);
     if (!teamToDelete) return;
     
     const confirmed = window.confirm(`Er du sikker på at du vil slette teamet "${teamToDelete.name}"? Denne handlingen kan ikke angres.`);
@@ -134,7 +141,7 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
     setIsDeletingTeam(true);
     
     try {
-      const response = await fetch(`/api/teams?id=${activeTeam}`, {
+      const response = await fetch(`/api/teams?id=${localActiveTeam}`, {
         method: 'DELETE',
       });
 
@@ -143,11 +150,11 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
       }
 
       // Remove team from local state
-      setUserTeams(prev => prev.filter(t => t.id !== activeTeam));
+      setUserTeams(prev => prev.filter(t => t.id !== localActiveTeam));
       
       // Clear active team if it was the deleted one
-      setActiveTeam(null);
-      localStorage.removeItem('aware_active_team');
+      setLocalActiveTeam(null);
+      setActiveTeam(null); // Update AuthContext
       
       alert('Team slettet!');
       
@@ -160,7 +167,7 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
   };
 
   const handleSendInvite = async () => {
-    if (!inviteEmail.trim() || !activeTeam || !authState.user) return;
+    if (!inviteEmail.trim() || !localActiveTeam || !authState.user) return;
     
     setIsSendingInvite(true);
     
@@ -171,7 +178,7 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          teamId: activeTeam,
+          teamId: localActiveTeam,
           email: inviteEmail.trim(),
         }),
       });
@@ -316,17 +323,17 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
                       </div>
                     ) : userTeams.length > 0 ? (
                       <select
-                        value={activeTeam || ''}
+                        value={localActiveTeam || ''}
                         onChange={(e) => {
-                          setActiveTeam(e.target.value);
-                          // Save to localStorage
+                          setLocalActiveTeam(e.target.value);
+                          // Update AuthContext
                           if (e.target.value) {
                             const selectedTeam = userTeams.find(t => t.id === e.target.value);
                             if (selectedTeam) {
-                              localStorage.setItem('aware_active_team', JSON.stringify(selectedTeam));
+                              setActiveTeam(selectedTeam);
                             }
                           } else {
-                            localStorage.removeItem('aware_active_team');
+                            setActiveTeam(null);
                           }
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -346,14 +353,14 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
                   </div>
 
                   {/* Current Team Info */}
-                  {activeTeam && userTeams.find(t => t.id === activeTeam) && (
+                  {localActiveTeam && userTeams.find(t => t.id === localActiveTeam) && (
                     <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                       <h4 className="font-medium text-blue-800 mb-2">Active Team</h4>
-                      <p className="text-sm text-blue-700">Team: <span className="font-medium">{userTeams.find(t => t.id === activeTeam)?.name}</span></p>
+                      <p className="text-sm text-blue-700">Team: <span className="font-medium">{userTeams.find(t => t.id === localActiveTeam)?.name}</span></p>
                       <div className="text-sm text-blue-700">
                         <span className="font-medium">Members:</span>
                         <div className="mt-1 space-y-1">
-                          {userTeams.find(t => t.id === activeTeam)?.members?.map((member, index) => {
+                          {userTeams.find(t => t.id === localActiveTeam)?.members?.map((member, index) => {
                             const memberData = member as any;
                             let displayName;
                             if (memberData.userid === authState.user?.googleId) {
@@ -394,7 +401,7 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
                   </div>
 
                   {/* Invite Members */}
-                  {activeTeam && (
+                  {localActiveTeam && (
                     <div className="space-y-3">
                       <h4 className="font-medium text-gray-700">Invite Members</h4>
                       <input
@@ -416,7 +423,7 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
                   )}
 
                   {/* Delete Active Team */}
-                  {activeTeam && userTeams.find(t => t.id === activeTeam) && (
+                  {localActiveTeam && userTeams.find(t => t.id === localActiveTeam) && (
                     <div className="space-y-3 pt-6 pb-6">
                       <h4 className="font-medium text-gray-700">Delete Active Team</h4>
                       <button 
@@ -424,7 +431,7 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
                         disabled={isDeletingTeam}
                         className="w-full bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 disabled:bg-gray-400 transition-colors"
                       >
-                        {isDeletingTeam ? 'Sletter...' : `Delete "${userTeams.find(t => t.id === activeTeam)?.name}"`}
+                        {isDeletingTeam ? 'Sletter...' : `Delete "${userTeams.find(t => t.id === localActiveTeam)?.name}"`}
                       </button>
                     </div>
                   )}

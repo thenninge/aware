@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]/route';
 import { supabaseAdmin } from '../teams/route';
 
-// GET - Hent alle posts
+// GET - Hent posts for aktivt team
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -13,10 +13,43 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get all posts (for now, we'll filter by team later)
+    const { searchParams } = new URL(request.url);
+    const teamId = searchParams.get('teamId');
+
+    if (!teamId) {
+      return NextResponse.json({ error: 'Team ID is required' }, { status: 400 });
+    }
+
+    // Verify user has access to this team
+    const { data: teamAccess, error: accessError } = await supabaseAdmin
+      .from('team_members')
+      .select('*')
+      .eq('teamid', teamId)
+      .eq('userid', userId)
+      .single();
+
+    if (accessError && accessError.code !== 'PGRST116') {
+      console.error('Error checking team access:', accessError);
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
+
+    // Also check if user is owner of the team
+    const { data: ownedTeam, error: ownerError } = await supabaseAdmin
+      .from('teams')
+      .select('*')
+      .eq('id', teamId)
+      .eq('ownerid', userId)
+      .single();
+
+    if (!teamAccess && !ownedTeam) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
+
+    // Get posts for this team
     const { data: posts, error: postsError } = await supabaseAdmin
       .from('posts')
       .select('*')
+      .eq('teamid', teamId)
       .order('created_at', { ascending: true });
 
     if (postsError) {
