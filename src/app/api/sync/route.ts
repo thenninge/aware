@@ -74,7 +74,8 @@ export async function POST(request: NextRequest) {
                   name: track.name,
                   color: track.color,
                   local_id: track.id,
-                  points: track.points ? JSON.stringify(track.points) : null
+                  points: track.points ? JSON.stringify(track.points) : null,
+                  shot_pair_id: track.shotPairId || 'unknown'
                 });
 
               if (trackError) {
@@ -108,7 +109,10 @@ export async function POST(request: NextRequest) {
                   teamid: teamId,
                   createdby: userId,
                   name: find.name,
-                  local_id: find.id
+                  local_id: find.id,
+                  position: find.position ? JSON.stringify(find.position) : null,
+                  shot_pair_id: find.shotPairId || 'unknown',
+                  color: find.color || '#10b981'
                 });
 
               if (findError) {
@@ -142,7 +146,9 @@ export async function POST(request: NextRequest) {
                   teamid: teamId,
                   createdby: userId,
                   name: observation.name,
-                  local_id: observation.id
+                  local_id: observation.id,
+                  position: observation.position ? JSON.stringify(observation.position) : null,
+                  color: observation.color || '#F59E0B'
                 });
 
               if (observationError) {

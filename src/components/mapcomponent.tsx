@@ -888,7 +888,7 @@ export default function MapComponent({
               id: trackId,
               name: track.name,
               color: track.color,
-              shotPairId: 'unknown',
+              shotPairId: track.shot_pair_id || 'unknown',
               points: track.points ? JSON.parse(track.points) : [], // Parse points from JSON
               createdAt: new Date().toISOString(),
               mode: 'søk'
@@ -912,9 +912,9 @@ export default function MapComponent({
             teamFinds[findId] = {
               id: findId,
               name: find.name,
-              position: { lat: 0, lng: 0 }, // Default position for server finds
-              shotPairId: 'unknown',
-              color: '#10b981',
+              position: find.position ? JSON.parse(find.position) : { lat: 0, lng: 0 },
+              shotPairId: find.shot_pair_id || 'unknown',
+              color: find.color || '#10b981',
               createdAt: new Date().toISOString()
             };
           });
@@ -936,9 +936,9 @@ export default function MapComponent({
             teamObservations[obsId] = {
               id: obsId,
               name: obs.name,
-              position: { lat: 0, lng: 0 }, // Default position for server observations
-              shotPairId: 'unknown',
-              color: '#F59E0B',
+              position: obs.position ? JSON.parse(obs.position) : { lat: 0, lng: 0 },
+              shotPairId: obs.shot_pair_id || 'unknown',
+              color: obs.color || '#F59E0B',
               createdAt: new Date().toISOString()
             };
           });
@@ -989,9 +989,9 @@ export default function MapComponent({
       const localObservations = JSON.parse(localStorage.getItem('searchObservations') || '{}');
       
       const localData = {
-        tracks: Object.values(localTracks).map(track => ({ ...track, id: track.id, points: track.points })),
-        finds: Object.values(localFinds).map(find => ({ ...find, id: find.id })),
-        observations: Object.values(localObservations).map(obs => ({ ...obs, id: obs.id })),
+        tracks: Object.values(localTracks).map(track => ({ ...track, id: track.id, points: track.points, shotPairId: track.shotPairId })),
+        finds: Object.values(localFinds).map(find => ({ ...find, id: find.id, shotPairId: find.shotPairId, position: find.position, color: find.color })),
+        observations: Object.values(localObservations).map(obs => ({ ...obs, id: obs.id, position: obs.position, color: obs.color })),
         posts: (safeSavedPairs || []).map(post => ({ ...post, id: post.id }))
       };
       
@@ -1044,7 +1044,7 @@ export default function MapComponent({
               id: trackId,
               name: track.name,
               color: track.color,
-              shotPairId: 'unknown',
+              shotPairId: track.shot_pair_id || 'unknown',
               points: track.points ? JSON.parse(track.points) : [], // Parse points from JSON
               createdAt: new Date().toISOString(),
               mode: 'søk'
@@ -1068,9 +1068,9 @@ export default function MapComponent({
             teamFinds[findId] = {
               id: findId,
               name: find.name,
-              position: { lat: 0, lng: 0 }, // Default position for server finds
-              shotPairId: 'unknown',
-              color: '#10b981',
+              position: find.position ? JSON.parse(find.position) : { lat: 0, lng: 0 },
+              shotPairId: find.shot_pair_id || 'unknown',
+              color: find.color || '#10b981',
               createdAt: new Date().toISOString()
             };
           });
@@ -1092,9 +1092,9 @@ export default function MapComponent({
             teamObservations[obsId] = {
               id: obsId,
               name: obs.name,
-              position: { lat: 0, lng: 0 }, // Default position for server observations
-              shotPairId: 'unknown',
-              color: '#F59E0B',
+              position: obs.position ? JSON.parse(obs.position) : { lat: 0, lng: 0 },
+              shotPairId: obs.shot_pair_id || 'unknown',
+              color: obs.color || '#F59E0B',
               createdAt: new Date().toISOString()
             };
           });
@@ -1140,9 +1140,9 @@ export default function MapComponent({
       try {
         // Prepare local data for sync
         const localData = {
-          tracks: (savedTracks || []).map(track => ({ ...track, id: track.id, points: track.points })),
-          finds: (savedFinds || []).map(find => ({ ...find, id: find.id })),
-          observations: (savedObservations || []).map(obs => ({ ...obs, id: obs.id })),
+          tracks: (savedTracks || []).map(track => ({ ...track, id: track.id, points: track.points, shotPairId: track.shotPairId })),
+          finds: (savedFinds || []).map(find => ({ ...find, id: find.id, shotPairId: find.shotPairId, position: find.position, color: find.color })),
+          observations: (savedObservations || []).map(obs => ({ ...obs, id: obs.id, position: obs.position, color: obs.color })),
           posts: (safeSavedPairs || []).map(post => ({ ...post, id: post.id }))
         };
 
@@ -1177,8 +1177,8 @@ export default function MapComponent({
                 id: trackId,
                 name: track.name,
                 color: track.color,
-                shotPairId: 'unknown',
-                points: [], // Empty points array for server tracks
+                shotPairId: track.shot_pair_id || 'unknown',
+                points: track.points ? JSON.parse(track.points) : [], // Parse points from JSON
                 createdAt: new Date().toISOString(),
                 mode: 'søk'
               };
@@ -1197,9 +1197,9 @@ export default function MapComponent({
               teamFinds[findId] = {
                 id: findId,
                 name: find.name,
-                position: { lat: 0, lng: 0 }, // Default position for server finds
-                shotPairId: 'unknown',
-                color: '#10b981',
+                position: find.position ? JSON.parse(find.position) : { lat: 0, lng: 0 },
+                shotPairId: find.shot_pair_id || 'unknown',
+                color: find.color || '#10b981',
                 createdAt: new Date().toISOString()
               };
             });
@@ -1217,9 +1217,9 @@ export default function MapComponent({
               teamObservations[obsId] = {
                 id: obsId,
                 name: obs.name,
-                position: { lat: 0, lng: 0 }, // Default position for server observations
-                shotPairId: 'unknown',
-                color: '#F59E0B',
+                position: obs.position ? JSON.parse(obs.position) : { lat: 0, lng: 0 },
+                shotPairId: obs.shot_pair_id || 'unknown',
+                color: obs.color || '#F59E0B',
                 createdAt: new Date().toISOString()
               };
             });
@@ -1422,23 +1422,7 @@ export default function MapComponent({
       const savedObservations = JSON.parse(localStorage.getItem('searchObservations') || '{}');
       const allObservations = Object.values(savedObservations) as SavedObservation[] || [];
       
-      // I søk-modus: vis kun observasjoner for det valgte treffpunktet, eller alle hvis showAllTracksAndFinds er aktiv
-      if (mode === 'søk' && hasSavedPairs && safeSavedPairs.length > 0) {
-        // Hvis showAllTracksAndFinds er aktiv, vis alle observasjoner
-        if (showAllTracksAndFinds) {
-          return allObservations;
-        }
-        
-        // Ellers vis kun observasjoner for det valgte treffpunktet
-        const treffpunkter = safeSavedPairs.filter(p => p.category === 'Treffpunkt');
-        const reversedTreffpunkter = treffpunkter.length > 0 ? [...treffpunkter].reverse() : [];
-        const selectedTarget = reversedTreffpunkter[adjustedSelectedTargetIndex];
-        if (selectedTarget?.id) {
-          // Vis kun observasjoner for det valgte treffpunktet
-          return allObservations.filter(obs => obs.shotPairId === selectedTarget.id.toString());
-        }
-      }
-      // Vis alle observasjoner i andre moduser
+      // Observasjoner er frie og vises alltid (ikke filtrert på skuddpar)
       return allObservations;
     } catch (error) {
       console.error('Feil ved lasting av lagrede observasjoner:', error);
@@ -1497,18 +1481,8 @@ export default function MapComponent({
       // Hent eksisterende observasjoner
       const existingObservations = JSON.parse(localStorage.getItem('searchObservations') || '{}');
       
-      // Finn aktivt skuddpar ID - bruk selectedTarget i søk-modus, lastPair i andre moduser
-      let activeShotPairId: string;
-      if (mode === 'søk' && hasSavedPairs && safeSavedPairs.length > 0) {
-        // I søk-modus: bruk det aktive treffpunktet
-        const treffpunkter = safeSavedPairs.filter(p => p.category === 'Treffpunkt');
-        const reversedTreffpunkter = treffpunkter.length > 0 ? [...treffpunkter].reverse() : [];
-        const selectedTarget = reversedTreffpunkter[adjustedSelectedTargetIndex];
-        activeShotPairId = selectedTarget?.id?.toString() || 'unknown';
-      } else {
-        // I andre moduser: bruk lastPair
-        activeShotPairId = lastPair?.id?.toString() || 'unknown';
-      }
+      // Observasjoner er frie og ikke koblet til skuddpar
+      const activeShotPairId = 'free';
       
       // Generer unik ID for observasjonen
       const observationId = `observation_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
