@@ -4,10 +4,15 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 
 // Create admin Supabase client with service role key
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+function getSupabaseAdmin() {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error('Missing Supabase environment variables');
+  }
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
+}
 
 // GET - Get invitation details
 export async function GET(
@@ -17,6 +22,7 @@ export async function GET(
   try {
     const { id: invitationId } = await params;
 
+    const supabaseAdmin = getSupabaseAdmin();
     const { data: invitation, error } = await supabaseAdmin
       .from('team_invitations')
       .select(`
@@ -55,6 +61,7 @@ export async function POST(
     const { id: invitationId } = await params;
 
     // Get invitation details
+    const supabaseAdmin = getSupabaseAdmin();
     const { data: invitation, error: inviteError } = await supabaseAdmin
       .from('team_invitations')
       .select('*')

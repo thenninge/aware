@@ -5,10 +5,15 @@ import { authOptions } from '@/lib/auth';
 import nodemailer from 'nodemailer';
 
 // Create admin Supabase client with service role key
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+function getSupabaseAdmin() {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error('Missing Supabase environment variables');
+  }
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
+}
 
 // Email configuration
 const transporter = nodemailer.createTransport({
@@ -63,6 +68,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user is a member of the team
+    const supabaseAdmin = getSupabaseAdmin();
     const { data: membership, error: membershipError } = await supabaseAdmin
       .from('team_members')
       .select('*')
@@ -141,6 +147,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Check if user is a member of the team
+    const supabaseAdmin = getSupabaseAdmin();
     const { data: membership, error: membershipError } = await supabaseAdmin
       .from('team_members')
       .select('*')

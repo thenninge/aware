@@ -4,14 +4,19 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 
 // Create admin Supabase client with service role key
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!  // NB! Service role key, not anon key
-);
+function getSupabaseAdmin() {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error('Missing Supabase environment variables');
+  }
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
+}
 
 // Create authenticated Supabase client
 function getAuthenticatedSupabase() {
-  return supabaseAdmin;
+  return getSupabaseAdmin();
 }
 
 // GET - Hent teams for en bruker
