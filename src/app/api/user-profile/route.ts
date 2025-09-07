@@ -3,10 +3,15 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+function getSupabaseAdmin() {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error('Missing Supabase environment variables');
+  }
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
+}
 
 // GET - Hent brukerprofil
 export async function GET() {
@@ -19,6 +24,7 @@ export async function GET() {
     }
 
     // Hent brukerprofil fra users-tabellen
+    const supabaseAdmin = getSupabaseAdmin();
     const { data: userProfile, error } = await supabaseAdmin
       .from('users')
       .select('*')
@@ -51,6 +57,7 @@ export async function PUT(request: NextRequest) {
     const { nickname, display_name } = body;
 
     // Sjekk om brukeren allerede eksisterer
+    const supabaseAdmin = getSupabaseAdmin();
     const { data: existingUser, error: fetchError } = await supabaseAdmin
       .from('users')
       .select('*')

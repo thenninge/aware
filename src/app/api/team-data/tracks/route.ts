@@ -3,10 +3,15 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+function getSupabaseAdmin() {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error('Missing Supabase environment variables');
+  }
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
+}
 
 // GET - Hent tracks for aktivt team
 export async function GET(request: NextRequest) {
@@ -26,6 +31,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Verify user has access to this team
+    const supabaseAdmin = getSupabaseAdmin();
     const { data: teamAccess, error: accessError } = await supabaseAdmin
       .from('team_members')
       .select('*')
@@ -87,6 +93,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify user has access to this team
+    const supabaseAdmin = getSupabaseAdmin();
     const { data: teamAccess, error: accessError } = await supabaseAdmin
       .from('team_members')
       .select('*')
