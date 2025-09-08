@@ -683,10 +683,55 @@ export default function MapComponent({
   const [observationName, setObservationName] = useState('');
   const [observationColor, setObservationColor] = useState('#FF6B35');
 
+  // Avstandsmåling state
+  const [isMeasuring, setIsMeasuring] = useState(false);
+  const [measurementPoints, setMeasurementPoints] = useState<Position[]>([]);
+  const [totalDistance, setTotalDistance] = useState(0);
+
   // MSR-retikkel state
   const [localShowMSRRetikkel, setLocalShowMSRRetikkel] = useState(showMSRRetikkel);
   const [localMSRRetikkelOpacity, setLocalMSRRetikkelOpacity] = useState(msrRetikkelOpacity);
   const [localMSRRetikkelStyle, setLocalMSRRetikkelStyle] = useState(msrRetikkelStyle);
+
+  // Avstandsmåling funksjoner
+  const calculateDistance = (point1: Position, point2: Position): number => {
+    const R = 6371000; // Jordens radius i meter
+    const dLat = (point2.lat - point1.lat) * Math.PI / 180;
+    const dLng = (point2.lng - point1.lng) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(point1.lat * Math.PI / 180) * Math.cos(point2.lat * Math.PI / 180) *
+              Math.sin(dLng/2) * Math.sin(dLng/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  };
+
+  const handleMeasureClick = () => {
+    if (!currentPosition) return;
+
+    if (!isMeasuring) {
+      // Start måling - lagre første punkt
+      setIsMeasuring(true);
+      setMeasurementPoints([currentPosition]);
+      setTotalDistance(0);
+    } else {
+      // Fortsett måling - legg til nytt punkt og beregn avstand
+      const newPoints = [...measurementPoints, currentPosition];
+      setMeasurementPoints(newPoints);
+      
+      // Beregn total avstand (kumulativ)
+      let total = 0;
+      for (let i = 1; i < newPoints.length; i++) {
+        total += calculateDistance(newPoints[i-1], newPoints[i]);
+      }
+      setTotalDistance(total);
+    }
+  };
+
+  const handleResetMeasurement = () => {
+    setIsMeasuring(false);
+    setMeasurementPoints([]);
+    setTotalDistance(0);
+  };
   
 
   
@@ -2306,6 +2351,32 @@ export default function MapComponent({
           </>
         )}
 
+        {/* Avstandsmåling linjer - kun i aware-modus */}
+        {mode === 'aware' && measurementPoints.length > 1 && (
+          <Polyline
+            positions={measurementPoints.map(point => [point.lat, point.lng])}
+            pathOptions={{ 
+              color: '#3b82f6', 
+              weight: 3,
+              opacity: 0.8
+            }}
+          />
+        )}
+
+        {/* Avstandsmåling markører - kun i aware-modus */}
+        {mode === 'aware' && measurementPoints.map((point, index) => (
+          <Marker
+            key={`measurement-point-${index}`}
+            position={[point.lat, point.lng]}
+            icon={L.divIcon({
+              className: 'custom-marker measurement-marker',
+              html: `<div style="width: 12px; height: 12px; background-color: #3b82f6; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 4px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; font-size: 8px; color: white; font-weight: bold;">${index + 1}</div>`,
+              iconSize: [12, 12],
+              iconAnchor: [6, 6],
+            })}
+          />
+        ))}
+
         {/* Alle lagrede spor i søk-modus */}
         {mode === 'søk' && savedTracks && savedTracks.length > 0 && (
           <>
@@ -2837,6 +2908,50 @@ export default function MapComponent({
             title={isTargetModeActive ? "Klikk for å gå tilbake til Shot-modus" : "Save current pos"}
           >
                                     <span className="text-[10px] mt-0.5">{isTargetModeActive ? 'Back' : 'Shot'}</span>
+          </button>
+        </div>
+      )}
+
+      {/* Avstandsmåling knapper - kun i aware-modus */}
+      {mode === 'aware' && (
+        <div className="fixed bottom-4 inset-x-0 z-[2001] flex flex-wrap justify-center items-center gap-2 px-2">
+          {/* Reset-knapp - alltid synlig */}
+          <button
+            onClick={handleResetMeasurement}
+            className={`w-18 h-9 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex items-center justify-center ${
+              (isMeasuring || measurementPoints.length > 0)
+                ? 'bg-red-600 hover:bg-red-700 text-white border-red-700'
+                : 'bg-gray-300 text-gray-400 border-gray-400 cursor-not-allowed'
+            }`}
+            title="Fjern all måling"
+            disabled={!isMeasuring && measurementPoints.length === 0}
+          >
+            ✕
+          </button>
+
+          {/* Avstandstekst - alltid synlig */}
+          <div className="bg-white rounded-full px-3 py-1 shadow-lg border min-w-[60px] text-center">
+            <span className="text-sm font-semibold text-gray-700">
+              {totalDistance > 0 
+                ? (totalDistance < 1000 
+                    ? `${Math.round(totalDistance)}m` 
+                    : `${(totalDistance / 1000).toFixed(2)}km`)
+                : '0m'
+              }
+            </span>
+          </div>
+
+          {/* Måle-knapp - avlang */}
+          <button
+            onClick={handleMeasureClick}
+            className={`w-18 h-9 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex items-center justify-center ${
+              isMeasuring
+                ? 'bg-green-600 hover:bg-green-700 text-white border-green-700'
+                : 'bg-blue-600 hover:bg-blue-700 text-white border-blue-700'
+            }`}
+            title={isMeasuring ? "Klikk for å legge til neste målepunkt" : "Start avstandsmåling"}
+          >
+            📏
           </button>
         </div>
       )}
