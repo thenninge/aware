@@ -1,32 +1,23 @@
 'use client';
 
 import { useState } from 'react';
+import { signIn, signOut, useSession } from 'next-auth/react';
 import { useAuth } from '@/contexts/AuthContext';
-import { UserProfile } from '@/types/auth';
 
 export default function LoginButton() {
-  const { authState, login, logout } = useAuth();
+  const { authState, logout } = useAuth();
+  const { data: session, status } = useSession();
   const [isLoading, setIsLoading] = useState(false);
 
-  // Mock Google OAuth login - senere kobles dette til ekte Google OAuth
+  // Ekte Google OAuth login via NextAuth
   const handleGoogleLogin = async () => {
     setIsLoading(true);
     
     try {
-      // Simuler Google OAuth prosess
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Mock bruker data
-      const mockUser: UserProfile = {
-        googleId: `google_${Date.now()}`,
-        email: 'test@example.com',
-        displayName: 'Test User',
-        nickname: 'TestJeger',
-        createdAt: new Date(),
-        lastActive: new Date(),
-      };
-      
-      login();
+      await signIn('google', { 
+        callbackUrl: window.location.origin,
+        redirect: true 
+      });
     } catch (error) {
       console.error('Login failed:', error);
     } finally {
@@ -34,7 +25,8 @@ export default function LoginButton() {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await signOut({ callbackUrl: window.location.origin });
     logout();
   };
 

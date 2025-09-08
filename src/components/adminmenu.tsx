@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { signIn } from 'next-auth/react';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserProfile, Team } from '@/types/auth';
 
@@ -79,12 +80,15 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
     }
   };
 
-  // Google OAuth login
+  // Google OAuth login via NextAuth
   const handleGoogleLogin = async () => {
     setIsLoading(true);
     
     try {
-      await login();
+      await signIn('google', { 
+        callbackUrl: window.location.origin,
+        redirect: true 
+      });
     } catch (error) {
       console.error('Login failed:', error);
     } finally {
