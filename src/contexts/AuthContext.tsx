@@ -74,8 +74,31 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
     };
 
+    const loadTeamsAndSetActive = async () => {
+      if (session?.user) {
+        try {
+          const response = await fetch('/api/teams');
+          if (response.ok) {
+            const teams = await response.json();
+            if (teams.length > 0) {
+              // If no active team is set, use the first team
+              const currentActiveTeam = localStorage.getItem('aware_active_team');
+              if (!currentActiveTeam) {
+                const firstTeam = teams[0];
+                setActiveTeamState(firstTeam);
+                localStorage.setItem('aware_active_team', JSON.stringify(firstTeam));
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Error loading teams:', error);
+        }
+      }
+    };
+
     loadActiveTeam();
     loadUserProfile();
+    loadTeamsAndSetActive();
   }, [session?.user]);
 
   // Update auth state when session changes
