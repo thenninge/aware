@@ -96,6 +96,7 @@ function MapController({
   onSearchPositionChange,
   onPlacesChange,
   clearPlaces,
+  onGpsPositionChange,
 }: { 
   onPositionChange?: (position: Position) => void; 
   radius: number;
@@ -113,9 +114,11 @@ function MapController({
   onSearchPositionChange?: (position: Position) => void;
   onPlacesChange?: (places: PlaceData[]) => void;
   clearPlaces?: boolean;
+  onGpsPositionChange?: (position: Position) => void;
 }) {
   const map = useMap();
   const [currentPosition, setCurrentPosition] = useState<Position>({ lat: 60.424834440433045, lng: 12.408766398367092 });
+  const [gpsPosition, setGpsPosition] = useState<Position | null>(null); // Separate GPS position
   const [searchPosition, setSearchPosition] = useState<Position | null>(null);
   const [places, setPlaces] = useState<PlaceData[]>([]);
   const [loading, setLoading] = useState(false);
@@ -269,17 +272,23 @@ function MapController({
     if ('geolocation' in navigator) {
       const id = navigator.geolocation.watchPosition(
         (position) => {
-                  const newPosition: Position = {
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-          heading: currentPosition.heading || undefined // Keep existing heading
-        };
-          setCurrentPosition(newPosition);
-          onPositionChange?.(newPosition);
+          const newGpsPosition: Position = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+            heading: currentPosition.heading || undefined // Keep existing heading
+          };
           
-          // Center map on new position
+          // Update GPS position separately
+          setGpsPosition(newGpsPosition);
+          onGpsPositionChange?.(newGpsPosition);
+          
+          // Update current position (used for map center and other UI)
+          setCurrentPosition(newGpsPosition);
+          onPositionChange?.(newGpsPosition);
+          
+          // Center map on new GPS position
           if (map) {
-            map.setView([newPosition.lat, newPosition.lng], map.getZoom());
+            map.setView([newGpsPosition.lat, newGpsPosition.lng], map.getZoom());
           }
         },
         (error) => {
@@ -484,12 +493,14 @@ function TrackingController({
   mode, 
   onTrackingPointsChange, 
   currentPosition,
+  gpsPosition,
   isLiveMode = false
 }: { 
   isTracking: boolean; 
   mode: string; 
   onTrackingPointsChange: (points: Position[]) => void; 
   currentPosition?: Position;
+  gpsPosition?: Position | null;
   isLiveMode?: boolean;
 }) {
   const map = useMap();
@@ -510,11 +521,11 @@ function TrackingController({
 
   // GPS-based tracking when GPS is enabled
   useEffect(() => {
-    if (!isTracking || mode !== 'søk' || !isLiveMode || !currentPosition) return;
+    if (!isTracking || mode !== 'søk' || !isLiveMode || !gpsPosition) return;
 
     // Only track if we have moved at least 5 meters from last position
     if (lastGpsPosition) {
-      const distance = calculateDistance(lastGpsPosition, currentPosition);
+      const distance = calculateDistance(lastGpsPosition, gpsPosition);
       if (distance < 5) {
         return; // Don't track if less than 5 meters
       }
@@ -522,9 +533,9 @@ function TrackingController({
 
     // Add new GPS position to tracking
     const newPosition: Position = {
-      lat: currentPosition.lat,
-      lng: currentPosition.lng,
-      heading: currentPosition.heading
+      lat: gpsPosition.lat,
+      lng: gpsPosition.lng,
+      heading: gpsPosition.heading
     };
     
     const updatedPoints = [...localTrackingPoints, newPosition];
@@ -533,7 +544,7 @@ function TrackingController({
     onTrackingPointsChange(updatedPoints);
     
     console.log('GPS tracking point added:', newPosition, 'Distance from last:', lastGpsPosition ? calculateDistance(lastGpsPosition, newPosition) : 0);
-  }, [currentPosition, isTracking, mode, isLiveMode, lastGpsPosition, localTrackingPoints, onTrackingPointsChange]);
+  }, [gpsPosition, isTracking, mode, isLiveMode, lastGpsPosition, localTrackingPoints, onTrackingPointsChange]);
 
   // Map-based tracking when GPS is disabled (for lab testing)
   useEffect(() => {
@@ -725,6 +736,7 @@ export default function MapComponent({
   const [hasError, setHasError] = useState(false);
   const [places, setPlaces] = useState<PlaceData[]>([]);
   const [currentPosition, setCurrentPosition] = useState<Position | undefined>(undefined);
+  const [gpsPosition, setGpsPosition] = useState<Position | null>(null);
   const [searchPosition, setSearchPosition] = useState<Position | null>(null);
   const [clearPlaces, setClearPlaces] = useState(false);
 
@@ -2303,7 +2315,10 @@ export default function MapComponent({
         <MapController 
           onPositionChange={(pos) => {
             setCurrentPosition(pos);
-          }} 
+          }}
+          onGpsPositionChange={(pos) => {
+            setGpsPosition(pos);
+          }}
           radius={radius}
           onError={() => {
             setHasError(true);
@@ -2334,6 +2349,7 @@ export default function MapComponent({
           mode={mode}
           onTrackingPointsChange={onTrackingPointsChange || (() => {})}
           currentPosition={currentPosition}
+          gpsPosition={gpsPosition}
           isLiveMode={isLiveMode}
         />
 
