@@ -483,18 +483,61 @@ function TrackingController({
   isTracking, 
   mode, 
   onTrackingPointsChange, 
-  currentPosition 
+  currentPosition,
+  isLiveMode = false
 }: { 
   isTracking: boolean; 
   mode: string; 
   onTrackingPointsChange: (points: Position[]) => void; 
-  currentPosition?: Position; 
+  currentPosition?: Position;
+  isLiveMode?: boolean;
 }) {
   const map = useMap();
   const [localTrackingPoints, setLocalTrackingPoints] = useState<Position[]>([]);
+  const [lastGpsPosition, setLastGpsPosition] = useState<Position | null>(null);
 
+  // Helper function to calculate distance between two positions
+  const calculateDistance = (pos1: Position, pos2: Position): number => {
+    const R = 6371000; // Earth's radius in meters
+    const dLat = (pos2.lat - pos1.lat) * Math.PI / 180;
+    const dLng = (pos2.lng - pos1.lng) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(pos1.lat * Math.PI / 180) * Math.cos(pos2.lat * Math.PI / 180) *
+              Math.sin(dLng/2) * Math.sin(dLng/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  };
+
+  // GPS-based tracking when GPS is enabled
   useEffect(() => {
-    if (!map || !isTracking || mode !== 'søk') return;
+    if (!isTracking || mode !== 'søk' || !isLiveMode || !currentPosition) return;
+
+    // Only track if we have moved at least 5 meters from last position
+    if (lastGpsPosition) {
+      const distance = calculateDistance(lastGpsPosition, currentPosition);
+      if (distance < 5) {
+        return; // Don't track if less than 5 meters
+      }
+    }
+
+    // Add new GPS position to tracking
+    const newPosition: Position = {
+      lat: currentPosition.lat,
+      lng: currentPosition.lng,
+      heading: currentPosition.heading
+    };
+    
+    const updatedPoints = [...localTrackingPoints, newPosition];
+    setLocalTrackingPoints(updatedPoints);
+    setLastGpsPosition(newPosition);
+    onTrackingPointsChange(updatedPoints);
+    
+    console.log('GPS tracking point added:', newPosition, 'Distance from last:', lastGpsPosition ? calculateDistance(lastGpsPosition, newPosition) : 0);
+  }, [currentPosition, isTracking, mode, isLiveMode, lastGpsPosition, localTrackingPoints, onTrackingPointsChange]);
+
+  // Map-based tracking when GPS is disabled (for lab testing)
+  useEffect(() => {
+    if (!map || !isTracking || mode !== 'søk' || isLiveMode) return;
 
     // Event listener for kartbevegelse - logg posisjon når kartet stopper å bevege seg
     const handleMapMoveEnd = () => {
@@ -514,12 +557,13 @@ function TrackingController({
     return () => {
       map.off('moveend', handleMapMoveEnd);
     };
-  }, [map, isTracking, mode, onTrackingPointsChange, currentPosition, localTrackingPoints]);
+  }, [map, isTracking, mode, isLiveMode, onTrackingPointsChange, currentPosition, localTrackingPoints]);
 
   // Reset local points when tracking starts
   useEffect(() => {
     if (isTracking && mode === 'søk') {
       setLocalTrackingPoints([]);
+      setLastGpsPosition(null);
     }
   }, [isTracking, mode]);
 
@@ -2290,6 +2334,7 @@ export default function MapComponent({
           mode={mode}
           onTrackingPointsChange={onTrackingPointsChange || (() => {})}
           currentPosition={currentPosition}
+          isLiveMode={isLiveMode}
         />
 
         {/* MSR-retikkel controller */}
