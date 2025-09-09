@@ -54,6 +54,7 @@ export async function GET(request: NextRequest) {
         .eq('teamid', teamId)
     ]);
 
+    // Log errors but don't fail the request
     if (postsResult.error) {
       console.error('Error fetching posts count:', postsResult.error);
     }
@@ -64,10 +65,11 @@ export async function GET(request: NextRequest) {
       console.error('Error fetching observations count:', observationsResult.error);
     }
 
+    // Return counts, defaulting to 0 if there's an error
     const stats = {
-      posts: postsResult.count || 0,
-      finds: findsResult.count || 0,
-      observations: observationsResult.count || 0
+      posts: postsResult.error ? 0 : (postsResult.count || 0),
+      finds: findsResult.error ? 0 : (findsResult.count || 0),
+      observations: observationsResult.error ? 0 : (observationsResult.count || 0)
     };
 
     return NextResponse.json(stats);
