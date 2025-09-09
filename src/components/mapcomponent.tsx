@@ -97,6 +97,7 @@ function MapController({
   onPlacesChange,
   clearPlaces,
   onGpsPositionChange,
+  isMapLocked = false,
 }: { 
   onPositionChange?: (position: Position) => void; 
   radius: number;
@@ -115,6 +116,7 @@ function MapController({
   onPlacesChange?: (places: PlaceData[]) => void;
   clearPlaces?: boolean;
   onGpsPositionChange?: (position: Position) => void;
+  isMapLocked?: boolean;
 }) {
   const map = useMap();
   const [currentPosition, setCurrentPosition] = useState<Position>({ lat: 60.424834440433045, lng: 12.408766398367092 });
@@ -148,6 +150,8 @@ function MapController({
     try {
       // Handle map movement (pan/zoom) to update center position
       const handleMapMove = () => {
+        if (isMapLocked) return; // Don't update position when map is locked
+        
         const center = map.getCenter();
         const newPosition: Position = {
           lat: center.lat,
@@ -159,6 +163,8 @@ function MapController({
 
       // Handle map clicks for manual position selection
       const handleMapClick = (e: L.LeafletMouseEvent) => {
+        if (isMapLocked) return; // Don't allow clicks when map is locked
+        
         const pos: Position = {
           lat: e.latlng.lat,
           lng: e.latlng.lng,
@@ -179,7 +185,7 @@ function MapController({
       console.error('Map controller error:', error);
       onError?.();
     }
-  }, [map, onError, onPositionChange]);
+  }, [map, onError, onPositionChange, isMapLocked]);
 
   // Improved compass handler with proper iOS and Android support
   const handleCompass = useCallback((event: DeviceOrientationEvent) => {
@@ -286,10 +292,10 @@ function MapController({
           setCurrentPosition(newGpsPosition);
           onPositionChange?.(newGpsPosition);
           
-          // Don't auto-center map on GPS position - let user pan freely
-          // if (map) {
-          //   map.setView([newGpsPosition.lat, newGpsPosition.lng], map.getZoom());
-          // }
+          // Auto-center map on GPS position only when map is locked
+          if (isMapLocked && map) {
+            map.setView([newGpsPosition.lat, newGpsPosition.lng], map.getZoom());
+          }
         },
         (error) => {
           console.error('GPS error:', error);
@@ -315,7 +321,7 @@ function MapController({
         window.removeEventListener('deviceorientation', handleCompass, true);
       }
     };
-  }, [isLiveMode, map, onPositionChange, onError, currentPosition, handleCompass]);
+  }, [isLiveMode, map, onPositionChange, onError, currentPosition, handleCompass, isMapLocked]);
 
   // Separate useEffect for compass event listener management
   useEffect(() => {
@@ -739,6 +745,7 @@ export default function MapComponent({
   const [gpsPosition, setGpsPosition] = useState<Position | null>(null);
   const [searchPosition, setSearchPosition] = useState<Position | null>(null);
   const [clearPlaces, setClearPlaces] = useState(false);
+  const [isMapLocked, setIsMapLocked] = useState(true); // Default to locked when GPS is enabled
 
   // Reset clearPlaces after it's been used
   useEffect(() => {
@@ -2341,6 +2348,7 @@ export default function MapComponent({
             setPlaces(places);
           }}
           clearPlaces={clearPlaces}
+          isMapLocked={isMapLocked}
         />
         
         {/* Tracking controller for søk-modus */}
@@ -3187,8 +3195,23 @@ export default function MapComponent({
             }`}
             title={isLiveMode ? 'Live GPS ON' : 'Live GPS'}
           >
-            📍
+            🛰️
           </button>
+          
+          {/* Lock map on GPS-knapp - kun når GPS er aktiv */}
+          {isLiveMode && (
+            <button
+              onClick={() => setIsMapLocked(!isMapLocked)}
+              className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
+                isMapLocked 
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+                  : 'bg-gray-600 hover:bg-gray-700 text-white'
+              }`}
+              title={isMapLocked ? 'Map locked to GPS' : 'Lock map to GPS'}
+            >
+              {isMapLocked ? '🔒' : '🔓'}
+            </button>
+          )}
           {/* Kompass start-knapp */}
           {isLiveMode && !compassStarted && (
             <button
