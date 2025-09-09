@@ -354,7 +354,7 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
                 <>
                   {/* Team Selector */}
                   <div className="space-y-3">
-                    <h4 className="font-medium text-gray-700">Active Team</h4>
+                    <h4 className="font-medium text-gray-900">Active Team</h4>
                     {isLoadingTeams ? (
                       <div className="text-center py-4 text-gray-500">
                         <p>Laster teams...</p>
@@ -420,7 +420,7 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
 
                   {/* Create Team */}
                   <div className="space-y-3">
-                    <h4 className="font-medium text-gray-700">Create New Team</h4>
+                    <h4 className="font-medium text-gray-900">Create New Team</h4>
                     <input
                       type="text"
                       placeholder="Team name"
@@ -441,7 +441,7 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
                   {/* Invite Members */}
                   {localActiveTeam && (
                     <div className="space-y-3">
-                      <h4 className="font-medium text-gray-700">Invite Members</h4>
+                      <h4 className="font-medium text-gray-900">Invite Members</h4>
                       <input
                         type="email"
                         placeholder="Email address"
@@ -463,7 +463,7 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
                   {/* Delete Active Team */}
                   {localActiveTeam && userTeams.find(t => t.id === localActiveTeam) && (
                     <div className="space-y-3 pt-6 pb-6">
-                      <h4 className="font-medium text-gray-700">Delete Active Team</h4>
+                      <h4 className="font-medium text-gray-900">Delete Active Team</h4>
                       <button 
                         onClick={handleDeleteTeam}
                         disabled={isDeletingTeam}
@@ -498,16 +498,16 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
               ) : (
                 <>
                   <div className="bg-gray-50 p-4 rounded-lg">
-                    <h4 className="font-medium text-gray-700 mb-2">Current User</h4>
-                    <p className="text-sm text-gray-600">User ID: <span className="font-medium">{authState.user?.googleId}</span></p>
-                    <p className="text-sm text-gray-600">Email: <span className="font-medium">{authState.user?.email}</span></p>
-                    <p className="text-sm text-gray-600">Nickname: <span className="font-medium">{authState.user?.nickname || 'Ikke satt'}</span></p>
-                    <p className="text-sm text-gray-600">Teams: <span className="font-medium">{userTeams.length}</span></p>
+                    <h4 className="font-medium text-gray-900 mb-2">Current User</h4>
+                    <p className="text-sm text-gray-900">User ID: <span className="font-medium">{authState.user?.googleId}</span></p>
+                    <p className="text-sm text-gray-900">Email: <span className="font-medium">{authState.user?.email}</span></p>
+                    <p className="text-sm text-gray-900">Nickname: <span className="font-medium">{authState.user?.nickname || 'Ikke satt'}</span></p>
+                    <p className="text-sm text-gray-900">Teams: <span className="font-medium">{userTeams.length}</span></p>
                   </div>
 
                   {/* Update Nickname */}
                   <div className="space-y-3">
-                    <h4 className="font-medium text-gray-700">Update Nickname</h4>
+                    <h4 className="font-medium text-gray-900">Update Nickname</h4>
                     <input
                       type="text"
                       placeholder="Enter your nickname"
@@ -568,7 +568,7 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
                           <div className="text-2xl font-bold text-blue-600">
                             {isLoadingStats ? '...' : teamStats.posts}
                           </div>
-                          <div className="text-sm text-gray-900">Skuddpar</div>
+                          <div className="text-sm text-gray-900">Skudd</div>
                         </div>
                         <div className="bg-white p-3 rounded border">
                           <div className="text-2xl font-bold text-green-600">
@@ -580,7 +580,7 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
                           <div className="text-2xl font-bold text-yellow-600">
                             {isLoadingStats ? '...' : teamStats.observations}
                           </div>
-                          <div className="text-sm text-gray-900">Observasjoner</div>
+                          <div className="text-sm text-gray-900">Obs</div>
                         </div>
                       </div>
                       <p className="text-xs text-blue-900 mt-2">Team: {userTeams.find(t => t.id === localActiveTeam)?.name}</p>
@@ -589,7 +589,7 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
 
                   {/* App Version */}
                   <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                    <h4 className="font-medium text-gray-700 mb-2">App Information</h4>
+                    <h4 className="font-medium text-gray-900 mb-2">App Information</h4>
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
                         <span className="text-gray-900">Version:</span>
@@ -604,7 +604,7 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
 
                   {/* Debug Info */}
                   <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                    <h4 className="font-medium text-gray-700 mb-2">Debug Information</h4>
+                    <h4 className="font-medium text-gray-900 mb-2">Debug Information</h4>
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
                         <span className="text-gray-900">User ID:</span>
