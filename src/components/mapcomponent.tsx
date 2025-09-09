@@ -286,10 +286,10 @@ function MapController({
           setCurrentPosition(newGpsPosition);
           onPositionChange?.(newGpsPosition);
           
-          // Center map on new GPS position
-          if (map) {
-            map.setView([newGpsPosition.lat, newGpsPosition.lng], map.getZoom());
-          }
+          // Don't auto-center map on GPS position - let user pan freely
+          // if (map) {
+          //   map.setView([newGpsPosition.lat, newGpsPosition.lng], map.getZoom());
+          // }
         },
         (error) => {
           console.error('GPS error:', error);
