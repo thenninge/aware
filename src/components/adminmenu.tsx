@@ -34,6 +34,14 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
   // User nickname state
   const [nickname, setNickname] = useState('');
   const [isUpdatingNickname, setIsUpdatingNickname] = useState(false);
+  
+  // Team data stats
+  const [teamStats, setTeamStats] = useState({
+    posts: 0,
+    finds: 0,
+    observations: 0
+  });
+  const [isLoadingStats, setIsLoadingStats] = useState(false);
 
   // Load teams when user is authenticated
   useEffect(() => {
@@ -42,6 +50,13 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
       setNickname(authState.user.nickname || '');
     }
   }, [authState.isAuthenticated, authState.user]);
+
+  // Load team stats when active team changes
+  useEffect(() => {
+    if (localActiveTeam) {
+      loadTeamStats();
+    }
+  }, [localActiveTeam]);
 
   // Sync localActiveTeam with authState.activeTeam
   useEffect(() => {
@@ -77,6 +92,25 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
       console.error('Error loading teams:', error);
     } finally {
       setIsLoadingTeams(false);
+    }
+  };
+
+  const loadTeamStats = async () => {
+    if (!localActiveTeam) return;
+    
+    setIsLoadingStats(true);
+    try {
+      const response = await fetch(`/api/team-stats?teamId=${localActiveTeam}`);
+      if (response.ok) {
+        const stats = await response.json();
+        setTeamStats(stats);
+      } else {
+        console.error('Failed to load team stats');
+      }
+    } catch (error) {
+      console.error('Error loading team stats:', error);
+    } finally {
+      setIsLoadingStats(false);
     }
   };
 
@@ -501,9 +535,6 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
                     </button>
                   </div>
 
-                  <div className="text-center text-gray-500 text-sm">
-                    User management features coming soon...
-                  </div>
                 </>
               )}
             </div>
@@ -527,8 +558,72 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
                   </button>
                 </div>
               ) : (
-                <div className="text-center text-gray-500 text-sm">
-                  Admin settings coming soon...
+                <div className="space-y-6">
+                  {/* Team Data Overview */}
+                  {localActiveTeam && (
+                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                      <h4 className="font-medium text-blue-800 mb-3">Active Team Data</h4>
+                      <div className="grid grid-cols-3 gap-4 text-center">
+                        <div className="bg-white p-3 rounded border">
+                          <div className="text-2xl font-bold text-blue-600">
+                            {isLoadingStats ? '...' : teamStats.posts}
+                          </div>
+                          <div className="text-sm text-gray-600">Skuddpar</div>
+                        </div>
+                        <div className="bg-white p-3 rounded border">
+                          <div className="text-2xl font-bold text-green-600">
+                            {isLoadingStats ? '...' : teamStats.finds}
+                          </div>
+                          <div className="text-sm text-gray-600">Funn</div>
+                        </div>
+                        <div className="bg-white p-3 rounded border">
+                          <div className="text-2xl font-bold text-yellow-600">
+                            {isLoadingStats ? '...' : teamStats.observations}
+                          </div>
+                          <div className="text-sm text-gray-600">Observasjoner</div>
+                        </div>
+                      </div>
+                      <p className="text-xs text-blue-600 mt-2">Team: {userTeams.find(t => t.id === localActiveTeam)?.name}</p>
+                    </div>
+                  )}
+
+                  {/* App Version */}
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <h4 className="font-medium text-gray-700 mb-2">App Information</h4>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Version:</span>
+                        <span className="font-medium">1.0.0</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Build:</span>
+                        <span className="font-medium">{new Date().toISOString().split('T')[0]}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Debug Info */}
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <h4 className="font-medium text-gray-700 mb-2">Debug Information</h4>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">User ID:</span>
+                        <span className="font-mono text-xs">{authState.user?.googleId?.substring(0, 8)}...</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Active Team:</span>
+                        <span className="font-medium">{localActiveTeam ? 'Yes' : 'None'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Teams Count:</span>
+                        <span className="font-medium">{userTeams.length}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Session:</span>
+                        <span className="font-medium">{authState.isAuthenticated ? 'Active' : 'Inactive'}</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
