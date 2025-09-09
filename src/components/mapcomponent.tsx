@@ -93,6 +93,9 @@ function MapController({
   mode = 'aware', // <-- NY
   showOnlyLastShot = false,
   compassStarted = false,
+  onSearchPositionChange,
+  onPlacesChange,
+  clearPlaces,
 }: { 
   onPositionChange?: (position: Position) => void; 
   radius: number;
@@ -107,9 +110,13 @@ function MapController({
   mode?: 'aware' | 'track' | 'søk'; // <-- NY
   showOnlyLastShot?: boolean;
   compassStarted?: boolean;
+  onSearchPositionChange?: (position: Position) => void;
+  onPlacesChange?: (places: PlaceData[]) => void;
+  clearPlaces?: boolean;
 }) {
   const map = useMap();
   const [currentPosition, setCurrentPosition] = useState<Position>({ lat: 60.424834440433045, lng: 12.408766398367092 });
+  const [searchPosition, setSearchPosition] = useState<Position | null>(null);
   const [places, setPlaces] = useState<PlaceData[]>([]);
   const [loading, setLoading] = useState(false);
   const [watchId, setWatchId] = useState<number | null>(null);
@@ -315,17 +322,30 @@ function MapController({
     };
   }, [compassStarted, handleCompass]);
 
+  // Clear places when clearPlaces prop changes
+  useEffect(() => {
+    if (clearPlaces) {
+      setPlaces([]);
+      onPlacesChange?.([]);
+    }
+  }, [clearPlaces, onPlacesChange]);
+
   // Fetch places when shouldScan is true or radius/category filters change
   useEffect(() => {
     if (!shouldScan) return; // Only fetch when scan is triggered
+
+    // Set the search position to current position when scan is triggered
+    const searchPos = currentPosition;
+    setSearchPosition(searchPos);
+    onSearchPositionChange?.(searchPos);
 
     const fetchPlaces = async () => {
       setLoading(true);
       onLoadingChange?.(true);
       try {
-        console.log('Scanning area for radius:', radius, 'at position:', currentPosition);
+        console.log('Scanning area for radius:', radius, 'at position:', searchPos);
         const response = await fetch(
-          `/api/overpass?lat=${currentPosition.lat}&lng=${currentPosition.lng}&radius=${radius}`
+          `/api/overpass?lat=${searchPos.lat}&lng=${searchPos.lng}&radius=${radius}`
         );
         
         if (response.ok) {
@@ -334,13 +354,16 @@ function MapController({
           console.log('Places:', result.data?.map((p: PlaceData) => ({ name: p.name, category: p.category })) || []);
           const newPlaces = Array.isArray(result.data) ? result.data : [];
           setPlaces(newPlaces);
+          onPlacesChange?.(newPlaces);
         } else {
           console.error('Failed to fetch places');
           setPlaces([]);
+          onPlacesChange?.([]);
         }
       } catch (error) {
         console.error('Error fetching places:', error);
         setPlaces([]);
+        onPlacesChange?.([]);
       } finally {
         setLoading(false);
         onLoadingChange?.(false);
@@ -348,7 +371,7 @@ function MapController({
     };
 
     fetchPlaces();
-  }, [shouldScan, radius, currentPosition, categoryFilters, onLoadingChange]);
+  }, [shouldScan, radius, categoryFilters, onLoadingChange]);
 
   // Don't render anything if L is not available
   if (typeof L === 'undefined') {
@@ -441,12 +464,12 @@ function MapController({
       )}
 
       {/* Pie Chart slices - only show in aware-mode */}
-      {mode === 'aware' && Array.isArray(places) && places.length > 0 && (
+      {mode === 'aware' && Array.isArray(places) && places.length > 0 && searchPosition && (
         <PieChart 
           places={places}
           categoryConfigs={categoryConfigs}
-          centerLat={currentPosition.lat}
-          centerLng={currentPosition.lng}
+          centerLat={searchPosition.lat}
+          centerLng={searchPosition.lng}
           angleRange={angleRange ?? 5}
           radius={radius}
         />
@@ -658,6 +681,15 @@ export default function MapComponent({
   const [hasError, setHasError] = useState(false);
   const [places, setPlaces] = useState<PlaceData[]>([]);
   const [currentPosition, setCurrentPosition] = useState<Position | undefined>(undefined);
+  const [searchPosition, setSearchPosition] = useState<Position | null>(null);
+  const [clearPlaces, setClearPlaces] = useState(false);
+
+  // Reset clearPlaces after it's been used
+  useEffect(() => {
+    if (clearPlaces) {
+      setClearPlaces(false);
+    }
+  }, [clearPlaces]);
 
   const [rotateMap, setRotateMap] = useState(false); // Ny state
 
@@ -692,7 +724,7 @@ export default function MapComponent({
   const [localShowMSRRetikkel, setLocalShowMSRRetikkel] = useState(showMSRRetikkel);
   const [localMSRRetikkelOpacity, setLocalMSRRetikkelOpacity] = useState(msrRetikkelOpacity);
   const [localMSRRetikkelStyle, setLocalMSRRetikkelStyle] = useState(msrRetikkelStyle);
-
+  
   // Avstandsmåling funksjoner
   const calculateDistance = (point1: Position, point2: Position): number => {
     const R = 6371000; // Jordens radius i meter
@@ -731,6 +763,14 @@ export default function MapComponent({
     setIsMeasuring(false);
     setMeasurementPoints([]);
     setTotalDistance(0);
+    
+    // Reset search results but keep circle at center
+    setPlaces([]);
+    setClearPlaces(true); // Trigger clearPlaces in MapController
+    // Move search circle back to center (current position)
+    if (currentPosition) {
+      setSearchPosition(currentPosition);
+    }
   };
   
 
@@ -2236,6 +2276,13 @@ export default function MapComponent({
           mode={mode}
           showOnlyLastShot={showOnlyLastShot}
           compassStarted={compassStarted}
+          onSearchPositionChange={(pos) => {
+            setSearchPosition(pos);
+          }}
+          onPlacesChange={(places) => {
+            setPlaces(places);
+          }}
+          clearPlaces={clearPlaces}
         />
         
         {/* Tracking controller for søk-modus */}
@@ -2255,10 +2302,10 @@ export default function MapComponent({
         />
 
         {/* Radius circle: kun i aware-mode */}
-        {mode === 'aware' && currentPosition && (
+        {mode === 'aware' && searchPosition && (
           <Circle
-            key={`radius-${radius}-${currentPosition.lat}-${currentPosition.lng}`}
-            center={[currentPosition.lat, currentPosition.lng]}
+            key={`radius-${radius}-${searchPosition.lat}-${searchPosition.lng}`}
+            center={[searchPosition.lat, searchPosition.lng]}
             radius={radius ?? 0}
             pathOptions={{
               color: '#3b82f6',
@@ -2919,12 +2966,11 @@ export default function MapComponent({
           <button
             onClick={handleResetMeasurement}
             className={`w-18 h-9 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex items-center justify-center ${
-              (isMeasuring || measurementPoints.length > 0)
+              (isMeasuring || measurementPoints.length > 0 || searchPosition)
                 ? 'bg-red-600 hover:bg-red-700 text-white border-red-700'
                 : 'bg-gray-300 text-gray-400 border-gray-400 cursor-not-allowed'
             }`}
-            title="Fjern all måling"
-            disabled={!isMeasuring && measurementPoints.length === 0}
+            disabled={!isMeasuring && measurementPoints.length === 0 && !searchPosition}
           >
             ✕
           </button>
