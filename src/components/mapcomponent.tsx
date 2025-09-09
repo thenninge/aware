@@ -760,17 +760,16 @@ export default function MapComponent({
   };
 
   const handleResetMeasurement = () => {
+    console.log('handleResetMeasurement called, current searchPosition:', searchPosition);
     setIsMeasuring(false);
     setMeasurementPoints([]);
     setTotalDistance(0);
     
-    // Reset search results but keep circle at center
+    // Reset search results and remove search circle completely
     setPlaces([]);
     setClearPlaces(true); // Trigger clearPlaces in MapController
-    // Move search circle back to center (current position)
-    if (currentPosition) {
-      setSearchPosition(currentPosition);
-    }
+    setSearchPosition(null); // Remove search circle completely
+    console.log('setSearchPosition(null) called');
   };
   
 
@@ -2303,17 +2302,20 @@ export default function MapComponent({
 
         {/* Radius circle: kun i aware-mode */}
         {mode === 'aware' && searchPosition && (
-          <Circle
-            key={`radius-${radius}-${searchPosition.lat}-${searchPosition.lng}`}
-            center={[searchPosition.lat, searchPosition.lng]}
-            radius={radius ?? 0}
-            pathOptions={{
-              color: '#3b82f6',
-              fillColor: '#3b82f6',
-              fillOpacity: 0.0,
-              weight: 2,
-            }}
-          />
+          <>
+            {console.log('Rendering search circle, searchPosition:', searchPosition)}
+            <Circle
+              key={`radius-${radius}-${searchPosition.lat}-${searchPosition.lng}`}
+              center={[searchPosition.lat, searchPosition.lng]}
+              radius={radius ?? 0}
+              pathOptions={{
+                color: '#3b82f6',
+                fillColor: '#3b82f6',
+                fillOpacity: 0.0,
+                weight: 2,
+              }}
+            />
+          </>
         )}
         
         {/* Rød prikk for egen posisjon i søk-modus */}
