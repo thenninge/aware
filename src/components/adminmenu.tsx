@@ -392,7 +392,7 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
                       placeholder="Team name"
                       value={newTeamName}
                       onChange={(e) => setNewTeamName(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
                       disabled={isCreatingTeam}
                     />
                     <button 
@@ -413,7 +413,7 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
                         placeholder="Email address"
                         value={inviteEmail}
                         onChange={(e) => setInviteEmail(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
                         disabled={isSendingInvite}
                       />
                       <button 
@@ -479,7 +479,7 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
                       placeholder="Enter your nickname"
                       value={nickname}
                       onChange={(e) => setNickname(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
                       disabled={isUpdatingNickname}
                     />
                     <button 
