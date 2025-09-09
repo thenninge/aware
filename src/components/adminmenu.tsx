@@ -568,22 +568,22 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
                           <div className="text-2xl font-bold text-blue-600">
                             {isLoadingStats ? '...' : teamStats.posts}
                           </div>
-                          <div className="text-sm text-gray-600">Skuddpar</div>
+                          <div className="text-sm text-gray-900">Skuddpar</div>
                         </div>
                         <div className="bg-white p-3 rounded border">
                           <div className="text-2xl font-bold text-green-600">
                             {isLoadingStats ? '...' : teamStats.finds}
                           </div>
-                          <div className="text-sm text-gray-600">Funn</div>
+                          <div className="text-sm text-gray-900">Funn</div>
                         </div>
                         <div className="bg-white p-3 rounded border">
                           <div className="text-2xl font-bold text-yellow-600">
                             {isLoadingStats ? '...' : teamStats.observations}
                           </div>
-                          <div className="text-sm text-gray-600">Observasjoner</div>
+                          <div className="text-sm text-gray-900">Observasjoner</div>
                         </div>
                       </div>
-                      <p className="text-xs text-blue-600 mt-2">Team: {userTeams.find(t => t.id === localActiveTeam)?.name}</p>
+                      <p className="text-xs text-blue-900 mt-2">Team: {userTeams.find(t => t.id === localActiveTeam)?.name}</p>
                     </div>
                   )}
 
@@ -592,11 +592,11 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
                     <h4 className="font-medium text-gray-700 mb-2">App Information</h4>
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Version:</span>
+                        <span className="text-gray-900">Version:</span>
                         <span className="font-medium">1.0.0</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Build:</span>
+                        <span className="text-gray-900">Build:</span>
                         <span className="font-medium">{new Date().toISOString().split('T')[0]}</span>
                       </div>
                     </div>
@@ -607,19 +607,19 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
                     <h4 className="font-medium text-gray-700 mb-2">Debug Information</h4>
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
-                        <span className="text-gray-600">User ID:</span>
+                        <span className="text-gray-900">User ID:</span>
                         <span className="font-mono text-xs">{authState.user?.googleId?.substring(0, 8)}...</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Active Team:</span>
+                        <span className="text-gray-900">Active Team:</span>
                         <span className="font-medium">{localActiveTeam ? 'Yes' : 'None'}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Teams Count:</span>
+                        <span className="text-gray-900">Teams Count:</span>
                         <span className="font-medium">{userTeams.length}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Session:</span>
+                        <span className="text-gray-900">Session:</span>
                         <span className="font-medium">{authState.isAuthenticated ? 'Active' : 'Inactive'}</span>
                       </div>
                     </div>
