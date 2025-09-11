@@ -279,10 +279,10 @@ function MapController({
       const id = navigator.geolocation.watchPosition(
         (position) => {
           const newGpsPosition: Position = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-            heading: currentPosition.heading || undefined // Keep existing heading
-          };
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          heading: currentPosition.heading || undefined // Keep existing heading
+        };
           
           // Update GPS position separately
           setGpsPosition(newGpsPosition);
@@ -505,7 +505,7 @@ function TrackingController({
   isTracking: boolean; 
   mode: string; 
   onTrackingPointsChange: (points: Position[]) => void; 
-  currentPosition?: Position;
+  currentPosition?: Position; 
   gpsPosition?: Position | null;
   isLiveMode?: boolean;
 }) {
@@ -745,7 +745,7 @@ export default function MapComponent({
   const [gpsPosition, setGpsPosition] = useState<Position | null>(null);
   const [searchPosition, setSearchPosition] = useState<Position | null>(null);
   const [clearPlaces, setClearPlaces] = useState(false);
-  const [isMapLocked, setIsMapLocked] = useState(true); // Default to locked when GPS is enabled
+  const [isMapLocked, setIsMapLocked] = useState(false); // Default to unlocked for free map interaction
 
   // Reset clearPlaces after it's been used
   useEffect(() => {
@@ -2322,7 +2322,7 @@ export default function MapComponent({
         <MapController 
           onPositionChange={(pos) => {
             setCurrentPosition(pos);
-          }}
+          }} 
           onGpsPositionChange={(pos) => {
             setGpsPosition(pos);
           }}
@@ -2373,17 +2373,17 @@ export default function MapComponent({
         {mode === 'aware' && searchPosition && (
           <>
             {console.log('Rendering search circle, searchPosition:', searchPosition)}
-            <Circle
+          <Circle
               key={`radius-${radius}-${searchPosition.lat}-${searchPosition.lng}`}
               center={[searchPosition.lat, searchPosition.lng]}
-              radius={radius ?? 0}
-              pathOptions={{
-                color: '#3b82f6',
-                fillColor: '#3b82f6',
-                fillOpacity: 0.0,
-                weight: 2,
-              }}
-            />
+            radius={radius ?? 0}
+            pathOptions={{
+              color: '#3b82f6',
+              fillColor: '#3b82f6',
+              fillOpacity: 0.0,
+              weight: 2,
+            }}
+          />
           </>
         )}
         

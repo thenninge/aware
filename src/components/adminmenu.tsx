@@ -394,8 +394,8 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
                   {localActiveTeam && userTeams.find(t => t.id === localActiveTeam) && (
                     <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                       <h4 className="font-medium text-blue-800 mb-2">Active Team</h4>
-                      <p className="text-sm text-blue-700">Team: <span className="font-medium">{userTeams.find(t => t.id === localActiveTeam)?.name}</span></p>
-                      <div className="text-sm text-blue-700">
+                      <p className="text-sm text-blue-900">Team: <span className="font-medium">{userTeams.find(t => t.id === localActiveTeam)?.name}</span></p>
+                      <div className="text-sm text-blue-900">
                         <span className="font-medium">Members:</span>
                         <div className="mt-1 space-y-1">
                           {userTeams.find(t => t.id === localActiveTeam)?.members?.map((member, index) => {
@@ -414,7 +414,7 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
                           }) || <span className="text-xs text-gray-500">No members</span>}
                         </div>
                       </div>
-                      <p className="text-sm text-blue-600 mt-2">All data (skuddpar, søkespor, funn) vises for dette teamet</p>
+                      <p className="text-sm text-blue-900 mt-2">All data (skuddpar, søkespor, funn) vises for dette teamet</p>
                     </div>
                   )}
 

@@ -16,9 +16,10 @@
 ## Kart og posisjon
 - [x] Kartverkets WMTS Topographic4
 - [x] Default posisjon: 60.424834440433045, 12.408766398367092
-- [ ] GPS-posisjonering (reaktiver senere)
+- [x] GPS-posisjonering (reaktiver senere)
 - [ ] Kompassrose for GPS-modus
 - [ ] Live GPS-sporing
+- [x] Home-position pr user or pr team?
 
 ## Data og API
 - [x] Overpass API for GIS-data
@@ -28,38 +29,38 @@
   - [x] place=hamlet (Små bygdesamfunn) - 🏘️ Oransje
   - [x] place=farm (Store gårder) - 🏡 Hvit
   - [x] place=isolated_dwelling (Enkelt hus eller liten gård) - 🏠 Grønn
-- [ ] Matrikkelen fra Geonorge (for mer nøyaktige bygningstyper)
+- [x] Matrikkelen fra Geonorge (for mer nøyaktige bygningstyper)
 
 ## Pie-slices og visualisering
-- [ ] Implementer pie-slices som viser retninger
-- [ ] Kategorisering med farger:
-  - [ ] Hvit for gårder
-  - [ ] Rød for landsbyer
-  - [ ] Grønn for boliger
-  - [ ] Andre kategorier
-- [ ] SVG overlays på Leaflet
-- [ ] Interaktive pie-slices (ikke klikkbare)
+- [X] Implementer pie-slices som viser retninger
+- [X] Kategorisering med farger:
+  - [x] Hvit for gårder
+  - [X] Rød for landsbyer
+  - [X] Grønn for boliger
+  - [X] Andre kategorier
+- [X] SVG overlays på Leaflet
+- [X] Interaktive pie-slices (ikke klikkbare)
 
 ## UI/UX
 - [x] Mobile-first responsivt design
 - [x] Tailwind CSS styling
 - [x] Radius-kontroll
-- [ ] Forbedre GUI radius-kontroll (fjern gul bakgrunn, bedre styling)
-- [ ] Filter-kontroller for kategorier
+- [X] Forbedre GUI radius-kontroll (fjern gul bakgrunn, bedre styling)
+- [X] Filter-kontroller for kategorier
 - [ ] Kompassrose-komponent
 - [ ] Loading states
 - [ ] Error handling
-- [ ] Fjern lagg i map-pan (debounce API-kall)
+- [X] Fjern lagg i map-pan (debounce API-kall)
 - [ ] Legge til tekst, dato, farge for skuddpar
 
 ## Teknisk
 - [x] Client-side rendering (CSR) for Leaflet
 - [x] Dynamisk import for SSR-avoidance
 - [x] Error boundaries
-- [ ] Environment variables setup
-- [ ] Production build
-- [ ] Vercel deployment
-- [ ] Domain setup
+- [X] Environment variables setup
+- [X] Production build
+- [X] Vercel deployment
+- [X] Domain setup
 
 ## Testing
 - [x] Local testing med default posisjon
@@ -68,23 +69,23 @@
 - [ ] Performance testing
 
 ## Deployment
-- [ ] Vercel konfigurasjon
+- [X] Vercel konfigurasjon
 - [ ] Zoom buttons leaflet optimization
-- [ ] Production build
-- [ ] Domain setup
-- [ ] Environment variables
+- [X] Production build
+- [X] Domain setup
+- [X] Environment variables
 
 ## Database og lagring av punkter
-- [ ] Sette opp SQLite database for prosjektet
-- [ ] Lage tabell for punkter med feltene: id, latitude, longitude, category, creator_id, created_at
-- [ ] Lage API-endepunkt for å lagre og hente punkter fra databasen
-- [ ] Integrere lagring og henting av punkter i frontend
-- [ ] Lagre og hente funn-data i database 
-- [ ] Lagre og hente spor-logg i database
-- [ ] Sync -button with DB? how to sync reliably?
+- [X] Sette opp SQLite database for prosjektet
+- [X] Lage tabell for punkter med feltene: id, latitude, longitude, category, creator_id, created_at
+- [X] Lage API-endepunkt for å lagre og hente punkter fra databasen
+- [X] Integrere lagring og henting av punkter i frontend
+- [X] Lagre og hente funn-data i database 
+- [X] Lagre og hente spor-logg i database
+- [X] Sync -button with DB? how to sync reliably?
 
 ## Uncategorized
-- [ ] default search track named with timestamp as default if no text input. 
+- [X] default search track named with timestamp as default if no text input. 
 - [ ] live mode, not debug couch mode for tracking
 - [ ] test actual mobile workflow marking distance and direction shot target
 
