@@ -3173,7 +3173,11 @@ export default function MapComponent({
                 step={5}
                 value={targetRange}
                 onChange={e => setTargetRange(Number(e.target.value))}
-                className="flex-1"
+                className="flex-1 touch-manipulation"
+                style={{ 
+                  padding: '12px 0',
+                  margin: '-12px 0'
+                }}
               />
               <input
                 type="number"
@@ -3217,7 +3221,11 @@ export default function MapComponent({
                     max={180}
                     value={targetDirection}
                     onChange={e => setTargetDirection(Number(e.target.value))}
-                    className="w-full"
+                    className="w-full touch-manipulation"
+                    style={{ 
+                      padding: '12px 0',
+                      margin: '-12px 0'
+                    }}
                   />
                 </div>
                 <input

@@ -5,6 +5,11 @@
   --foreground: #171717;
 }
 
+/* Touch-friendly slider - usynlig treffområde */
+input[type="range"].touch-manipulation {
+  touch-action: manipulation;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
