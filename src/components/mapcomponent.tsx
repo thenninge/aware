@@ -1747,32 +1747,26 @@ export default function MapComponent({
     setShowTargetRadiusModal(true);
     setShowTargetDirectionUI(false);
     setShowTargetDialog(false); // Skjul gammel dialog
-    setIsTargetModeActive(true); // Aktiver Target-modus (deaktiverer Shot-knappen)
   };
 
   // Oppdater previewTarget når range eller direction endres
   useEffect(() => {
-    const hasSavedPairs = Array.isArray(savedPairs) && savedPairs.length > 0;
-    // Reverser rekkefølgen slik at index 0 = nyeste, index 1 = nest nyeste, etc.
-    const reversedPairs = hasSavedPairs ? [...savedPairs].reverse() : [];
-    const lastPair = hasSavedPairs ? reversedPairs[adjustedSelectedTargetIndex] : undefined;
-    if (!showTargetDirectionUI || !hasSavedPairs) {
+    if (!showTargetDirectionUI || !currentPosition) {
       setPreviewTarget(null);
       return;
     }
-    if (!lastPair || !lastPair.current) return;
     // 0° = nord, 90° = øst, 180° = sør, 270° = vest
     // Konverter fra -180 til +180 til 0-359
     const compassDeg = ((targetDirection + 360) % 360);
     setPreviewTarget(
       destinationPoint(
-        lastPair.current.lat,
-        lastPair.current.lng,
+        currentPosition.lat,
+        currentPosition.lng,
         targetRange,
         compassDeg
       )
     );
-  }, [showTargetDirectionUI, targetRange, targetDirection, savedPairs, adjustedSelectedTargetIndex]);
+  }, [showTargetDirectionUI, targetRange, targetDirection, currentPosition]);
 
 
 
@@ -1883,99 +1877,87 @@ export default function MapComponent({
     }
   }, [activeTeam]);
 
-  // Legg til state for å styre om Treff-knappen er aktiv
-  const [canAddTreff, setCanAddTreff] = useState(false);
-  
-  // State for å spore om Target-funksjonaliteten er aktiv (for å deaktivere Shot-knappen)
-  const [isTargetModeActive, setIsTargetModeActive] = useState(false);
-  
-  // Toggle-funksjon for Shot/Target
-  const toggleShotTargetMode = () => {
-    setIsTargetModeActive(!isTargetModeActive);
-  };
+  // Gamle state-variabler fjernet - ikke lenger nødvendige med forenklet workflow
 
-  // Oppdater canAddTreff til true når Skudd lagres
-  const handleSaveCurrentPos = async () => {
+  // Ny forenklet handleSaveCurrentPos som trigge target-seleksjon flyten
+  const handleSaveCurrentPos = () => {
     if (currentPosition) {
-      try {
-        const response = await fetch('/api/posts', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            title: 'Skyteplass',
-            content: `Lat: ${currentPosition.lat}, Lng: ${currentPosition.lng}, Category: Skyteplass`,
-            teamId: activeTeam
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to save post');
-        }
-
-        const data = await response.json();
-        setSavedPairs(prev => [...prev, { current: { ...currentPosition }, category: 'Skyteplass', id: data.id }]);
-        fetchPosts();
-        setCanAddTreff(true); // Aktiver Treff-knappen
-        setIsTargetModeActive(true); // Aktiver Target-modus når Shot lagres
-      } catch (error) {
-        console.error('Failed to save current pos:', error);
-        alert('Feil ved lagring av Skyteplass: ' + (error as Error).message);
-      }
+      // Start target-seleksjon flyten direkte
+      setShowTargetRadiusModal(true);
     }
   };
 
-  // 3. Lagre target-posisjon til API
-  const handleSaveTargetPos = async () => {
-    if (currentPosition) {
-      try {
-        const response = await fetch('/api/posts', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            title: 'Treffpunkt',
-            content: `Target: ${currentPosition.lat}, ${currentPosition.lng}, Category: Treffpunkt`,
-            teamId: activeTeam
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to save post');
-        }
-
-        const data = await response.json();
-        setSavedPairs(prev => [...prev, { target: { ...currentPosition }, category: 'Treffpunkt', id: data.id }]);
-        fetchPosts();
-      } catch (error) {
-        console.error('Failed to save target pos:', error);
-        alert('Feil ved lagring av Treffpunkt: ' + (error as Error).message);
-      }
-    }
-  };
+  // Gamle handleSaveTargetPos funksjon fjernet - erstattet av handleTargetModalSave
   const handleTargetRadiusOk = () => {
     setShowTargetRadiusModal(false);
     setShowTargetDirectionUI(true);
   };
-  const handleTargetModalSave = () => {
-    const hasSavedPairs = Array.isArray(savedPairs) && savedPairs.length > 0;
-    const lastPair = hasSavedPairs ? savedPairs[savedPairs.length - 1] : undefined;
-    if (!hasSavedPairs || !lastPair || !lastPair.current) return;
-          const previewTarget = destinationPoint(
-        lastPair.current.lat,
-        lastPair.current.lng,
+  const handleTargetModalSave = async () => {
+    if (!currentPosition) return;
+    
+    // Beregn treffpunkt basert på skyteplass, avstand og retning
+    const targetPosition = destinationPoint(
+      currentPosition.lat,
+      currentPosition.lng,
         targetRange,
         ((targetDirection + 360) % 360)
       );
-    if (!previewTarget) return;
-    setSavedPairs((prev) =>
-      prev.map((pair, idx) =>
-        idx === prev.length - 1 ? { ...pair, target: previewTarget } : pair
-      )
-    );
+    
+    if (!targetPosition) return;
+    
+    try {
+      // Lagre skyteplass
+      const shotResponse = await fetch('/api/posts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: 'Skyteplass',
+          content: `Lat: ${currentPosition.lat}, Lng: ${currentPosition.lng}, Category: Skyteplass`,
+          teamId: activeTeam
+        }),
+      });
+
+      if (!shotResponse.ok) {
+        throw new Error('Failed to save shot position');
+      }
+
+      const shotData = await shotResponse.json();
+      
+      // Lagre treffpunkt
+      const targetResponse = await fetch('/api/posts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: 'Treffpunkt',
+          content: `Target: ${targetPosition.lat}, ${targetPosition.lng}, Category: Treffpunkt`,
+          teamId: activeTeam
+        }),
+      });
+
+      if (!targetResponse.ok) {
+        throw new Error('Failed to save target position');
+      }
+
+      const targetData = await targetResponse.json();
+      
+      // Oppdater lokal state med begge posisjoner
+      setSavedPairs(prev => [
+        ...prev, 
+        { current: { ...currentPosition }, category: 'Skyteplass', id: shotData.id },
+        { target: { ...targetPosition }, category: 'Treffpunkt', id: targetData.id }
+      ]);
+      
+      fetchPosts();
     setShowTargetDirectionUI(false);
+      
+    } catch (error) {
+      console.error('Failed to save shot pair:', error);
+      alert('Feil ved lagring av skuddpar: ' + (error as Error).message);
+    }
   };
 
   // 2. Når bruker lagrer ny post, send insert til Supabase
@@ -2043,7 +2025,6 @@ export default function MapComponent({
       setShowTargetDialog(false);
     }
     setShowTargetDialog(false);
-    setIsTargetModeActive(false); // Deaktiver Target-modus (reaktiverer Shot-knappen)
   };
 
   // Defensive guards i toppen av renderblokken
@@ -2199,58 +2180,8 @@ export default function MapComponent({
 
   // Ny funksjon for å lagre treffpunkt med valgt retning og avstand
   const handleSaveTargetWithDirection = async () => {
-    // Bruk skyteplass-posisjonen, ikke kartets midte
-    const hasSavedPairs = Array.isArray(savedPairs) && savedPairs.length > 0;
-    
-    // I track-mode: bruk siste skyteplass. I søk-modus: bruk valgt index
-    const lastPair = hasSavedPairs 
-      ? (mode === 'track' 
-          ? savedPairs.filter(p => p.category === 'Skyteplass').pop() // Finn siste skyteplass i track-mode
-          : (() => {
-              const reversedPairs = [...savedPairs].reverse();
-              return reversedPairs[adjustedSelectedTargetIndex];
-            })()) // Bruk valgt index i søk-modus
-      : undefined;
-    
-    if (!lastPair || !lastPair.current) {
-      alert('Ingen skyteplass funnet. Du må først lagre en skyteplass med Skudd-knappen.');
-      return;
-    }
-    
-    const pos = destinationPoint(
-      lastPair.current.lat,
-      lastPair.current.lng,
-      targetRange,
-      targetDirection
-    );
-    try {
-      const response = await fetch('/api/posts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          title: 'Treffpunkt',
-          content: `Target: ${pos.lat}, ${pos.lng}, Category: Treffpunkt`,
-          teamId: activeTeam
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to save post');
-      }
-
-      const data = await response.json();
-      setSavedPairs(prev => [...prev, { target: { ...pos }, category: 'Treffpunkt', id: data.id }]);
-      fetchPosts();
-    } catch (error) {
-      alert('Feil ved lagring av Treffpunkt: ' + (error as Error).message);
-      setShowTargetDirectionUI(false);
-      return;
-    }
-    setShowTargetDirectionUI(false);
-    setCanAddTreff(false); // Deaktiver Treff-knappen
-    setIsTargetModeActive(false); // Deaktiver Target-modus (reaktiverer Shot-knappen)
+    // Bruk den nye forenklede funksjonen som lagrer både skyteplass og treffpunkt
+    await handleTargetModalSave();
   };
 
   useEffect(() => {
@@ -2325,7 +2256,7 @@ export default function MapComponent({
           }} 
           onGpsPositionChange={(pos) => {
             setGpsPosition(pos);
-          }}
+          }} 
           radius={radius}
           onError={() => {
             setHasError(true);
@@ -2643,10 +2574,10 @@ export default function MapComponent({
           </>
         )}
         {/* Live preview av radius-sirkel når radius-modal er aktiv */}
-        {showTargetRadiusModal && hasSavedPairs && lastPair && lastPair.current && (
+        {showTargetRadiusModal && currentPosition && (
           <Circle
-            key={`radius-preview-${targetRange}-${lastPair.current.lat}-${lastPair.current.lng}`}
-            center={[lastPair.current.lat, lastPair.current.lng]}
+            key={`radius-preview-${targetRange}-${currentPosition.lat}-${currentPosition.lng}`}
+            center={[currentPosition.lat, currentPosition.lng]}
             radius={targetRange}
             pathOptions={{
               color: '#2563eb',
@@ -2658,11 +2589,11 @@ export default function MapComponent({
           />
         )}
         
-        {showTargetDirectionUI && hasSavedPairs && lastPair && lastPair.current && (
+        {showTargetDirectionUI && currentPosition && (
           <>
             <Circle
-              key={`target-radius-${targetRange}-${lastPair.current.lat}-${lastPair.current.lng}`}
-              center={[lastPair.current.lat, lastPair.current.lng]}
+              key={`target-radius-${targetRange}-${currentPosition.lat}-${currentPosition.lng}`}
+              center={[currentPosition.lat, currentPosition.lng]}
               radius={targetRange}
               pathOptions={{
                 color: '#2563eb',
@@ -2674,17 +2605,17 @@ export default function MapComponent({
             {/* Linje fra skyteplass ut til sirkelen i valgt retning */}
             <Polyline
               positions={[
-                [lastPair.current.lat, lastPair.current.lng],
+                [currentPosition.lat, currentPosition.lng],
                 [
                   destinationPoint(
-                    lastPair.current.lat,
-                    lastPair.current.lng,
+                    currentPosition.lat,
+                    currentPosition.lng,
                     targetRange,
                     targetDirection
                   ).lat,
                   destinationPoint(
-                    lastPair.current.lat,
-                    lastPair.current.lng,
+                    currentPosition.lat,
+                    currentPosition.lng,
                     targetRange,
                     targetDirection
                   ).lng,
@@ -2856,11 +2787,11 @@ export default function MapComponent({
           </>
         )}
         {/* Interaktiv preview for target-posisjon i retning-UI */}
-        {showTargetDirectionUI && hasSavedPairs && lastPair && (
+        {showTargetDirectionUI && currentPosition && (
           <>
             {/* Sirkel for valgt radius */}
             <Circle
-              center={Array.isArray(lastPair.current) && lastPair.current.length === 2 ? lastPair.current : [0,0]}
+              center={[currentPosition.lat, currentPosition.lng]}
               radius={targetRange}
               pathOptions={{
                 color: '#2563eb',
@@ -2874,7 +2805,7 @@ export default function MapComponent({
             {previewTarget && (
               <>
                 <Polyline
-                  positions={Array.isArray(lastPair.current) && lastPair.current.length === 2 ? [lastPair.current, previewTarget] : []}
+                  positions={previewTarget ? [[currentPosition.lat, currentPosition.lng], [previewTarget.lat, previewTarget.lng]] : []}
                   pathOptions={{ color: '#2563eb', weight: 2 }}
                 />
                 {/* Markør på sirkelen med grad-tall */}
@@ -3001,31 +2932,15 @@ export default function MapComponent({
       
 
       {/* --- PATCH FOR BEDRE KNAPPEPLASSERING --- */}
-      {/* Track-mode: Knapper for lagring av posisjoner */}
+      {/* Track-mode: Knapp for lagring av skuddpar */}
       {mode === 'track' && (
         <div className="fixed bottom-4 inset-x-0 z-[2001] flex flex-wrap justify-center items-center gap-2 px-2">
           <button
-            onClick={openTargetDialog}
-            disabled={!canAddTreff}
-            className={`flex-1 min-w-[60px] max-w-[110px] w-auto h-9 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex flex-col items-center justify-center px-[0.375em] py-[0.375em] ${
-              canAddTreff
-                ? 'bg-red-600 hover:bg-red-700 text-white border-red-700'
-                : 'bg-gray-300 text-gray-400 border-gray-400 cursor-not-allowed opacity-60'
-            }`}
-            title="Du må først markere Skyteplass med Skudd-knappen"
+            onClick={handleSaveCurrentPos}
+            className="flex-1 min-w-[60px] max-w-[110px] w-auto h-9 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex flex-col items-center justify-center px-[0.375em] py-[0.375em] bg-blue-600 hover:bg-blue-700 text-white border-blue-700"
+            title="Lagre skuddpar (Skyteplass + Treffpunkt)"
           >
-                                    <span className="text-[10px] mt-0.5">Target</span>
-          </button>
-          <button
-            onClick={isTargetModeActive ? toggleShotTargetMode : handleSaveCurrentPos}
-            className={`flex-1 min-w-[60px] max-w-[110px] w-auto h-9 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex flex-col items-center justify-center px-[0.375em] py-[0.375em] ${
-              isTargetModeActive
-                ? 'bg-gray-300 text-gray-400 border-gray-400 hover:bg-gray-400'
-                : 'bg-blue-600 hover:bg-blue-700 text-white border-blue-700'
-            }`}
-            title={isTargetModeActive ? "Klikk for å gå tilbake til Shot-modus" : "Save current pos"}
-          >
-                                    <span className="text-[10px] mt-0.5">{isTargetModeActive ? 'Back' : 'Shot'}</span>
+            <span className="text-[10px] mt-0.5">Shot</span>
           </button>
         </div>
       )}
@@ -3274,7 +3189,10 @@ export default function MapComponent({
             <div className="text-xs text-black text-center">Velg avstand med slider eller skriv inn manuelt.</div>
             <div className="flex gap-2 justify-end mt-2">
               <button
-                onClick={() => setShowTargetRadiusModal(false)}
+                onClick={() => {
+                  setShowTargetRadiusModal(false);
+                  setShowTargetDirectionUI(false);
+                }}
                 className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 text-xs text-black"
               >Avbryt</button>
               <button
@@ -3321,10 +3239,19 @@ export default function MapComponent({
                 }
               </div>
             </label>
+            <div className="flex gap-2 justify-end mt-2">
+              <button
+                onClick={() => {
+                  setShowTargetRadiusModal(false);
+                  setShowTargetDirectionUI(false);
+                }}
+                className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 text-xs text-black"
+              >Avbryt</button>
             <button
               onClick={handleSaveTargetWithDirection}
-              className="px-4 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white font-semibold mt-1"
+                className="px-4 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white font-semibold"
             >Lagre</button>
+            </div>
           </div>
         </div>
       )}
