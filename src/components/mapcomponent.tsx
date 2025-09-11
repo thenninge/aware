@@ -1732,6 +1732,7 @@ export default function MapComponent({
   const [targetRange, setTargetRange] = useState(250); // Default 250m
   const [targetDirection, setTargetDirection] = useState(0); // Startverdi 0 (nord)
   const [previewTarget, setPreviewTarget] = useState<Position | null>(null);
+  const [lockedShotPosition, setLockedShotPosition] = useState<Position | null>(null);
   const [showCurrentFeedback, setShowCurrentFeedback] = useState(false);
   const [feedbackText, setFeedbackText] = useState('');
   // State for ny post-dialog
@@ -1751,7 +1752,7 @@ export default function MapComponent({
 
   // Oppdater previewTarget når range eller direction endres
   useEffect(() => {
-    if (!showTargetDirectionUI || !currentPosition) {
+    if (!showTargetDirectionUI || !lockedShotPosition) {
       setPreviewTarget(null);
       return;
     }
@@ -1760,13 +1761,13 @@ export default function MapComponent({
     const compassDeg = ((targetDirection + 360) % 360);
     setPreviewTarget(
       destinationPoint(
-        currentPosition.lat,
-        currentPosition.lng,
+        lockedShotPosition.lat,
+        lockedShotPosition.lng,
         targetRange,
         compassDeg
       )
     );
-  }, [showTargetDirectionUI, targetRange, targetDirection, currentPosition]);
+  }, [showTargetDirectionUI, targetRange, targetDirection, lockedShotPosition]);
 
 
 
@@ -1882,6 +1883,8 @@ export default function MapComponent({
   // Ny forenklet handleSaveCurrentPos som trigge target-seleksjon flyten
   const handleSaveCurrentPos = () => {
     if (currentPosition) {
+      // Lås posisjonen for target-seleksjon
+      setLockedShotPosition({ ...currentPosition });
       // Start target-seleksjon flyten direkte
       setShowTargetRadiusModal(true);
     }
@@ -1893,15 +1896,15 @@ export default function MapComponent({
     setShowTargetDirectionUI(true);
   };
   const handleTargetModalSave = async () => {
-    if (!currentPosition) return;
+    if (!lockedShotPosition) return;
     
     // Beregn treffpunkt basert på skyteplass, avstand og retning
     const targetPosition = destinationPoint(
-      currentPosition.lat,
-      currentPosition.lng,
-        targetRange,
-        ((targetDirection + 360) % 360)
-      );
+      lockedShotPosition.lat,
+      lockedShotPosition.lng,
+      targetRange,
+      ((targetDirection + 360) % 360)
+    );
     
     if (!targetPosition) return;
     
@@ -1914,7 +1917,7 @@ export default function MapComponent({
         },
         body: JSON.stringify({
           title: 'Skyteplass',
-          content: `Lat: ${currentPosition.lat}, Lng: ${currentPosition.lng}, Category: Skyteplass`,
+          content: `Lat: ${lockedShotPosition.lat}, Lng: ${lockedShotPosition.lng}, Category: Skyteplass`,
           teamId: activeTeam
         }),
       });
@@ -1947,7 +1950,7 @@ export default function MapComponent({
       // Oppdater lokal state med begge posisjoner
       setSavedPairs(prev => [
         ...prev, 
-        { current: { ...currentPosition }, category: 'Skyteplass', id: shotData.id },
+        { current: { ...lockedShotPosition }, category: 'Skyteplass', id: shotData.id },
         { target: { ...targetPosition }, category: 'Treffpunkt', id: targetData.id }
       ]);
       
@@ -2574,10 +2577,10 @@ export default function MapComponent({
           </>
         )}
         {/* Live preview av radius-sirkel når radius-modal er aktiv */}
-        {showTargetRadiusModal && currentPosition && (
+        {showTargetRadiusModal && lockedShotPosition && (
           <Circle
-            key={`radius-preview-${targetRange}-${currentPosition.lat}-${currentPosition.lng}`}
-            center={[currentPosition.lat, currentPosition.lng]}
+            key={`radius-preview-${targetRange}-${lockedShotPosition.lat}-${lockedShotPosition.lng}`}
+            center={[lockedShotPosition.lat, lockedShotPosition.lng]}
             radius={targetRange}
             pathOptions={{
               color: '#2563eb',
@@ -2589,11 +2592,11 @@ export default function MapComponent({
           />
         )}
         
-        {showTargetDirectionUI && currentPosition && (
+        {showTargetDirectionUI && lockedShotPosition && (
           <>
             <Circle
-              key={`target-radius-${targetRange}-${currentPosition.lat}-${currentPosition.lng}`}
-              center={[currentPosition.lat, currentPosition.lng]}
+              key={`target-radius-${targetRange}-${lockedShotPosition.lat}-${lockedShotPosition.lng}`}
+              center={[lockedShotPosition.lat, lockedShotPosition.lng]}
               radius={targetRange}
               pathOptions={{
                 color: '#2563eb',
@@ -2605,17 +2608,17 @@ export default function MapComponent({
             {/* Linje fra skyteplass ut til sirkelen i valgt retning */}
             <Polyline
               positions={[
-                [currentPosition.lat, currentPosition.lng],
+                [lockedShotPosition.lat, lockedShotPosition.lng],
                 [
                   destinationPoint(
-                    currentPosition.lat,
-                    currentPosition.lng,
+                    lockedShotPosition.lat,
+                    lockedShotPosition.lng,
                     targetRange,
                     targetDirection
                   ).lat,
                   destinationPoint(
-                    currentPosition.lat,
-                    currentPosition.lng,
+                    lockedShotPosition.lat,
+                    lockedShotPosition.lng,
                     targetRange,
                     targetDirection
                   ).lng,
@@ -2787,11 +2790,11 @@ export default function MapComponent({
           </>
         )}
         {/* Interaktiv preview for target-posisjon i retning-UI */}
-        {showTargetDirectionUI && currentPosition && (
+        {showTargetDirectionUI && lockedShotPosition && (
           <>
             {/* Sirkel for valgt radius */}
             <Circle
-              center={[currentPosition.lat, currentPosition.lng]}
+              center={[lockedShotPosition.lat, lockedShotPosition.lng]}
               radius={targetRange}
               pathOptions={{
                 color: '#2563eb',
@@ -2805,7 +2808,7 @@ export default function MapComponent({
             {previewTarget && (
               <>
                 <Polyline
-                  positions={previewTarget ? [[currentPosition.lat, currentPosition.lng], [previewTarget.lat, previewTarget.lng]] : []}
+                  positions={previewTarget ? [[lockedShotPosition.lat, lockedShotPosition.lng], [previewTarget.lat, previewTarget.lng]] : []}
                   pathOptions={{ color: '#2563eb', weight: 2 }}
                 />
                 {/* Markør på sirkelen med grad-tall */}
@@ -2940,7 +2943,7 @@ export default function MapComponent({
             className="flex-1 min-w-[60px] max-w-[110px] w-auto h-9 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex flex-col items-center justify-center px-[0.375em] py-[0.375em] bg-blue-600 hover:bg-blue-700 text-white border-blue-700"
             title="Lagre skuddpar (Skyteplass + Treffpunkt)"
           >
-            <span className="text-[10px] mt-0.5">Shot</span>
+            <span className="text-[10px] mt-0.5">Target</span>
           </button>
         </div>
       )}
@@ -3196,6 +3199,7 @@ export default function MapComponent({
                 onClick={() => {
                   setShowTargetRadiusModal(false);
                   setShowTargetDirectionUI(false);
+                  setLockedShotPosition(null);
                 }}
                 className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 text-xs text-black"
               >Avbryt</button>
@@ -3252,6 +3256,7 @@ export default function MapComponent({
                 onClick={() => {
                   setShowTargetRadiusModal(false);
                   setShowTargetDirectionUI(false);
+                  setLockedShotPosition(null);
                 }}
                 className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 text-xs text-black"
               >Avbryt</button>
