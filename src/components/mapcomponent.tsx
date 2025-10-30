@@ -1823,7 +1823,7 @@ export default function MapComponent({
       
     if (Array.isArray(data)) {
         // Parse content field to extract coordinates and category
-        setSavedPairs(data.map(post => {
+        const parsedPosts = data.map(post => {
           const content = post.content || '';
           const latMatch = content.match(/Lat: ([\d.-]+)/);
           const lngMatch = content.match(/Lng: ([\d.-]+)/);
@@ -1834,10 +1834,57 @@ export default function MapComponent({
             current: latMatch && lngMatch ? { lat: parseFloat(latMatch[1]), lng: parseFloat(lngMatch[1]) } : undefined,
             target: targetLatMatch ? { lat: parseFloat(targetLatMatch[1]), lng: parseFloat(targetLatMatch[2]) } : undefined,
             category: categoryMatch ? categoryMatch[1] : 'general',
-        id: post.id,
-        created_at: post.created_at,
+            id: post.id,
+            created_at: post.created_at,
           };
-        }));
+        });
+
+        // Kombiner Skyteplass og Treffpunkt til ett par-objekt
+        const skyteplasser = parsedPosts.filter(p => p.category === 'Skyteplass' && p.current);
+        const treffpunkter = parsedPosts.filter(p => p.category === 'Treffpunkt' && p.target);
+        
+        // Sorter etter created_at
+        skyteplasser.sort((a, b) => (a.created_at || '') < (b.created_at || '') ? -1 : 1);
+        treffpunkter.sort((a, b) => (a.created_at || '') < (b.created_at || '') ? -1 : 1);
+        
+        // Match skyteplasser med treffpunkter (første skyteplass med første treffpunkt, etc.)
+        const combinedPairs: PointPair[] = [];
+        for (let i = 0; i < Math.max(skyteplasser.length, treffpunkter.length); i++) {
+          const skyteplass = skyteplasser[i];
+          // Finn treffpunkt som ble lagret etter denne skyteplassen
+          const treffpunkt = treffpunkter.find(t => 
+            !skyteplass?.created_at || !t.created_at || t.created_at > skyteplass.created_at
+          );
+          
+          if (skyteplass || treffpunkt) {
+            combinedPairs.push({
+              current: skyteplass?.current,
+              target: treffpunkt?.target,
+              category: skyteplass?.category || treffpunkt?.category || 'general',
+              id: skyteplass?.id || treffpunkt?.id || 0,
+              created_at: skyteplass?.created_at || treffpunkt?.created_at,
+            });
+            
+            // Fjern brukt treffpunkt fra listen
+            if (treffpunkt) {
+              const index = treffpunkter.indexOf(treffpunkt);
+              if (index > -1) treffpunkter.splice(index, 1);
+            }
+          }
+        }
+        
+        // Legg til gjenværende treffpunkter uten matchende skyteplass
+        treffpunkter.forEach(treffpunkt => {
+          combinedPairs.push({
+            current: undefined,
+            target: treffpunkt.target,
+            category: treffpunkt.category,
+            id: treffpunkt.id,
+            created_at: treffpunkt.created_at,
+          });
+        });
+        
+        setSavedPairs(combinedPairs);
       }
     } catch (error) {
       console.error('Error fetching posts:', error);
@@ -2995,7 +3042,7 @@ export default function MapComponent({
         {mode === 'søk' && (
           <div className="fixed bottom-4 inset-x-0 z-[2001] flex flex-wrap justify-center items-center gap-2 px-2 -ml-[15px]">
             {/* Synkroniser knapp */}
-            <button
+          <button
               onClick={handleSyncData}
               className="w-12 h-12 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white border-blue-700"
               title="Synkroniser alle data med teamet"
@@ -3004,7 +3051,7 @@ export default function MapComponent({
           </button>
 
                     {/* Obs-knapp */}
-                    <button
+          <button
                       onClick={toggleObservationMode}
                       className="flex-1 min-w-[60px] max-w-[55px] w-auto h-12 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex items-center justify-center px-[0.375em] py-[0.375em] bg-orange-600 hover:bg-orange-700 text-white border-orange-700"
                       title="Legg til observasjon"
@@ -3013,7 +3060,7 @@ export default function MapComponent({
           </button>
       
                     {/* Funn! knapp */}
-                    <button
+            <button
                       onClick={toggleFindingMode}
                       className="flex-1 min-w-[60px] max-w-[55px] w-auto h-12 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex items-center justify-center px-[0.375em] py-[0.375em] bg-purple-600 hover:bg-purple-700 text-white border-purple-700"
                       title="Klikk for å plassere markering"
