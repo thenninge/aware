@@ -2544,7 +2544,7 @@ export default function MapComponent({
         {mode === 'søk' && showObservations && savedObservations && savedObservations.length > 0 && (
           <>
             {savedObservations.map((observation) => (
-              <Circle
+            <Circle
                 key={`saved-observation-${observation.id}`}
                 center={[observation.position.lat, observation.position.lng]}
                 radius={2.5} // 2.5 meter radius = 5x5 meter firkant
@@ -2940,7 +2940,7 @@ export default function MapComponent({
         <div className="fixed bottom-4 inset-x-0 z-[2001] flex flex-wrap justify-center items-center gap-2 px-2">
           <button
             onClick={handleSaveCurrentPos}
-            className="flex-1 min-w-[60px] max-w-[110px] w-auto h-9 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex flex-col items-center justify-center px-[0.375em] py-[0.375em] bg-blue-600 hover:bg-blue-700 text-white border-blue-700"
+            className="flex-1 min-w-[80px] max-w-[140px] w-auto h-12 rounded-full shadow-lg font-semibold text-[0.875rem] transition-colors border flex flex-col items-center justify-center px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white border-blue-700"
             title="Lagre skuddpar (Skyteplass + Treffpunkt)"
           >
             <span className="text-[10px] mt-0.5">Target</span>
@@ -2952,21 +2952,21 @@ export default function MapComponent({
       {mode === 'aware' && (
         <div className="fixed bottom-4 inset-x-0 z-[2001] flex flex-wrap justify-center items-center gap-2 px-2">
           {/* Reset-knapp - alltid synlig */}
-          <button
+            <button
             onClick={handleResetMeasurement}
-            className={`w-18 h-9 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex items-center justify-center ${
+            className={`w-18 h-12 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex items-center justify-center ${
               (isMeasuring || measurementPoints.length > 0 || searchPosition)
                 ? 'bg-red-600 hover:bg-red-700 text-white border-red-700'
                 : 'bg-gray-300 text-gray-400 border-gray-400 cursor-not-allowed'
             }`}
             disabled={!isMeasuring && measurementPoints.length === 0 && !searchPosition}
-          >
-            ✕
-          </button>
+            >
+                  ✕
+            </button>
 
           {/* Avstandstekst - alltid synlig */}
-          <div className="bg-white rounded-full px-3 py-1 shadow-lg border min-w-[60px] text-center">
-            <span className="text-sm font-semibold text-gray-700">
+          <div className="bg-white rounded-full px-3 h-12 shadow-lg border min-w-[60px] flex items-center justify-center">
+            <span className="text-base font-semibold text-black">
               {totalDistance > 0 
                 ? (totalDistance < 1000 
                     ? `${Math.round(totalDistance)}m` 
@@ -2974,12 +2974,12 @@ export default function MapComponent({
                 : '0m'
               }
             </span>
-          </div>
+            </div>
 
           {/* Måle-knapp - avlang */}
           <button
             onClick={handleMeasureClick}
-            className={`w-18 h-9 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex items-center justify-center ${
+            className={`w-18 h-12 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex items-center justify-center ${
               isMeasuring
                 ? 'bg-green-600 hover:bg-green-700 text-white border-green-700'
                 : 'bg-blue-600 hover:bg-blue-700 text-white border-blue-700'
@@ -2988,43 +2988,43 @@ export default function MapComponent({
           >
             📏
           </button>
-        </div>
-      )}
-      
+          </div>
+        )}
+
                         {/* Start/Stopp spor knapp kun i søk-modus */}
         {mode === 'søk' && (
-          <div className="fixed bottom-4 inset-x-0 z-[2001] flex flex-wrap justify-center items-center gap-2 px-2">
+          <div className="fixed bottom-4 inset-x-0 z-[2001] flex flex-wrap justify-center items-center gap-2 px-2 -ml-[15px]">
             {/* Synkroniser knapp */}
             <button
               onClick={handleSyncData}
-              className="w-9 h-9 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white border-blue-700"
+              className="w-12 h-12 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white border-blue-700"
               title="Synkroniser alle data med teamet"
             >
                       🔄
-                    </button>
+          </button>
 
                     {/* Obs-knapp */}
                     <button
                       onClick={toggleObservationMode}
-                      className="px-3 h-9 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex items-center justify-center bg-orange-600 hover:bg-orange-700 text-white border-orange-700"
+                      className="flex-1 min-w-[60px] max-w-[55px] w-auto h-12 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex items-center justify-center px-[0.375em] py-[0.375em] bg-orange-600 hover:bg-orange-700 text-white border-orange-700"
                       title="Legg til observasjon"
                     >
                       <span className="text-[10px] font-bold">Obs</span>
-                    </button>
-                    
+          </button>
+      
                     {/* Funn! knapp */}
                     <button
                       onClick={toggleFindingMode}
-                      className="px-3 h-9 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex items-center justify-center bg-purple-600 hover:bg-purple-700 text-white border-purple-700"
+                      className="flex-1 min-w-[60px] max-w-[55px] w-auto h-12 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex items-center justify-center px-[0.375em] py-[0.375em] bg-purple-600 hover:bg-purple-700 text-white border-purple-700"
                       title="Klikk for å plassere markering"
                     >
                       <span className="text-[10px] font-bold">Mark!</span>
-                    </button>
+            </button>
             
-                    {/* Start/Stopp spor knapp */}
+            {/* Start/Stopp spor knapp */}
             <button
               onClick={isTracking ? stopTracking : startTracking}
-              className={`flex-1 min-w-[60px] max-w-[55px] w-auto h-9 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex flex-col items-center justify-center px-[0.375em] py-[0.375em] ${
+              className={`flex-1 min-w-[60px] max-w-[55px] w-auto h-12 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex flex-col items-center justify-center px-[0.375em] py-[0.375em] ${
                 isTracking
                   ? 'bg-red-600 hover:bg-red-700 text-white border-red-700'
                   : 'bg-green-600 hover:bg-green-700 text-white border-green-700'
@@ -3167,21 +3167,8 @@ export default function MapComponent({
       {showTargetRadiusModal && (
         <div className="fixed bottom-0 left-0 w-full z-[2002] flex justify-center items-end pointer-events-none">
           <div className="bg-white rounded-t-lg shadow-lg p-4 w-full max-w-xs mx-auto mb-2 flex flex-col gap-2 pointer-events-auto">
-            <div className="text-base font-semibold text-black mb-1">Velg avstand til treffpunkt</div>
+            <div className="text-base font-semibold text-black mb-1">Sett skuddavstand:</div>
             <div className="flex items-center gap-2">
-              <input
-                type="range"
-                min={50}
-                max={500}
-                step={5}
-                value={targetRange}
-                onChange={e => setTargetRange(Number(e.target.value))}
-                className="flex-1 touch-manipulation"
-                style={{ 
-                  padding: '12px 0',
-                  margin: '-12px 0'
-                }}
-              />
               <input
                 type="number"
                 min={50}
@@ -3192,20 +3179,32 @@ export default function MapComponent({
                 className="w-16 border rounded px-2 py-1 text-[16px] text-black"
               />
               <span className="text-xs text-black">m</span>
+              <input
+                type="range"
+                min={50}
+                max={500}
+                step={5}
+                value={targetRange}
+                onChange={e => setTargetRange(Number(e.target.value))}
+                className="flex-1 touch-manipulation slider-thumb-25"
+                style={{ 
+                  padding: '12px 0',
+                  margin: '-12px 0'
+                }}
+              />
       </div>
-            <div className="text-xs text-black text-center">Velg avstand med slider eller skriv inn manuelt.</div>
-            <div className="flex gap-2 justify-end mt-2">
+            <div className="flex justify-between items-center mt-2 gap-2">
               <button
                 onClick={() => {
                   setShowTargetRadiusModal(false);
                   setShowTargetDirectionUI(false);
                   setLockedShotPosition(null);
                 }}
-                className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 text-xs text-black"
+                className="px-6 py-2 rounded bg-gray-200 hover:bg-gray-300 text-sm text-black"
               >Avbryt</button>
               <button
                 onClick={() => { setShowTargetRadiusModal(false); setShowTargetDirectionUI(true); }}
-                className="px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 text-xs"
+                className="px-6 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 text-sm"
               >Neste</button>
             </div>
           </div>
@@ -3216,54 +3215,53 @@ export default function MapComponent({
       {showTargetDirectionUI && (
         <div className="fixed bottom-0 left-0 w-full z-[2002] flex justify-center items-end pointer-events-none">
           <div className="bg-white rounded-t-lg shadow-lg p-4 w-full max-w-xs mx-auto mb-2 flex flex-col items-center gap-2 pointer-events-auto">
-            <label className="text-sm font-medium w-full text-black">Retning (grader):
-              <div className="flex items-center gap-2 w-full mt-1">
+            <label className="w-full text-black">
+              <span className="block text-base font-semibold mb-2">Sett skuddretning:</span>
+              <div className="flex items-center gap-2 w-full">
+              <input
+                  type="number"
+                  min={0}
+                  max={359}
+                  value={((targetDirection + 360) % 360)}
+                  onChange={e => {
+                    const raw = Number(e.target.value);
+                    const normalized = isNaN(raw) ? 0 : Math.max(0, Math.min(359, raw));
+                    const internal = normalized > 180 ? normalized - 360 : normalized; // map 0-359 -> -180..180
+                    setTargetDirection(internal);
+                  }}
+                  className="w-16 border rounded px-2 py-1 text-[16px] text-black"
+                />
+                <span className="text-xs text-black">°</span>
                 <div className="flex-1 px-2 py-1">
-                  <input
+              <input
                     type="range"
-                    min={-180}
-                    max={180}
-                    value={targetDirection}
-                    onChange={e => setTargetDirection(Number(e.target.value))}
-                    className="w-full touch-manipulation"
+                min={-180}
+                max={180}
+                value={targetDirection}
+                onChange={e => setTargetDirection(Number(e.target.value))}
+                    className="w-full h-[35px] touch-manipulation slider-thumb-25"
                     style={{ 
                       padding: '12px 0',
                       margin: '-12px 0'
                     }}
                   />
-                </div>
-                <input
-                  type="number"
-                  min={-180}
-                  max={180}
-                  value={targetDirection}
-                  onChange={e => setTargetDirection(Number(e.target.value))}
-                  className="w-16 border rounded px-2 py-1 text-[16px] text-black"
-                />
-                <span className="text-xs text-black">°</span>
-              </div>
-              <div className="text-base text-black text-center font-semibold mt-1">
-                {((targetDirection + 360) % 360)}° {
-                  ((targetDirection + 360) % 360) === 0 ? '(nord)' :
-                  ((targetDirection + 360) % 360) === 180 ? '(sør)' :
-                  ((targetDirection + 360) % 360) === 90 ? '(øst)' :
-                  ((targetDirection + 360) % 360) === 270 ? '(vest)' : ''
-                }
-              </div>
-            </label>
-            <div className="flex gap-2 justify-end mt-2">
+            </div>
+            </div>
+              {/* Degree display removed; value shown in input field */}
+          </label>
+            <div className="flex justify-between items-center mt-2 gap-2 w-full">
               <button
                 onClick={() => {
                   setShowTargetRadiusModal(false);
                   setShowTargetDirectionUI(false);
                   setLockedShotPosition(null);
                 }}
-                className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 text-xs text-black"
+                className="px-6 py-2 rounded bg-gray-200 hover:bg-gray-300 text-sm text-black"
               >Avbryt</button>
-            <button
-              onClick={handleSaveTargetWithDirection}
-                className="px-4 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white font-semibold"
-            >Lagre</button>
+          <button
+            onClick={handleSaveTargetWithDirection}
+                className="px-6 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm"
+          >Lagre</button>
             </div>
           </div>
         </div>
