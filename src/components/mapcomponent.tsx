@@ -253,12 +253,12 @@ function MapController({
 
   // GPS and Compass functionality
   useEffect(() => {
-
-
+    console.log('GPS useEffect triggered, isLiveMode:', isLiveMode);
 
     if (!isLiveMode) {
       // Clean up watchers when live mode is disabled
       if (watchId) {
+        console.log('Clearing GPS watch');
         navigator.geolocation.clearWatch(watchId);
         setWatchId(null);
       }
@@ -276,8 +276,10 @@ function MapController({
 
     // Start GPS watching
     if ('geolocation' in navigator) {
+      console.log('Starting GPS watch');
       const id = navigator.geolocation.watchPosition(
         (position) => {
+          console.log('GPS position received:', position.coords.latitude, position.coords.longitude);
           const newGpsPosition: Position = {
           lat: position.coords.latitude,
           lng: position.coords.longitude,
@@ -298,7 +300,7 @@ function MapController({
           }
         },
         (error) => {
-          console.error('GPS error:', error);
+          console.error('GPS error:', error.code, error.message);
           onError?.();
         },
         {
@@ -308,6 +310,9 @@ function MapController({
         }
       );
       setWatchId(id);
+      console.log('GPS watch started with ID:', id);
+    } else {
+      console.error('Geolocation is not available in this browser');
     }
 
 
@@ -3152,7 +3157,10 @@ export default function MapComponent({
           </button>
           {/* Live-posisjon-knapp */}
           <button
-            onClick={() => onLiveModeChange?.(!isLiveMode)}
+            onClick={() => {
+              console.log('GPS button clicked, current isLiveMode:', isLiveMode, 'toggling to:', !isLiveMode);
+              onLiveModeChange?.(!isLiveMode);
+            }}
             className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
               isLiveMode 
                 ? 'bg-green-600 hover:bg-green-700 text-white' 

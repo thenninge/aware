@@ -196,7 +196,9 @@ export default function Home() {
   };
 
   const handleLiveModeChange = (isLive: boolean) => {
+    console.log('handleLiveModeChange called with:', isLive);
     setIsLiveMode(isLive);
+    console.log('isLiveMode state updated to:', isLive);
   };
 
   const handleDeleteAllShots = async () => {
