@@ -1839,8 +1839,8 @@ export default function MapComponent({
             current: latMatch && lngMatch ? { lat: parseFloat(latMatch[1]), lng: parseFloat(lngMatch[1]) } : undefined,
             target: targetLatMatch ? { lat: parseFloat(targetLatMatch[1]), lng: parseFloat(targetLatMatch[2]) } : undefined,
             category: categoryMatch ? categoryMatch[1] : 'general',
-            id: post.id,
-            created_at: post.created_at,
+        id: post.id,
+        created_at: post.created_at,
           };
         });
 
@@ -3088,7 +3088,7 @@ export default function MapComponent({
           </div>
         )}
       {/* Scan & Live Buttons - Bottom Right */}
-      <div className="fixed bottom-4 right-4 sm:bottom-4 sm:right-4 bottom-2 right-2 z-[1000] flex flex-col gap-2">
+      <div className="fixed bottom-4 right-4 sm:bottom-4 sm:right-4 bottom-2 right-2 z-[1000] flex flex-col gap-2" style={{ pointerEvents: 'auto' }}>
           {/* Scan-knapp kun i aware-mode */}
           {mode === 'aware' && (
           <button
@@ -3157,9 +3157,22 @@ export default function MapComponent({
           </button>
           {/* Live-posisjon-knapp */}
           <button
-            onClick={() => {
+            onMouseDown={(e) => {
+              console.log('GPS button mousedown detected');
+            }}
+            onTouchStart={(e) => {
+              console.log('GPS button touchstart detected');
+            }}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
               console.log('GPS button clicked, current isLiveMode:', isLiveMode, 'toggling to:', !isLiveMode);
-              onLiveModeChange?.(!isLiveMode);
+              if (onLiveModeChange) {
+                console.log('onLiveModeChange exists, calling it');
+                onLiveModeChange(!isLiveMode);
+              } else {
+                console.error('onLiveModeChange is undefined!');
+              }
             }}
             className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
               isLiveMode 
@@ -3167,6 +3180,7 @@ export default function MapComponent({
                 : 'bg-gray-600 hover:bg-gray-700 text-white'
             }`}
             title={isLiveMode ? 'Live GPS ON' : 'Live GPS'}
+            style={{ zIndex: 2002, position: 'relative', pointerEvents: 'auto' }}
           >
             🛰️
           </button>
