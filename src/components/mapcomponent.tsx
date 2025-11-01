@@ -253,12 +253,9 @@ function MapController({
 
   // GPS and Compass functionality
   useEffect(() => {
-    console.log('GPS useEffect triggered, isLiveMode:', isLiveMode);
-
     if (!isLiveMode) {
       // Clean up watchers when live mode is disabled
       if (watchId) {
-        console.log('Clearing GPS watch');
         navigator.geolocation.clearWatch(watchId);
         setWatchId(null);
       }
@@ -276,10 +273,8 @@ function MapController({
 
     // Start GPS watching
     if ('geolocation' in navigator) {
-      console.log('Starting GPS watch');
       const id = navigator.geolocation.watchPosition(
         (position) => {
-          console.log('GPS position received:', position.coords.latitude, position.coords.longitude);
           const newGpsPosition: Position = {
           lat: position.coords.latitude,
           lng: position.coords.longitude,
@@ -300,7 +295,7 @@ function MapController({
           }
         },
         (error) => {
-          console.error('GPS error:', error.code, error.message);
+          console.error('GPS error:', error);
           onError?.();
         },
         {
@@ -310,9 +305,6 @@ function MapController({
         }
       );
       setWatchId(id);
-      console.log('GPS watch started with ID:', id);
-    } else {
-      console.error('Geolocation is not available in this browser');
     }
 
 
@@ -2989,11 +2981,12 @@ export default function MapComponent({
       {/* --- PATCH FOR BEDRE KNAPPEPLASSERING --- */}
       {/* Track-mode: Knapp for lagring av skuddpar */}
       {mode === 'track' && (
-        <div className="fixed bottom-4 inset-x-0 z-[2001] flex flex-wrap justify-center items-center gap-2 px-2">
+        <div className="fixed bottom-4 inset-x-0 z-[2001] flex flex-wrap justify-center items-center gap-2 px-2" style={{ pointerEvents: 'none' }}>
           <button
             onClick={handleSaveCurrentPos}
             className="flex-1 min-w-[80px] max-w-[140px] w-auto h-12 rounded-full shadow-lg font-semibold text-[0.875rem] transition-colors border flex flex-col items-center justify-center px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white border-blue-700"
             title="Lagre skuddpar (Skyteplass + Treffpunkt)"
+            style={{ pointerEvents: 'auto' }}
           >
             <span className="text-[10px] mt-0.5">Target</span>
           </button>
@@ -3002,7 +2995,7 @@ export default function MapComponent({
 
       {/* Avstandsmåling knapper - kun i aware-modus */}
       {mode === 'aware' && (
-        <div className="fixed bottom-4 inset-x-0 z-[2001] flex flex-wrap justify-center items-center gap-2 px-2">
+        <div className="fixed bottom-4 inset-x-0 z-[2001] flex flex-wrap justify-center items-center gap-2 px-2" style={{ pointerEvents: 'none' }}>
           {/* Reset-knapp - alltid synlig */}
             <button
             onClick={handleResetMeasurement}
@@ -3012,6 +3005,7 @@ export default function MapComponent({
                 : 'bg-gray-300 text-gray-400 border-gray-400 cursor-not-allowed'
             }`}
             disabled={!isMeasuring && measurementPoints.length === 0 && !searchPosition}
+            style={{ pointerEvents: 'auto' }}
             >
                   ✕
             </button>
@@ -3037,6 +3031,7 @@ export default function MapComponent({
                 : 'bg-blue-600 hover:bg-blue-700 text-white border-blue-700'
             }`}
             title={isMeasuring ? "Klikk for å legge til neste målepunkt" : "Start avstandsmåling"}
+            style={{ pointerEvents: 'auto' }}
           >
             📏
           </button>
@@ -3045,12 +3040,13 @@ export default function MapComponent({
 
                         {/* Start/Stopp spor knapp kun i søk-modus */}
         {mode === 'søk' && (
-          <div className="fixed bottom-4 inset-x-0 z-[2001] flex flex-wrap justify-center items-center gap-2 px-2 -ml-[15px]">
+          <div className="fixed bottom-4 inset-x-0 z-[2001] flex flex-wrap justify-center items-center gap-2 px-2 -ml-[15px]" style={{ pointerEvents: 'none' }}>
             {/* Synkroniser knapp */}
           <button
               onClick={handleSyncData}
               className="w-12 h-12 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white border-blue-700"
               title="Synkroniser alle data med teamet"
+              style={{ pointerEvents: 'auto' }}
             >
                       🔄
           </button>
@@ -3060,6 +3056,7 @@ export default function MapComponent({
                       onClick={toggleObservationMode}
                       className="flex-1 min-w-[60px] max-w-[55px] w-auto h-12 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex items-center justify-center px-[0.375em] py-[0.375em] bg-orange-600 hover:bg-orange-700 text-white border-orange-700"
                       title="Legg til observasjon"
+                      style={{ pointerEvents: 'auto' }}
                     >
                       <span className="text-[10px] font-bold">Obs</span>
           </button>
@@ -3069,6 +3066,7 @@ export default function MapComponent({
                       onClick={toggleFindingMode}
                       className="flex-1 min-w-[60px] max-w-[55px] w-auto h-12 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex items-center justify-center px-[0.375em] py-[0.375em] bg-purple-600 hover:bg-purple-700 text-white border-purple-700"
                       title="Klikk for å plassere markering"
+                      style={{ pointerEvents: 'auto' }}
                     >
                       <span className="text-[10px] font-bold">Mark!</span>
             </button>
@@ -3082,13 +3080,14 @@ export default function MapComponent({
                   : 'bg-green-600 hover:bg-green-700 text-white border-green-700'
               }`}
                                               title={isTracking ? 'Stop' : 'Start'}
+              style={{ pointerEvents: 'auto' }}
             >
                                                                                               <span className="text-[10px] mt-0.5">{isTracking ? 'Stop' : 'Start'}</span>
             </button>
           </div>
         )}
       {/* Scan & Live Buttons - Bottom Right */}
-      <div className="fixed bottom-4 right-4 sm:bottom-4 sm:right-4 bottom-2 right-2 z-[1000] flex flex-col gap-2" style={{ pointerEvents: 'auto' }}>
+      <div className="fixed bottom-4 right-4 sm:bottom-4 sm:right-4 bottom-2 right-2 z-[2000] flex flex-col gap-2" style={{ pointerEvents: 'auto' }}>
           {/* Scan-knapp kun i aware-mode */}
           {mode === 'aware' && (
           <button
@@ -3157,30 +3156,13 @@ export default function MapComponent({
           </button>
           {/* Live-posisjon-knapp */}
           <button
-            onMouseDown={(e) => {
-              console.log('GPS button mousedown detected');
-            }}
-            onTouchStart={(e) => {
-              console.log('GPS button touchstart detected');
-            }}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              console.log('GPS button clicked, current isLiveMode:', isLiveMode, 'toggling to:', !isLiveMode);
-              if (onLiveModeChange) {
-                console.log('onLiveModeChange exists, calling it');
-                onLiveModeChange(!isLiveMode);
-              } else {
-                console.error('onLiveModeChange is undefined!');
-              }
-            }}
+            onClick={() => onLiveModeChange?.(!isLiveMode)}
             className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
               isLiveMode 
                 ? 'bg-green-600 hover:bg-green-700 text-white' 
                 : 'bg-gray-600 hover:bg-gray-700 text-white'
             }`}
             title={isLiveMode ? 'Live GPS ON' : 'Live GPS'}
-            style={{ zIndex: 2002, position: 'relative', pointerEvents: 'auto' }}
           >
             🛰️
           </button>
