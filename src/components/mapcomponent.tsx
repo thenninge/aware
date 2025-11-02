@@ -2716,7 +2716,7 @@ export default function MapComponent({
           })}
 
         {/* Saved points: vis blå X for hver current-posisjon i track-mode */}
-        {((mode === 'track' || mode === 'søk') || (mode === 'aware' && showShots)) && hasSavedPairs && (
+        {((mode === 'track') || (mode === 'søk' && showShots) || (mode === 'aware' && showShots)) && hasSavedPairs && (
           <>
 
             

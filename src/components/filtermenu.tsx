@@ -203,16 +203,26 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
         </>
       )}
       
-      {/* Info i søk-modus */}
+      {/* Track-mode (søk) specific filters */}
       {mode === 'søk' && (
-        <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded">
-          <div className="text-xs text-blue-700 font-medium">
-            Søk-modus aktiv
-          </div>
-          <div className="text-xs text-blue-600">
-            Viser valgt skuddpar automatisk
-          </div>
-        </div>
+        <>
+          {/* Vis skuddpar */}
+          {showShots !== undefined && onShowShotsChange && (
+            <div className="mb-3">
+              <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={showShots}
+                  onChange={e => onShowShotsChange(e.target.checked)}
+                  className="w-3 h-3 text-blue-600 rounded focus:ring-blue-500"
+                />
+                <span className="font-medium text-gray-700">
+                  Vis skuddpar
+                </span>
+              </label>
+            </div>
+          )}
+        </>
       )}
       
       {/* Vis alle søk-spor og funn i søk-modus */}
