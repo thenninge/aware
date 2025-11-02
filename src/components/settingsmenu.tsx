@@ -45,12 +45,14 @@ interface SettingsMenuProps {
   targetLineColor?: string;
   shotColor?: string;
   targetColor?: string;
+  targetLineWeight?: number;
   onTargetSizeChange?: (size: number) => void;
   onShotSizeChange?: (size: number) => void;
   onObservationSizeChange?: (size: number) => void;
   onTargetLineColorChange?: (color: string) => void;
   onShotColorChange?: (color: string) => void;
   onTargetColorChange?: (color: string) => void;
+  onTargetLineWeightChange?: (weight: number) => void;
 }
 
 export default function SettingsMenu({ 
@@ -81,12 +83,14 @@ export default function SettingsMenu({
   targetLineColor,
   shotColor,
   targetColor,
+  targetLineWeight,
   onTargetSizeChange,
   onShotSizeChange,
   onObservationSizeChange,
   onTargetLineColorChange,
   onShotColorChange,
-  onTargetColorChange
+  onTargetColorChange,
+  onTargetLineWeightChange
 }: SettingsMenuProps & { currentCenter?: { lat: number, lng: number } }) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [showHomeSaved, setShowHomeSaved] = useState(false);
@@ -509,6 +513,24 @@ export default function SettingsMenu({
               </div>
             )}
             
+            {/* Target line tykkelse */}
+            {targetLineWeight !== undefined && onTargetLineWeightChange && (
+              <div className="mb-3">
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Target line tykkelse: {targetLineWeight}px
+                </label>
+                <input
+                  type="range"
+                  min="1"
+                  max="10"
+                  step="1"
+                  value={targetLineWeight}
+                  onChange={(e) => onTargetLineWeightChange(Number(e.target.value))}
+                  className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer hover:bg-gray-300 transition-colors"
+                />
+              </div>
+            )}
+            
             {onDeleteAllShots && (
               <button
                 type="button"
@@ -648,7 +670,8 @@ export default function SettingsMenu({
             observationSize,
             targetLineColor,
             shotColor,
-            targetColor
+            targetColor,
+            targetLineWeight
           };
           localStorage.setItem('aware_settings_defaults', JSON.stringify(defaults));
           setShowDefaultsSaved(true);

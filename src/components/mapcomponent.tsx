@@ -70,6 +70,7 @@ interface MapComponentProps {
   targetLineColor?: string;
   shotColor?: string;
   targetColor?: string;
+  targetLineWeight?: number;
 }
 
 interface CategoryFilter {
@@ -750,6 +751,7 @@ export default function MapComponent({
   targetLineColor = '#ff00ff',
   shotColor = '#2563eb',
   targetColor = '#dc2626',
+  targetLineWeight = 4,
   activeTeam = null,
 }: MapComponentProps) {
   const [showTargetDialog, setShowTargetDialog] = useState(false);
@@ -2843,7 +2845,7 @@ export default function MapComponent({
                           <Polyline
                             key={polyKey}
                             positions={positions}
-                            pathOptions={{ color: targetLineColor, weight: 4, dashArray: '8 12' }}
+                            pathOptions={{ color: targetLineColor, weight: targetLineWeight, dashArray: '8 12' }}
                           />
                         );
                       })()

@@ -69,6 +69,7 @@ export default function Home() {
   const [targetLineColor, setTargetLineColor] = useState('#ff00ff'); // magenta
   const [shotColor, setShotColor] = useState('#2563eb'); // blue
   const [targetColor, setTargetColor] = useState('#dc2626'); // red
+  const [targetLineWeight, setTargetLineWeight] = useState(4); // pixels
   
   // State for valgt treffpunkt i søk-modus
   const [selectedTargetIndex, setSelectedTargetIndex] = useState(0);
@@ -140,6 +141,7 @@ export default function Home() {
         if (defaults.targetLineColor !== undefined) setTargetLineColor(defaults.targetLineColor);
         if (defaults.shotColor !== undefined) setShotColor(defaults.shotColor);
         if (defaults.targetColor !== undefined) setTargetColor(defaults.targetColor);
+        if (defaults.targetLineWeight !== undefined) setTargetLineWeight(defaults.targetLineWeight);
       } catch (e) {
         console.error('Error loading defaults:', e);
       }
@@ -394,12 +396,14 @@ export default function Home() {
             targetLineColor={targetLineColor}
             shotColor={shotColor}
             targetColor={targetColor}
+            targetLineWeight={targetLineWeight}
             onTargetSizeChange={setTargetSize}
             onShotSizeChange={setShotSize}
             onObservationSizeChange={setObservationSize}
             onTargetLineColorChange={setTargetLineColor}
             onShotColorChange={setShotColor}
             onTargetColorChange={setTargetColor}
+            onTargetLineWeightChange={setTargetLineWeight}
           />
         </div>
       )}
@@ -470,6 +474,7 @@ export default function Home() {
         targetLineColor={targetLineColor}
         shotColor={shotColor}
         targetColor={targetColor}
+        targetLineWeight={targetLineWeight}
         activeTeam={authState.activeTeam?.id || null}
       />
 
