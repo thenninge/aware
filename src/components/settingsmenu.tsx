@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 
 interface CategoryConfig {
@@ -48,6 +48,25 @@ export default function SettingsMenu({
   const [isHomeExpanded, setIsHomeExpanded] = useState(false);
   const [isPieSliceExpanded, setIsPieSliceExpanded] = useState(false);
   const [isReticleExpanded, setIsReticleExpanded] = useState(false);
+  const [savedHomePosition, setSavedHomePosition] = useState<{ lat: number; lng: number } | null>(null);
+
+  // Load saved home position from localStorage
+  useEffect(() => {
+    const loadSavedHomePosition = () => {
+      if (typeof window !== 'undefined') {
+        const saved = localStorage.getItem('aware_default_position');
+        if (saved) {
+          try {
+            const pos = JSON.parse(saved);
+            setSavedHomePosition(pos);
+          } catch (e) {
+            console.error('Error loading home position:', e);
+          }
+        }
+      }
+    };
+    loadSavedHomePosition();
+  }, [showHomeSaved]); // Reload when home position is saved
 
   // Fjernet allOpacities/globalOpacity og tilhørende useState/hook
 
@@ -120,6 +139,7 @@ export default function SettingsMenu({
               onClick={() => {
                 if (currentCenter) {
                   localStorage.setItem('aware_default_position', JSON.stringify(currentCenter));
+                  setSavedHomePosition(currentCenter); // Update displayed coordinates immediately
                   setShowHomeSaved(true);
                   setTimeout(() => setShowHomeSaved(false), 1200);
                 } else {
@@ -130,10 +150,17 @@ export default function SettingsMenu({
             >
               Set as home position
             </button>
-            {currentCenter && (
-              <div className="mt-2 p-2 bg-gray-50 rounded text-xs text-gray-700 font-mono">
-                <div>Lat: {currentCenter.lat.toFixed(6)}</div>
-                <div>Lng: {currentCenter.lng.toFixed(6)}</div>
+            {savedHomePosition ? (
+              <div className="mt-2 p-2 bg-gray-50 rounded text-xs text-gray-700">
+                <div className="font-semibold mb-1 text-gray-600">Lagret home position:</div>
+                <div className="font-mono">
+                  <div>Lat: {savedHomePosition.lat.toFixed(6)}</div>
+                  <div>Lng: {savedHomePosition.lng.toFixed(6)}</div>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-2 p-2 bg-gray-100 rounded text-xs text-gray-500 italic">
+                Ingen home position lagret ennå
               </div>
             )}
           </div>
