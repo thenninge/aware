@@ -72,6 +72,7 @@ export default function SettingsMenu({
   const [isPieSliceExpanded, setIsPieSliceExpanded] = useState(false);
   const [isReticleExpanded, setIsReticleExpanded] = useState(false);
   const [isFilterExpanded, setIsFilterExpanded] = useState(false);
+  const [isShootTrackExpanded, setIsShootTrackExpanded] = useState(false);
   const [savedHomePosition, setSavedHomePosition] = useState<{ lat: number; lng: number } | null>(null);
 
   const categoryLabels: Record<keyof CategoryFilter, string> = {
@@ -362,6 +363,27 @@ export default function SettingsMenu({
           )}
         </div>
       )}
+      
+      {/* Shoot & Track Settings Expander */}
+      <div className="mb-4 border border-gray-200 rounded-lg overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setIsShootTrackExpanded(!isShootTrackExpanded)}
+          className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors"
+        >
+          <span className="text-sm font-medium text-gray-700">Shoot & Track settings</span>
+          <span className="text-gray-500 text-sm">{isShootTrackExpanded ? '▼' : '▶'}</span>
+        </button>
+        
+        {isShootTrackExpanded && (
+          <div className="p-3 bg-white">
+            {/* Placeholder for future settings */}
+            <div className="text-xs text-gray-500 italic">
+              Innstillinger for Shoot & Track modus
+            </div>
+          </div>
+        )}
+      </div>
       
       {/* Pie Slice Settings Expander */}
       <div className="mb-4 border border-gray-200 rounded-lg overflow-hidden">
