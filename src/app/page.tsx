@@ -257,40 +257,107 @@ export default function Home() {
     setIsSettingsExpanded(false); // Lukk settings-menyen
   };
   
-  const handleHuntingAreaDefined = (area: HuntingArea) => {
+  const handleHuntingAreaDefined = async (area: HuntingArea) => {
     setHuntingAreas(prev => [...prev, area]);
     setActiveHuntingAreaId(area.id);
     setIsDefiningHuntingArea(false);
+    
+    // Save to Supabase if team is active
+    if (authState.activeTeam?.id) {
+      try {
+        const response = await fetch('/api/hunting-areas', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            teamId: authState.activeTeam.id,
+            id: area.id,
+            name: area.name,
+            coordinates: area.coordinates,
+            color: area.color,
+            lineWeight: area.lineWeight,
+          }),
+        });
+        
+        if (!response.ok) {
+          console.error('Failed to save hunting area to Supabase');
+        } else {
+          console.log('Hunting area saved to Supabase successfully');
+        }
+      } catch (error) {
+        console.error('Error saving hunting area:', error);
+      }
+    }
   };
   
   const handleCancelHuntingAreaDefinition = () => {
     setIsDefiningHuntingArea(false);
   };
   
-  // Load hunting areas from localStorage on mount
-  useEffect(() => {
-    const savedAreas = localStorage.getItem('hunting_areas');
-    if (savedAreas) {
-      try {
-        const areas = JSON.parse(savedAreas);
-        setHuntingAreas(areas);
-      } catch (e) {
-        console.error('Error loading hunting areas:', e);
-      }
-    }
+  const handleDeleteHuntingArea = async (huntingAreaId: string) => {
+    if (!authState.activeTeam?.id) return;
     
-    const savedActiveId = localStorage.getItem('active_hunting_area_id');
-    if (savedActiveId) {
-      setActiveHuntingAreaId(savedActiveId);
+    try {
+      const response = await fetch(`/api/hunting-areas?id=${huntingAreaId}&teamId=${authState.activeTeam.id}`, {
+        method: 'DELETE',
+      });
+      
+      if (response.ok) {
+        // Remove from local state
+        setHuntingAreas(prev => prev.filter(area => area.id !== huntingAreaId));
+        
+        // Clear active ID if it was the deleted one
+        if (activeHuntingAreaId === huntingAreaId) {
+          setActiveHuntingAreaId(null);
+        }
+        
+        console.log('Hunting area deleted successfully');
+      } else {
+        console.error('Failed to delete hunting area');
+        alert('Feil ved sletting av jaktfelt');
+      }
+    } catch (error) {
+      console.error('Error deleting hunting area:', error);
+      alert('Feil ved sletting av jaktfelt');
     }
-  }, []);
+  };
   
-  // Save hunting areas to localStorage when they change
-  useEffect(() => {
-    if (huntingAreas.length > 0) {
-      localStorage.setItem('hunting_areas', JSON.stringify(huntingAreas));
+  // Load hunting areas from Supabase
+  const loadHuntingAreas = async () => {
+    if (authState.activeTeam?.id) {
+      try {
+        const response = await fetch(`/api/hunting-areas?teamId=${authState.activeTeam.id}`);
+        if (response.ok) {
+          const areas = await response.json();
+          setHuntingAreas(areas);
+          
+          // Restore active hunting area ID from localStorage
+          const savedActiveId = localStorage.getItem('active_hunting_area_id');
+          if (savedActiveId && areas.some((a: HuntingArea) => a.id === savedActiveId)) {
+            setActiveHuntingAreaId(savedActiveId);
+          } else if (areas.length > 0) {
+            setActiveHuntingAreaId(areas[0].id);
+          }
+          
+          console.log(`Loaded ${areas.length} hunting areas from Supabase`);
+        } else {
+          console.error('Failed to load hunting areas from Supabase');
+          setHuntingAreas([]);
+        }
+      } catch (error) {
+        console.error('Error loading hunting areas:', error);
+        setHuntingAreas([]);
+      }
+    } else {
+      // No active team, clear hunting areas
+      setHuntingAreas([]);
+      setActiveHuntingAreaId(null);
     }
-  }, [huntingAreas]);
+  };
+  
+  // Load hunting areas when team changes
+  useEffect(() => {
+    loadHuntingAreas();
+  }, [authState.activeTeam?.id]);
   
   // Save active hunting area ID to localStorage when it changes
   useEffect(() => {
@@ -468,6 +535,7 @@ export default function Home() {
             activeHuntingAreaId={activeHuntingAreaId}
             onDefineNewHuntingArea={handleDefineNewHuntingArea}
             onActiveHuntingAreaChange={setActiveHuntingAreaId}
+            onDeleteHuntingArea={handleDeleteHuntingArea}
             huntingBoundaryColor={huntingBoundaryColor}
             huntingBoundaryWeight={huntingBoundaryWeight}
             onHuntingBoundaryColorChange={setHuntingBoundaryColor}
@@ -553,6 +621,7 @@ export default function Home() {
         isDefiningHuntingArea={isDefiningHuntingArea}
         onHuntingAreaDefined={handleHuntingAreaDefined}
         onCancelHuntingAreaDefinition={handleCancelHuntingAreaDefinition}
+        onRefreshHuntingAreas={loadHuntingAreas}
         activeTeam={authState.activeTeam?.id || null}
       />
 

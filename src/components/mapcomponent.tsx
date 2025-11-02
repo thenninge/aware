@@ -79,6 +79,7 @@ interface MapComponentProps {
   isDefiningHuntingArea?: boolean;
   onHuntingAreaDefined?: (area: HuntingArea) => void;
   onCancelHuntingAreaDefinition?: () => void;
+  onRefreshHuntingAreas?: () => void;
 }
 
 interface CategoryFilter {
@@ -795,6 +796,7 @@ export default function MapComponent({
   isDefiningHuntingArea = false,
   onHuntingAreaDefined,
   onCancelHuntingAreaDefinition,
+  onRefreshHuntingAreas,
   activeTeam = null,
 }: MapComponentProps) {
   const [showTargetDialog, setShowTargetDialog] = useState(false);
@@ -1517,6 +1519,11 @@ export default function MapComponent({
 
         // Fetch posts for the active team
         fetchPosts();
+        
+        // Refresh hunting areas
+        if (onRefreshHuntingAreas) {
+          onRefreshHuntingAreas();
+        }
 
         // Show sync results
         const pushMessage = [];
@@ -1530,6 +1537,7 @@ export default function MapComponent({
         if (syncResults.pulled.finds.length > 0) pullMessage.push(`${syncResults.pulled.finds.length} funn`);
         if (syncResults.pulled.observations.length > 0) pullMessage.push(`${syncResults.pulled.observations.length} observasjoner`);
         if (syncResults.pulled.posts.length > 0) pullMessage.push(`${syncResults.pulled.posts.length} skuddpar`);
+        if (huntingAreas && huntingAreas.length > 0) pullMessage.push(`${huntingAreas.length} jaktfelt`);
 
         let message = 'Synkronisering fullført!';
         if (pushMessage.length > 0) message += `\nPushet: ${pushMessage.join(', ')}`;

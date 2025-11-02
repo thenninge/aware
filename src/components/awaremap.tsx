@@ -86,6 +86,7 @@ interface AwareMapProps {
   isDefiningHuntingArea?: boolean;
   onHuntingAreaDefined?: (area: HuntingArea) => void;
   onCancelHuntingAreaDefinition?: () => void;
+  onRefreshHuntingAreas?: () => void;
 }
 
 export default function AwareMap({
@@ -138,6 +139,7 @@ export default function AwareMap({
   isDefiningHuntingArea,
   onHuntingAreaDefined,
   onCancelHuntingAreaDefinition,
+  onRefreshHuntingAreas,
 }: AwareMapProps) {
   const [isClient, setIsClient] = useState(false);
   const [hasError, setHasError] = useState(false);
@@ -223,6 +225,7 @@ export default function AwareMap({
         isDefiningHuntingArea={isDefiningHuntingArea}
         onHuntingAreaDefined={onHuntingAreaDefined}
         onCancelHuntingAreaDefinition={onCancelHuntingAreaDefinition}
+        onRefreshHuntingAreas={onRefreshHuntingAreas}
       />
     </div>
   );

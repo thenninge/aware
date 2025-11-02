@@ -58,6 +58,7 @@ interface SettingsMenuProps {
   activeHuntingAreaId?: string | null;
   onDefineNewHuntingArea?: () => void;
   onActiveHuntingAreaChange?: (id: string | null) => void;
+  onDeleteHuntingArea?: (id: string) => void;
   huntingBoundaryColor?: string;
   huntingBoundaryWeight?: number;
   onHuntingBoundaryColorChange?: (color: string) => void;
@@ -115,6 +116,7 @@ export default function SettingsMenu({
   activeHuntingAreaId,
   onDefineNewHuntingArea,
   onActiveHuntingAreaChange,
+  onDeleteHuntingArea,
   huntingBoundaryColor,
   huntingBoundaryWeight,
   onHuntingBoundaryColorChange,
@@ -619,6 +621,19 @@ export default function SettingsMenu({
                   <p className="text-xs text-gray-500 mt-1 italic">
                     Ingen jaktfelt definert ennå
                   </p>
+                )}
+                {activeHuntingAreaId && onDeleteHuntingArea && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (window.confirm('Er du sikker på at du vil slette dette jaktfeltet?')) {
+                        onDeleteHuntingArea(activeHuntingAreaId);
+                      }
+                    }}
+                    className="w-full mt-2 bg-red-600 hover:bg-red-700 text-white font-semibold py-1.5 px-3 rounded text-xs"
+                  >
+                    🗑️ Slett aktivt jaktfelt
+                  </button>
                 )}
               </div>
             )}
