@@ -130,6 +130,12 @@ export default function SettingsMenu({
             >
               Set as home position
             </button>
+            {currentCenter && (
+              <div className="mt-2 p-2 bg-gray-50 rounded text-xs text-gray-700 font-mono">
+                <div>Lat: {currentCenter.lat.toFixed(6)}</div>
+                <div>Lng: {currentCenter.lng.toFixed(6)}</div>
+              </div>
+            )}
           </div>
         )}
       </div>
