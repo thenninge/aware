@@ -21,9 +21,19 @@ export interface CategoryConfig {
   icon: string;
 }
 
+interface CategoryFilter {
+  city: boolean;
+  town: boolean;
+  village: boolean;
+  hamlet: boolean;
+  farm: boolean;
+  isolated_dwelling: boolean;
+}
+
 interface PieChartProps {
   places: PlaceData[] | undefined | null;
   categoryConfigs: Record<string, CategoryConfig> | undefined | null;
+  categoryFilters?: CategoryFilter;
   centerLat: number;
   centerLng: number;
   angleRange: number; // ± degrees
@@ -64,6 +74,7 @@ export default function PieChart(props: PieChartProps) {
   const {
     places,
     categoryConfigs,
+    categoryFilters,
     centerLat,
     centerLng,
     angleRange,
@@ -106,7 +117,17 @@ export default function PieChart(props: PieChartProps) {
 
   const slices = useMemo(() => {
     return placeDirections
-      .filter((p) => Number.isFinite(p.distance) && p.distance <= radius)
+      .filter((p) => {
+        // Filter by distance
+        if (!Number.isFinite(p.distance) || p.distance > radius) return false;
+        
+        // Filter by category filter
+        if (categoryFilters && p.category in categoryFilters) {
+          return categoryFilters[p.category as keyof CategoryFilter];
+        }
+        
+        return true;
+      })
       .map((p) => {
         const startAngle = p.bearing - angleRange;
         const endAngle = p.bearing + angleRange;
@@ -132,7 +153,7 @@ export default function PieChart(props: PieChartProps) {
           fillOpacity,
         };
       });
-  }, [placeDirections, radius, angleRange, cfg, centerLat, centerLng, stepDeg, globalOpacity]);
+  }, [placeDirections, radius, angleRange, cfg, centerLat, centerLng, stepDeg, globalOpacity, categoryFilters]);
 
   // Render (kan returnere null etter hooks er kalt)
   if (slices.length === 0) return null;

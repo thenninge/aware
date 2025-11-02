@@ -481,6 +481,7 @@ function MapController({
         <PieChart 
           places={places}
           categoryConfigs={categoryConfigs}
+          categoryFilters={categoryFilters}
           centerLat={searchPosition.lat}
           centerLng={searchPosition.lng}
           angleRange={angleRange ?? 5}
