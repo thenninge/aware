@@ -250,8 +250,17 @@ export default function Home() {
   
   const handleDefineNewHuntingArea = () => {
     setIsDefiningHuntingArea(true);
-    // TODO: Implement hunting area definition mode
-    alert('Funksjon for å definere nytt jaktfelt kommer snart!');
+    setIsSettingsExpanded(false); // Lukk settings-menyen
+  };
+  
+  const handleHuntingAreaDefined = (area: HuntingArea) => {
+    setHuntingAreas(prev => [...prev, area]);
+    setActiveHuntingAreaId(area.id);
+    setIsDefiningHuntingArea(false);
+  };
+  
+  const handleCancelHuntingAreaDefinition = () => {
+    setIsDefiningHuntingArea(false);
   };
   
   // Load hunting areas from localStorage on mount
@@ -531,6 +540,9 @@ export default function Home() {
         showHuntingBoundary={showHuntingBoundary}
         huntingAreas={huntingAreas}
         activeHuntingAreaId={activeHuntingAreaId}
+        isDefiningHuntingArea={isDefiningHuntingArea}
+        onHuntingAreaDefined={handleHuntingAreaDefined}
+        onCancelHuntingAreaDefinition={handleCancelHuntingAreaDefinition}
         activeTeam={authState.activeTeam?.id || null}
       />
 

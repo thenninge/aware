@@ -74,6 +74,9 @@ interface MapComponentProps {
   showHuntingBoundary?: boolean;
   huntingAreas?: HuntingArea[];
   activeHuntingAreaId?: string | null;
+  isDefiningHuntingArea?: boolean;
+  onHuntingAreaDefined?: (area: HuntingArea) => void;
+  onCancelHuntingAreaDefinition?: () => void;
 }
 
 interface CategoryFilter {
@@ -504,6 +507,33 @@ function MapController({
   );
 }
 
+// Component to handle hunting area definition clicks
+function HuntingAreaClickHandler({
+  isDefiningHuntingArea,
+  onPointAdded,
+}: {
+  isDefiningHuntingArea: boolean;
+  onPointAdded: (lat: number, lng: number) => void;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!map || !isDefiningHuntingArea) return;
+
+    const handleMapClick = (e: L.LeafletMouseEvent) => {
+      onPointAdded(e.latlng.lat, e.latlng.lng);
+    };
+
+    map.on('click', handleMapClick);
+
+    return () => {
+      map.off('click', handleMapClick);
+    };
+  }, [map, isDefiningHuntingArea, onPointAdded]);
+
+  return null;
+}
+
 // Component to handle tracking in søk-modus
 function TrackingController({ 
   isTracking, 
@@ -758,6 +788,9 @@ export default function MapComponent({
   showHuntingBoundary = false,
   huntingAreas = [],
   activeHuntingAreaId = null,
+  isDefiningHuntingArea = false,
+  onHuntingAreaDefined,
+  onCancelHuntingAreaDefinition,
   activeTeam = null,
 }: MapComponentProps) {
   const [showTargetDialog, setShowTargetDialog] = useState(false);
@@ -791,6 +824,13 @@ export default function MapComponent({
   const [showSaveTrackDialog, setShowSaveTrackDialog] = useState(false);
   const [trackName, setTrackName] = useState('');
   const [trackColor, setTrackColor] = useState('#EAB308');
+  
+  // Hunting area definition state
+  const [huntingAreaPoints, setHuntingAreaPoints] = useState<[number, number][]>([]);
+  const [showSaveHuntingAreaDialog, setShowSaveHuntingAreaDialog] = useState(false);
+  const [huntingAreaName, setHuntingAreaName] = useState('');
+  const [huntingAreaColor, setHuntingAreaColor] = useState('#00ff00');
+  const [huntingAreaLineWeight, setHuntingAreaLineWeight] = useState(3);
   const [currentTrackingId, setCurrentTrackingId] = useState<string | null>(null);
   const [showFindDialog, setShowFindDialog] = useState(false);
   const [newFindPosition, setNewFindPosition] = useState<Position | null>(null);
@@ -859,6 +899,51 @@ export default function MapComponent({
     console.log('setSearchPosition(null) called');
   };
   
+  // Hunting area definition functions
+  const handleAddHuntingAreaPoint = useCallback((lat: number, lng: number) => {
+    setHuntingAreaPoints(prev => [...prev, [lat, lng]]);
+  }, []);
+  
+  const handleCancelHuntingArea = () => {
+    setHuntingAreaPoints([]);
+    setHuntingAreaName('');
+    setHuntingAreaColor('#00ff00');
+    setHuntingAreaLineWeight(3);
+    onCancelHuntingAreaDefinition?.();
+  };
+  
+  const handleFinishHuntingArea = () => {
+    if (huntingAreaPoints.length < 3) {
+      alert('Du må definere minst 3 punkter for å lage et jaktfelt');
+      return;
+    }
+    setShowSaveHuntingAreaDialog(true);
+  };
+  
+  const handleSaveHuntingArea = () => {
+    if (!huntingAreaName.trim()) {
+      alert('Du må gi jaktfeltet et navn');
+      return;
+    }
+    
+    const newArea: HuntingArea = {
+      id: Date.now().toString(),
+      name: huntingAreaName.trim(),
+      coordinates: [...huntingAreaPoints, huntingAreaPoints[0]], // Close the polygon
+      color: huntingAreaColor,
+      lineWeight: huntingAreaLineWeight,
+      created_at: new Date().toISOString(),
+    };
+    
+    onHuntingAreaDefined?.(newArea);
+    
+    // Reset state
+    setHuntingAreaPoints([]);
+    setHuntingAreaName('');
+    setHuntingAreaColor('#00ff00');
+    setHuntingAreaLineWeight(3);
+    setShowSaveHuntingAreaDialog(false);
+  };
 
   
   // Juster selectedTargetIndex for wraparound (loop fra slutten til starten)
@@ -2364,6 +2449,12 @@ export default function MapComponent({
           gpsPosition={gpsPosition}
           isLiveMode={isLiveMode}
         />
+        
+        {/* Hunting area click handler */}
+        <HuntingAreaClickHandler 
+          isDefiningHuntingArea={isDefiningHuntingArea}
+          onPointAdded={handleAddHuntingAreaPoint}
+        />
 
         {/* MSR-retikkel controller */}
         <MSRRetikkel 
@@ -2398,6 +2489,39 @@ export default function MapComponent({
             </Polyline>
           );
         })()}
+        
+        {/* Hunting area definition - preview while defining */}
+        {isDefiningHuntingArea && huntingAreaPoints.length > 0 && (
+          <>
+            {/* Show points as markers */}
+            {huntingAreaPoints.map((point, index) => (
+              <Circle
+                key={`hunting-point-${index}`}
+                center={point}
+                radius={3}
+                pathOptions={{
+                  color: '#00ff00',
+                  fillColor: '#00ff00',
+                  fillOpacity: 0.8,
+                  weight: 2,
+                }}
+              />
+            ))}
+            
+            {/* Show line between points */}
+            {huntingAreaPoints.length > 1 && (
+              <Polyline
+                positions={huntingAreaPoints}
+                pathOptions={{
+                  color: '#00ff00',
+                  weight: 3,
+                  opacity: 0.8,
+                  dashArray: '5, 5',
+                }}
+              />
+            )}
+          </>
+        )}
 
         {/* Radius circle: kun i aware-mode */}
         {mode === 'aware' && searchPosition && (
@@ -3138,6 +3262,30 @@ export default function MapComponent({
             </button>
           </div>
         )}
+        
+      {/* Hunting Area Definition Buttons */}
+      {isDefiningHuntingArea && (
+        <div className="fixed bottom-4 inset-x-0 z-[2001] flex flex-wrap justify-center items-center gap-4 px-2" style={{ pointerEvents: 'none' }}>
+          <button
+            onClick={handleCancelHuntingArea}
+            className="px-6 py-3 rounded-full shadow-lg font-semibold transition-colors bg-red-600 hover:bg-red-700 text-white"
+            style={{ pointerEvents: 'auto' }}
+          >
+            Avbryt
+          </button>
+          <div className="text-sm font-semibold text-white bg-black/70 px-4 py-2 rounded-full">
+            {huntingAreaPoints.length} punkter
+          </div>
+          <button
+            onClick={handleFinishHuntingArea}
+            className="px-6 py-3 rounded-full shadow-lg font-semibold transition-colors bg-green-600 hover:bg-green-700 text-white"
+            style={{ pointerEvents: 'auto' }}
+          >
+            Ferdig
+          </button>
+        </div>
+      )}
+      
       {/* Scan & Live Buttons - Bottom Right */}
       <div className="fixed bottom-4 right-4 sm:bottom-4 sm:right-4 bottom-2 right-2 z-[2000] flex flex-col gap-2" style={{ pointerEvents: 'auto' }}>
           {/* Scan-knapp kun i aware-mode */}
@@ -3608,6 +3756,64 @@ export default function MapComponent({
                 className="px-3 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white font-bold"
               >
                 Lagre funn
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Dialog for å lagre jaktfelt */}
+      {showSaveHuntingAreaDialog && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[3000]">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-80 flex flex-col gap-4">
+            <div className="text-xl font-bold mb-2 text-gray-800">Lagre jaktfelt</div>
+            
+            <label className="text-base font-semibold text-gray-700">
+              Navn på jaktfelt:
+              <input
+                type="text"
+                value={huntingAreaName}
+                onChange={e => setHuntingAreaName(e.target.value)}
+                className="mt-1 w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                placeholder="F.eks. 'Nordlige område'"
+              />
+            </label>
+            
+            <label className="text-base font-semibold text-gray-700">
+              Farge på grense:
+              <input
+                type="color"
+                value={huntingAreaColor}
+                onChange={e => setHuntingAreaColor(e.target.value)}
+                className="mt-1 w-full h-10 border border-gray-300 rounded cursor-pointer"
+              />
+            </label>
+            
+            <label className="text-base font-semibold text-gray-700">
+              Linjetykkelse:
+              <input
+                type="range"
+                min="1"
+                max="10"
+                value={huntingAreaLineWeight}
+                onChange={e => setHuntingAreaLineWeight(Number(e.target.value))}
+                className="mt-1 w-full"
+              />
+              <div className="text-xs text-gray-600 mt-1">{huntingAreaLineWeight}px</div>
+            </label>
+            
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setShowSaveHuntingAreaDialog(false)}
+                className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold"
+              >
+                Avbryt
+              </button>
+              <button
+                onClick={handleSaveHuntingArea}
+                className="px-3 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white font-bold"
+              >
+                Lagre jaktfelt
               </button>
             </div>
           </div>
