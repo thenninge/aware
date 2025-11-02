@@ -7,10 +7,11 @@ interface MSRRetikkelProps {
   isVisible: boolean;
   opacity: number;
   style: 'msr' | 'ivar';
+  verticalPosition?: number; // 0-100, kun for ivar-style
   currentPosition?: { lat: number; lng: number };
 }
 
-export default function MSRRetikkel({ isVisible, opacity, style, currentPosition }: MSRRetikkelProps) {
+export default function MSRRetikkel({ isVisible, opacity, style, verticalPosition = 50, currentPosition }: MSRRetikkelProps) {
   const map = useMap();
   const [scaleValues, setScaleValues] = useState({ x: 0, y: 0 });
   const [screenSize, setScreenSize] = useState({ width: 0, height: 0 });
@@ -58,6 +59,9 @@ export default function MSRRetikkel({ isVisible, opacity, style, currentPosition
   // Early return ETTER alle hooks er kalt
   if (!isVisible || !currentPosition) return null;
 
+  // Konverter slider-verdi (0-100) til faktisk skjermposisjon (60-85%)
+  const actualVerticalPosition = 60 + (verticalPosition / 100) * 25;
+  
   return (
     <div 
       className="absolute pointer-events-none z-[1000]"
@@ -67,7 +71,7 @@ export default function MSRRetikkel({ isVisible, opacity, style, currentPosition
           : `140px`,                          // Ivar-style: 140px fra venstre kant (10px + 50px + 30px + 30px + 20px)
         top: style === 'msr'
           ? `${screenSize.height / 2 + 40}px` // MSR-style: 40px under midten av skjermen
-          : `${screenSize.height + 50 - L_SIZE_PIXELS}px`, // Ivar-style: 50px over bunnen (40px + 10px)
+          : `${(actualVerticalPosition / 100) * screenSize.height}px`, // Ivar-style: justerbar vertikal posisjon (slider 0-100 = 60-85% av skjermen)
         transform: 'translate(-50%, -50%)',
         width: `${L_SIZE_PIXELS}px`,
         height: `${L_SIZE_PIXELS}px`,

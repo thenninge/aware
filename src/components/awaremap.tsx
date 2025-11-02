@@ -61,6 +61,7 @@ interface AwareMapProps {
   showMSRRetikkel?: boolean;
   msrRetikkelOpacity?: number;
   msrRetikkelStyle?: 'msr' | 'ivar';
+  msrRetikkelVerticalPosition?: number;
   selectedTargetIndex?: number;
   onPreviousTarget?: () => void;
   onNextTarget?: () => void;
@@ -95,6 +96,7 @@ export default function AwareMap({
   showMSRRetikkel,
   msrRetikkelOpacity,
   msrRetikkelStyle,
+  msrRetikkelVerticalPosition,
   selectedTargetIndex,
   onPreviousTarget,
   onNextTarget,
@@ -162,6 +164,7 @@ export default function AwareMap({
         showMSRRetikkel={showMSRRetikkel}
         msrRetikkelOpacity={msrRetikkelOpacity}
         msrRetikkelStyle={msrRetikkelStyle}
+        msrRetikkelVerticalPosition={msrRetikkelVerticalPosition}
         selectedTargetIndex={selectedTargetIndex}
         onPreviousTarget={onPreviousTarget}
         onNextTarget={onNextTarget}

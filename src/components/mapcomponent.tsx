@@ -55,6 +55,7 @@ interface MapComponentProps {
   showMSRRetikkel?: boolean;
   msrRetikkelOpacity?: number;
   msrRetikkelStyle?: 'msr' | 'ivar';
+  msrRetikkelVerticalPosition?: number;
   selectedTargetIndex?: number;
   onPreviousTarget?: () => void;
   onNextTarget?: () => void;
@@ -725,6 +726,7 @@ export default function MapComponent({
       showMSRRetikkel = true,
     msrRetikkelOpacity = 80,
     msrRetikkelStyle = 'msr',
+    msrRetikkelVerticalPosition = 50,
       selectedTargetIndex = 0,
   onPreviousTarget,
   onNextTarget,
@@ -2344,6 +2346,7 @@ export default function MapComponent({
           isVisible={localShowMSRRetikkel}
           opacity={localMSRRetikkelOpacity}
           style={localMSRRetikkelStyle}
+          verticalPosition={msrRetikkelVerticalPosition}
           currentPosition={currentPosition}
         />
 

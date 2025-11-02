@@ -68,6 +68,7 @@ export default function Home() {
   const [showMSRRetikkel, setShowMSRRetikkel] = useState(true);
   const [msrRetikkelOpacity, setMSRRetikkelOpacity] = useState(80);
   const [msrRetikkelStyle, setMSRRetikkelStyle] = useState<'msr' | 'ivar'>('ivar');
+  const [msrRetikkelVerticalPosition, setMSRRetikkelVerticalPosition] = useState(50); // 50% = midten
   const [categoryConfigs, setCategoryConfigs] = useState<Record<keyof CategoryFilter, CategoryConfig>>({
     city: {
       color: '#1e40af', // Dark blue
@@ -336,9 +337,11 @@ export default function Home() {
             showMSRRetikkel={showMSRRetikkel}
             msrRetikkelOpacity={msrRetikkelOpacity}
             msrRetikkelStyle={msrRetikkelStyle}
+            msrRetikkelVerticalPosition={msrRetikkelVerticalPosition}
             onShowMSRRetikkelChange={setShowMSRRetikkel}
             onMSRRetikkelOpacityChange={setMSRRetikkelOpacity}
             onMSRRetikkelStyleChange={setMSRRetikkelStyle}
+            onMSRRetikkelVerticalPositionChange={setMSRRetikkelVerticalPosition}
           />
         </div>
       )}
@@ -390,6 +393,7 @@ export default function Home() {
         showMSRRetikkel={showMSRRetikkel}
         msrRetikkelOpacity={msrRetikkelOpacity}
         msrRetikkelStyle={msrRetikkelStyle}
+        msrRetikkelVerticalPosition={msrRetikkelVerticalPosition}
         selectedTargetIndex={selectedTargetIndex}
         onPreviousTarget={handlePreviousTarget}
         onNextTarget={handleNextTarget}
