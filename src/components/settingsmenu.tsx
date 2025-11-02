@@ -377,10 +377,15 @@ export default function SettingsMenu({
         
         {isShootTrackExpanded && (
           <div className="p-3 bg-white">
-            {/* Placeholder for future settings */}
-            <div className="text-xs text-gray-500 italic">
-              Innstillinger for Shoot & Track modus
-            </div>
+            {onDeleteAllShots && (
+              <button
+                type="button"
+                className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded shadow-lg text-sm"
+                onClick={onDeleteAllShots}
+              >
+                Slett alle skuddpar
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -514,16 +519,6 @@ export default function SettingsMenu({
       >
         💾 Lagre som standard
       </button>
-      
-      {onDeleteAllShots && (
-        <button
-          type="button"
-          className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded shadow-lg text-sm"
-          onClick={onDeleteAllShots}
-        >
-          Slett alle skuddpar
-        </button>
-      )}
     </div>
   );
 }
