@@ -48,7 +48,6 @@ export default function Home() {
     isolated_dwelling: true
   });
     const [shouldScan, setShouldScan] = useState(false);
-  const [angleRange, setAngleRange] = useState(5); // Default ±5 degrees
   const [showMarkers, setShowMarkers] = useState(true); // Default show markers
   const [isLiveMode, setIsLiveMode] = useState(false); // Default live mode off
   const [isSettingsExpanded, setIsSettingsExpanded] = useState(false);
@@ -65,10 +64,11 @@ export default function Home() {
   const [selectedTargetIndex, setSelectedTargetIndex] = useState(0);
   
   // State for MSR-retikkel
+  const [angleRange, setAngleRange] = useState(5);
   const [showMSRRetikkel, setShowMSRRetikkel] = useState(true);
   const [msrRetikkelOpacity, setMSRRetikkelOpacity] = useState(80);
   const [msrRetikkelStyle, setMSRRetikkelStyle] = useState<'msr' | 'ivar'>('ivar');
-  const [msrRetikkelVerticalPosition, setMSRRetikkelVerticalPosition] = useState(50); // 50% = midten
+  const [msrRetikkelVerticalPosition, setMSRRetikkelVerticalPosition] = useState(50);
   const [categoryConfigs, setCategoryConfigs] = useState<Record<keyof CategoryFilter, CategoryConfig>>({
     city: {
       color: '#1e40af', // Dark blue
@@ -106,6 +106,24 @@ export default function Home() {
   const filterMenuRef = useRef<HTMLDivElement>(null);
   const settingsButtonRef = useRef<HTMLButtonElement>(null);
   const filterButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Load saved defaults on mount
+  useEffect(() => {
+    const savedDefaults = localStorage.getItem('aware_settings_defaults');
+    if (savedDefaults) {
+      try {
+        const defaults = JSON.parse(savedDefaults);
+        if (defaults.angleRange !== undefined) setAngleRange(defaults.angleRange);
+        if (defaults.showMSRRetikkel !== undefined) setShowMSRRetikkel(defaults.showMSRRetikkel);
+        if (defaults.msrRetikkelOpacity !== undefined) setMSRRetikkelOpacity(defaults.msrRetikkelOpacity);
+        if (defaults.msrRetikkelStyle !== undefined) setMSRRetikkelStyle(defaults.msrRetikkelStyle);
+        if (defaults.msrRetikkelVerticalPosition !== undefined) setMSRRetikkelVerticalPosition(defaults.msrRetikkelVerticalPosition);
+        if (defaults.categoryConfigs !== undefined) setCategoryConfigs(defaults.categoryConfigs);
+      } catch (e) {
+        console.error('Error loading defaults:', e);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     if (mode === 'track') {

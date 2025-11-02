@@ -44,6 +44,8 @@ export default function SettingsMenu({
   const menuRef = useRef<HTMLDivElement>(null);
   const [showHomeSaved, setShowHomeSaved] = useState(false);
   const [showHomeError, setShowHomeError] = useState(false);
+  const [showDefaultsSaved, setShowDefaultsSaved] = useState(false);
+  const [isHomeExpanded, setIsHomeExpanded] = useState(false);
   const [isPieSliceExpanded, setIsPieSliceExpanded] = useState(false);
   const [isReticleExpanded, setIsReticleExpanded] = useState(false);
 
@@ -76,24 +78,6 @@ export default function SettingsMenu({
 
   return (
     <div ref={menuRef} className="bg-white/95 backdrop-blur-sm p-4 rounded-lg shadow-lg min-w-[280px] max-h-[80vh] overflow-y-auto">
-      {/* Set as home position knapp */}
-      <button
-        type="button"
-        className={`mb-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded shadow-lg text-sm ${!currentCenter ? 'opacity-50 cursor-not-allowed' : ''}`}
-        disabled={!currentCenter}
-        onClick={() => {
-          if (currentCenter) {
-            localStorage.setItem('aware_default_position', JSON.stringify(currentCenter));
-            setShowHomeSaved(true);
-            setTimeout(() => setShowHomeSaved(false), 1200);
-          } else {
-            setShowHomeError(true);
-            setTimeout(() => setShowHomeError(false), 1200);
-          }
-        }}
-      >
-        Set as home position
-      </button>
       {showHomeSaved && typeof window !== 'undefined' && createPortal(
         <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[3000] bg-gray-700 text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-2 animate-bounce">
           <span className="font-semibold text-lg">Home position saved!</span>
@@ -106,9 +90,50 @@ export default function SettingsMenu({
         </div>,
         document.body
       )}
+      {showDefaultsSaved && typeof window !== 'undefined' && createPortal(
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[3000] bg-green-600 text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-2 animate-bounce">
+          <span className="font-semibold text-lg">💾 Innstillinger lagret!</span>
+        </div>,
+        document.body
+      )}
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-gray-800">Innstillinger</h3>
       </div>
+      
+      {/* Home Position Settings Expander */}
+      <div className="mb-4 border border-gray-200 rounded-lg overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setIsHomeExpanded(!isHomeExpanded)}
+          className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors"
+        >
+          <span className="text-sm font-medium text-gray-700">Home position settings</span>
+          <span className="text-gray-500 text-sm">{isHomeExpanded ? '▼' : '▶'}</span>
+        </button>
+        
+        {isHomeExpanded && (
+          <div className="p-3 bg-white">
+            <button
+              type="button"
+              className={`w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded shadow-lg text-sm ${!currentCenter ? 'opacity-50 cursor-not-allowed' : ''}`}
+              disabled={!currentCenter}
+              onClick={() => {
+                if (currentCenter) {
+                  localStorage.setItem('aware_default_position', JSON.stringify(currentCenter));
+                  setShowHomeSaved(true);
+                  setTimeout(() => setShowHomeSaved(false), 1200);
+                } else {
+                  setShowHomeError(true);
+                  setTimeout(() => setShowHomeError(false), 1200);
+                }
+              }}
+            >
+              Set as home position
+            </button>
+          </div>
+        )}
+      </div>
+      
       {/* Reticle Settings Expander */}
       {showMSRRetikkel !== undefined && onShowMSRRetikkelChange && (
         <div className="mb-4 border border-gray-200 rounded-lg overflow-hidden">
@@ -322,10 +347,31 @@ export default function SettingsMenu({
           </div>
         )}
       </div>
+      {/* Save defaults button */}
+      <button
+        type="button"
+        className="mb-3 w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded shadow-lg text-sm"
+        onClick={() => {
+          const defaults = {
+            angleRange,
+            showMSRRetikkel,
+            msrRetikkelOpacity,
+            msrRetikkelStyle,
+            msrRetikkelVerticalPosition,
+            categoryConfigs
+          };
+          localStorage.setItem('aware_settings_defaults', JSON.stringify(defaults));
+          setShowDefaultsSaved(true);
+          setTimeout(() => setShowDefaultsSaved(false), 1200);
+        }}
+      >
+        💾 Lagre som standard
+      </button>
+      
       {onDeleteAllShots && (
         <button
           type="button"
-          className="mt-4 w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded shadow-lg text-sm"
+          className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded shadow-lg text-sm"
           onClick={onDeleteAllShots}
         >
           Slett alle skuddpar
