@@ -1520,9 +1520,20 @@ export default function MapComponent({
         // Fetch posts for the active team
         fetchPosts();
         
-        // Refresh hunting areas
+        // Refresh hunting areas and get count
+        let huntingAreasCount = 0;
         if (onRefreshHuntingAreas) {
           onRefreshHuntingAreas();
+          // Also fetch count directly for sync message
+          try {
+            const huntingAreasResponse = await fetch(`/api/hunting-areas?teamId=${activeTeam}`);
+            if (huntingAreasResponse.ok) {
+              const areas = await huntingAreasResponse.json();
+              huntingAreasCount = areas.length;
+            }
+          } catch (error) {
+            console.error('Error fetching hunting areas count:', error);
+          }
         }
 
         // Show sync results
@@ -1537,7 +1548,7 @@ export default function MapComponent({
         if (syncResults.pulled.finds.length > 0) pullMessage.push(`${syncResults.pulled.finds.length} funn`);
         if (syncResults.pulled.observations.length > 0) pullMessage.push(`${syncResults.pulled.observations.length} observasjoner`);
         if (syncResults.pulled.posts.length > 0) pullMessage.push(`${syncResults.pulled.posts.length} skuddpar`);
-        if (huntingAreas && huntingAreas.length > 0) pullMessage.push(`${huntingAreas.length} jaktfelt`);
+        if (huntingAreasCount > 0) pullMessage.push(`${huntingAreasCount} jaktfelt`);
 
         let message = 'Synkronisering fullført!';
         if (pushMessage.length > 0) message += `\nPushet: ${pushMessage.join(', ')}`;
