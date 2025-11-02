@@ -54,6 +54,20 @@ interface SettingsMenuProps {
   onShotColorChange?: (color: string) => void;
   onTargetColorChange?: (color: string) => void;
   onTargetLineWeightChange?: (weight: number) => void;
+  huntingAreas?: HuntingArea[];
+  activeHuntingAreaId?: string | null;
+  onDefineNewHuntingArea?: () => void;
+  onActiveHuntingAreaChange?: (id: string | null) => void;
+}
+
+export interface HuntingArea {
+  id: string;
+  name: string;
+  coordinates: [number, number][]; // Array of [lat, lng] points defining the boundary
+  color: string;
+  lineWeight: number;
+  created_at: string;
+  team_id?: string; // For future Supabase integration
 }
 
 export default function SettingsMenu({ 
@@ -92,7 +106,11 @@ export default function SettingsMenu({
   onTargetLineColorChange,
   onShotColorChange,
   onTargetColorChange,
-  onTargetLineWeightChange
+  onTargetLineWeightChange,
+  huntingAreas,
+  activeHuntingAreaId,
+  onDefineNewHuntingArea,
+  onActiveHuntingAreaChange
 }: SettingsMenuProps & { currentCenter?: { lat: number, lng: number } }) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [showHomeSaved, setShowHomeSaved] = useState(false);
@@ -103,6 +121,7 @@ export default function SettingsMenu({
   const [isReticleExpanded, setIsReticleExpanded] = useState(false);
   const [isFilterExpanded, setIsFilterExpanded] = useState(false);
   const [isShootTrackExpanded, setIsShootTrackExpanded] = useState(false);
+  const [isHuntingAreaExpanded, setIsHuntingAreaExpanded] = useState(false);
   const [savedHomePosition, setSavedHomePosition] = useState<{ lat: number; lng: number } | null>(null);
 
   const categoryLabels: Record<keyof CategoryFilter, string> = {
@@ -541,6 +560,59 @@ export default function SettingsMenu({
               >
                 Slett alle skuddpar
               </button>
+            )}
+          </div>
+        )}
+      </div>
+      
+      {/* Jaktfelt Expander */}
+      <div className="mb-4 border border-gray-200 rounded-lg overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setIsHuntingAreaExpanded(!isHuntingAreaExpanded)}
+          className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors"
+        >
+          <span className="text-sm font-medium text-gray-700">Jaktfelt</span>
+          <span className="text-gray-500 text-sm">{isHuntingAreaExpanded ? '▼' : '▶'}</span>
+        </button>
+        
+        {isHuntingAreaExpanded && (
+          <div className="p-3 bg-white">
+            {/* Definer nytt jaktfelt button */}
+            {onDefineNewHuntingArea && (
+              <button
+                type="button"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded shadow-lg text-sm mb-3"
+                onClick={onDefineNewHuntingArea}
+              >
+                Definer nytt jaktfelt
+              </button>
+            )}
+            
+            {/* Velg aktivt jaktfelt dropdown */}
+            {huntingAreas !== undefined && onActiveHuntingAreaChange && (
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Velg aktivt jaktfelt:
+                </label>
+                <select
+                  value={activeHuntingAreaId || ''}
+                  onChange={(e) => onActiveHuntingAreaChange(e.target.value || null)}
+                  className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">Ingen</option>
+                  {huntingAreas.map((area) => (
+                    <option key={area.id} value={area.id}>
+                      {area.name}
+                    </option>
+                  ))}
+                </select>
+                {huntingAreas.length === 0 && (
+                  <p className="text-xs text-gray-500 mt-1 italic">
+                    Ingen jaktfelt definert ennå
+                  </p>
+                )}
+              </div>
             )}
           </div>
         )}

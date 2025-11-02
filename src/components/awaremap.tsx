@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import React from 'react';
+import { HuntingArea } from './settingsmenu';
 
 // Dynamically import the entire map component to avoid SSR issues
 const MapComponent = dynamic(() => import('./mapcomponent'), {
@@ -78,6 +79,8 @@ interface AwareMapProps {
   targetColor?: string;
   targetLineWeight?: number;
   showHuntingBoundary?: boolean;
+  huntingAreas?: HuntingArea[];
+  activeHuntingAreaId?: string | null;
 }
 
 export default function AwareMap({
@@ -123,6 +126,8 @@ export default function AwareMap({
   targetColor,
   targetLineWeight,
   showHuntingBoundary,
+  huntingAreas,
+  activeHuntingAreaId,
 }: AwareMapProps) {
   const [isClient, setIsClient] = useState(false);
   const [hasError, setHasError] = useState(false);
@@ -201,6 +206,8 @@ export default function AwareMap({
         targetColor={targetColor}
         targetLineWeight={targetLineWeight}
         showHuntingBoundary={showHuntingBoundary}
+        huntingAreas={huntingAreas}
+        activeHuntingAreaId={activeHuntingAreaId}
       />
     </div>
   );

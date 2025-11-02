@@ -7,7 +7,7 @@ import MSRRetikkel from './msr-retikkel';
 import 'leaflet/dist/leaflet.css';
 import React from 'react';
 import PieChart from './piechart';
-import SettingsMenu from './settingsmenu';
+import SettingsMenu, { HuntingArea } from './settingsmenu';
 // Database operations now go through Next.js API routes
 import { Dialog } from '@headlessui/react';
 import { createPortal } from 'react-dom';
@@ -72,6 +72,8 @@ interface MapComponentProps {
   targetColor?: string;
   targetLineWeight?: number;
   showHuntingBoundary?: boolean;
+  huntingAreas?: HuntingArea[];
+  activeHuntingAreaId?: string | null;
 }
 
 interface CategoryFilter {
@@ -754,6 +756,8 @@ export default function MapComponent({
   targetColor = '#dc2626',
   targetLineWeight = 4,
   showHuntingBoundary = false,
+  huntingAreas = [],
+  activeHuntingAreaId = null,
   activeTeam = null,
 }: MapComponentProps) {
   const [showTargetDialog, setShowTargetDialog] = useState(false);
@@ -2370,12 +2374,30 @@ export default function MapComponent({
           currentPosition={currentPosition}
         />
         
-        {/* Jaktgrenser - placeholder for future implementation */}
-        {showHuntingBoundary && (
-          <>
-            {/* TODO: Implement hunting boundary rendering here */}
-          </>
-        )}
+        {/* Jaktgrenser - render active hunting area boundary */}
+        {showHuntingBoundary && activeHuntingAreaId && huntingAreas && huntingAreas.length > 0 && (() => {
+          const activeArea = huntingAreas.find(area => area.id === activeHuntingAreaId);
+          if (!activeArea || !activeArea.coordinates || activeArea.coordinates.length < 3) return null;
+          
+          return (
+            <Polyline
+              key={`hunting-area-${activeArea.id}`}
+              positions={activeArea.coordinates}
+              pathOptions={{
+                color: activeArea.color || '#00ff00',
+                weight: activeArea.lineWeight || 3,
+                opacity: 0.8,
+              }}
+            >
+              <Popup>
+                <div className="text-center">
+                  <div className="font-semibold text-sm">{activeArea.name}</div>
+                  <div className="text-xs text-gray-600 mt-1">Jaktgrense</div>
+                </div>
+              </Popup>
+            </Polyline>
+          );
+        })()}
 
         {/* Radius circle: kun i aware-mode */}
         {mode === 'aware' && searchPosition && (

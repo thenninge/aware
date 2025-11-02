@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useState } from 'react';
 import AwareMap from '@/components/awaremap';
-import SettingsMenu from '@/components/settingsmenu';
+import SettingsMenu, { HuntingArea } from '@/components/settingsmenu';
 import FilterMenu from '@/components/filtermenu';
 import AdminMenu from '@/components/adminmenu';
 import { useAuth } from '@/contexts/AuthContext';
@@ -62,6 +62,11 @@ export default function Home() {
   const [showHuntingBoundary, setShowHuntingBoundary] = useState(false); // Default off
   const [isTracking, setIsTracking] = useState(false);
   const [trackingPoints, setTrackingPoints] = useState<Position[]>([]);
+  
+  // Hunting area state
+  const [huntingAreas, setHuntingAreas] = useState<HuntingArea[]>([]);
+  const [activeHuntingAreaId, setActiveHuntingAreaId] = useState<string | null>(null);
+  const [isDefiningHuntingArea, setIsDefiningHuntingArea] = useState(false);
   
   // State for Shoot & Track settings
   const [targetSize, setTargetSize] = useState(15); // meters
@@ -242,6 +247,46 @@ export default function Home() {
   const handleLiveModeChange = (isLive: boolean) => {
     setIsLiveMode(isLive);
   };
+  
+  const handleDefineNewHuntingArea = () => {
+    setIsDefiningHuntingArea(true);
+    // TODO: Implement hunting area definition mode
+    alert('Funksjon for å definere nytt jaktfelt kommer snart!');
+  };
+  
+  // Load hunting areas from localStorage on mount
+  useEffect(() => {
+    const savedAreas = localStorage.getItem('hunting_areas');
+    if (savedAreas) {
+      try {
+        const areas = JSON.parse(savedAreas);
+        setHuntingAreas(areas);
+      } catch (e) {
+        console.error('Error loading hunting areas:', e);
+      }
+    }
+    
+    const savedActiveId = localStorage.getItem('active_hunting_area_id');
+    if (savedActiveId) {
+      setActiveHuntingAreaId(savedActiveId);
+    }
+  }, []);
+  
+  // Save hunting areas to localStorage when they change
+  useEffect(() => {
+    if (huntingAreas.length > 0) {
+      localStorage.setItem('hunting_areas', JSON.stringify(huntingAreas));
+    }
+  }, [huntingAreas]);
+  
+  // Save active hunting area ID to localStorage when it changes
+  useEffect(() => {
+    if (activeHuntingAreaId) {
+      localStorage.setItem('active_hunting_area_id', activeHuntingAreaId);
+    } else {
+      localStorage.removeItem('active_hunting_area_id');
+    }
+  }, [activeHuntingAreaId]);
 
   const handleDeleteAllShots = async () => {
     if (!window.confirm('Er du sikker på at du vil slette alle skuddpar?')) return;
@@ -406,6 +451,10 @@ export default function Home() {
             onShotColorChange={setShotColor}
             onTargetColorChange={setTargetColor}
             onTargetLineWeightChange={setTargetLineWeight}
+            huntingAreas={huntingAreas}
+            activeHuntingAreaId={activeHuntingAreaId}
+            onDefineNewHuntingArea={handleDefineNewHuntingArea}
+            onActiveHuntingAreaChange={setActiveHuntingAreaId}
           />
         </div>
       )}
@@ -480,6 +529,8 @@ export default function Home() {
         targetColor={targetColor}
         targetLineWeight={targetLineWeight}
         showHuntingBoundary={showHuntingBoundary}
+        huntingAreas={huntingAreas}
+        activeHuntingAreaId={activeHuntingAreaId}
         activeTeam={authState.activeTeam?.id || null}
       />
 
