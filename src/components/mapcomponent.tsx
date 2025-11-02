@@ -62,6 +62,8 @@ interface MapComponentProps {
   onSelectedTargetIndexChange?: (index: number) => void;
   showAllTracksAndFinds?: boolean;
   showObservations?: boolean;
+  showShots?: boolean;
+  showTracks?: boolean;
 }
 
 interface CategoryFilter {
@@ -734,6 +736,8 @@ export default function MapComponent({
   onSelectedTargetIndexChange,
   showAllTracksAndFinds = false,
   showObservations = true,
+  showShots = true,
+  showTracks = true,
   activeTeam = null,
 }: MapComponentProps) {
   const [showTargetDialog, setShowTargetDialog] = useState(false);
@@ -2478,7 +2482,7 @@ export default function MapComponent({
         ))}
 
         {/* Alle lagrede spor i søk-modus */}
-        {mode === 'søk' && savedTracks && savedTracks.length > 0 && (
+        {((mode === 'søk' && showAllTracksAndFinds) || (mode === 'aware' && showTracks)) && savedTracks && savedTracks.length > 0 && (
           <>
             {savedTracks.map((track) => (
               <React.Fragment key={`saved-track-${track.id}`}>
@@ -2550,7 +2554,7 @@ export default function MapComponent({
         )}
 
         {/* Alle lagrede funn i søk-modus */}
-        {mode === 'søk' && savedFinds && savedFinds.length > 0 && (
+        {((mode === 'søk' && showAllTracksAndFinds) || (mode === 'aware' && showObservations)) && savedFinds && savedFinds.length > 0 && (
           <>
             {savedFinds.map((find) => (
               <Marker
@@ -2705,11 +2709,11 @@ export default function MapComponent({
           })}
 
         {/* Saved points: vis blå X for hver current-posisjon i track-mode */}
-        {(mode === 'track' || mode === 'søk') && hasSavedPairs && (
+        {((mode === 'track' || mode === 'søk') || (mode === 'aware' && showShots)) && hasSavedPairs && (
           <>
 
             
-            {showOnlyLastShot
+            {showOnlyLastShot && mode === 'track'
               ? (() => {
                   // Finn nyeste skyteplass
                   const skyteplasser = [...safeSavedPairs]

@@ -428,6 +428,8 @@ export default function Home() {
         onSelectedTargetIndexChange={setSelectedTargetIndex}
         showAllTracksAndFinds={showAllTracksAndFinds}
         showObservations={showObservations}
+        showShots={showShots}
+        showTracks={showTracks}
         activeTeam={authState.activeTeam?.id || null}
       />
 
