@@ -2098,15 +2098,19 @@ export default function MapComponent({
 
   // Last lagrede spor når komponenten mountes og når modus endres
   useEffect(() => {
-    if (mode === 'søk') {
+    if (mode === 'søk' || mode === 'aware') {
       const tracks = loadSavedTracks();
       setSavedTracks(tracks);
       
       const finds = loadSavedFinds();
       setSavedFinds(finds);
+      
+      const observations = loadSavedObservations();
+      setSavedObservations(observations);
     } else {
-      setSavedTracks([]); // Tøm spor når vi ikke er i søk-modus
-      setSavedFinds([]); // Tøm funn når vi ikke er i søk-modus
+      setSavedTracks([]); // Tøm spor når vi er i track-modus
+      setSavedFinds([]); // Tøm funn når vi er i track-modus
+      setSavedObservations([]); // Tøm observasjoner når vi er i track-modus
     }
   }, [mode, adjustedSelectedTargetIndex, lastPair?.id, showAllTracksAndFinds]); // Reager på endringer i modus, valgt treffpunkt, skuddpar og visningsmodus
 
@@ -2593,7 +2597,7 @@ export default function MapComponent({
         )}
         
         {/* Alle lagrede observasjoner i søk-modus */}
-        {mode === 'søk' && showObservations && savedObservations && savedObservations.length > 0 && (
+        {((mode === 'søk' && showObservations) || (mode === 'aware' && showObservations)) && savedObservations && savedObservations.length > 0 && (
           <>
             {savedObservations.map((observation) => (
             <Circle
