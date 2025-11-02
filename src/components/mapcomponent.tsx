@@ -828,6 +828,7 @@ export default function MapComponent({
   const [showSaveTrackDialog, setShowSaveTrackDialog] = useState(false);
   const [trackName, setTrackName] = useState('');
   const [trackColor, setTrackColor] = useState('#EAB308');
+  const [trackIncludeDTG, setTrackIncludeDTG] = useState(true);
   
   // Hunting area definition state
   const [huntingAreaPoints, setHuntingAreaPoints] = useState<[number, number][]>([]);
@@ -843,6 +844,12 @@ export default function MapComponent({
   const [showObservationDialog, setShowObservationDialog] = useState(false);
   const [observationName, setObservationName] = useState('');
   const [observationColor, setObservationColor] = useState('#FF6B35');
+  const [observationIncludeDTG, setObservationIncludeDTG] = useState(true);
+  const [showObservationRangeModal, setShowObservationRangeModal] = useState(false);
+  const [showObservationDirectionUI, setShowObservationDirectionUI] = useState(false);
+  const [observationRange, setObservationRange] = useState(250);
+  const [observationDirection, setObservationDirection] = useState(0);
+  const [previewObservation, setPreviewObservation] = useState<Position | null>(null);
 
   // Avstandsmåling state
   const [isMeasuring, setIsMeasuring] = useState(false);
@@ -1011,8 +1018,9 @@ export default function MapComponent({
     if (trackingPoints && trackingPoints.length > 0) {
       const shouldSave = window.confirm('Lagre spor til skudd?');
       if (shouldSave) {
-        // Sett default navn med dato og tid
-        setTrackName(generateDefaultName('track'));
+        // La navn-feltet være tomt
+        setTrackName('');
+        setTrackIncludeDTG(true); // Default ON
         // Vis dialog for å navngi og velge farge
         setShowSaveTrackDialog(true);
       } else {
@@ -1538,10 +1546,24 @@ export default function MapComponent({
 
   // Håndter lagring av spor fra dialog
   const handleSaveTrackFromDialog = () => {
-    // Hvis brukeren ikke har skrevet noe, bruk default navnet
-    const finalTrackName = trackName.trim() || trackName;
+    let finalTrackName = trackName.trim();
+    
+    // Legg til DTG hvis checkbox er på
+    if (trackIncludeDTG) {
+      const now = new Date();
+      const date = now.toLocaleDateString('nb-NO', { day: '2-digit', month: '2-digit' });
+      const time = now.toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit', hour12: false });
+      const dtg = `${date} ${time}`;
+      
+      if (finalTrackName) {
+        finalTrackName = `${finalTrackName} - ${dtg}`;
+      } else {
+        finalTrackName = dtg;
+      }
+    }
+    
     if (!finalTrackName) {
-      alert('Vennligst skriv inn et navn for sporet');
+      alert('Vennligst skriv inn et navn eller aktiver "Legg til DTG"');
       return;
     }
     
@@ -1570,6 +1592,7 @@ export default function MapComponent({
     setShowSaveTrackDialog(false);
     setTrackName('');
     setTrackColor('#EAB308');
+    setTrackIncludeDTG(true);
     onTrackingPointsChange?.([]);
     setCurrentTrackingId(null);
   };
@@ -1579,6 +1602,7 @@ export default function MapComponent({
     setShowSaveTrackDialog(false);
     setTrackName('');
     setTrackColor('#EAB308');
+    setTrackIncludeDTG(true);
     onTrackingPointsChange?.([]);
     setCurrentTrackingId(null);
   };
@@ -1727,8 +1751,9 @@ export default function MapComponent({
     console.log('toggleObservationMode called, using current position');
     if (currentPosition) {
       console.log('Opening observation dialog for current position...');
-      // Sett default navn med dato og tid
-      setObservationName(generateDefaultName('observation'));
+      // La navn-feltet være tomt
+      setObservationName('');
+      setObservationIncludeDTG(true); // Default ON
       setShowObservationDialog(true);
     } else {
       alert('Kunne ikke finne din nåværende posisjon');
@@ -1774,10 +1799,24 @@ export default function MapComponent({
   // Håndter lagring av observasjon fra dialog
   const handleSaveObservationFromDialog = () => {
     if (currentPosition) {
-      // Hvis brukeren ikke har skrevet noe, bruk default navnet
-      const finalObservationName = observationName.trim() || observationName;
+      let finalObservationName = observationName.trim();
+      
+      // Legg til DTG hvis checkbox er på
+      if (observationIncludeDTG) {
+        const now = new Date();
+        const date = now.toLocaleDateString('nb-NO', { day: '2-digit', month: '2-digit' });
+        const time = now.toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit', hour12: false });
+        const dtg = `${date} ${time}`;
+        
+        if (finalObservationName) {
+          finalObservationName = `${finalObservationName} - ${dtg}`;
+        } else {
+          finalObservationName = dtg;
+        }
+      }
+      
       if (!finalObservationName) {
-        alert('Vennligst skriv inn et navn for observasjonen');
+        alert('Vennligst skriv inn et navn eller aktiver "Legg til DTG"');
         return;
       }
       
@@ -1785,6 +1824,7 @@ export default function MapComponent({
       setShowObservationDialog(false);
       setObservationName('');
       setObservationColor('#FF6B35');
+      setObservationIncludeDTG(true);
     }
   };
   
@@ -1793,6 +1833,77 @@ export default function MapComponent({
     setShowObservationDialog(false);
     setObservationName('');
     setObservationColor('#FF6B35');
+    setObservationIncludeDTG(true);
+  };
+
+  // Håndter observasjon med avstand + retning
+  const handleObservationWithDistance = () => {
+    // Lukk observasjonsdialogen og start avstand/retning-flyten
+    setShowObservationDialog(false);
+    setShowObservationRangeModal(true);
+  };
+
+  // Bekreft observasjon range og gå til retning
+  const handleObservationRangeOk = () => {
+    setShowObservationRangeModal(false);
+    setShowObservationDirectionUI(true);
+  };
+
+  // Lagre observasjon med beregnet posisjon
+  const handleSaveObservationWithDistance = () => {
+    if (!currentPosition) return;
+    
+    // Beregn observasjon posisjon basert på nåværende posisjon, avstand og retning
+    const observationPosition = destinationPoint(
+      currentPosition.lat,
+      currentPosition.lng,
+      observationRange,
+      ((observationDirection + 360) % 360)
+    );
+    
+    // Forbered navn med DTG hvis aktivert
+    let finalObservationName = observationName.trim();
+    if (observationIncludeDTG) {
+      const now = new Date();
+      const date = now.toLocaleDateString('nb-NO', { day: '2-digit', month: '2-digit' });
+      const time = now.toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit', hour12: false });
+      const dtg = `${date} ${time}`;
+      
+      if (finalObservationName) {
+        finalObservationName = `${finalObservationName} - ${dtg}`;
+      } else {
+        finalObservationName = dtg;
+      }
+    }
+    
+    if (!finalObservationName) {
+      alert('Vennligst skriv inn et navn eller aktiver "Legg til DTG"');
+      return;
+    }
+    
+    // Lagre observasjon på beregnet posisjon
+    saveObservationToLocalStorage(observationPosition, finalObservationName, observationColor);
+    
+    // Reset states
+    setShowObservationDirectionUI(false);
+    setShowObservationRangeModal(false);
+    setObservationName('');
+    setObservationColor('#FF6B35');
+    setObservationIncludeDTG(true);
+    setObservationRange(250);
+    setObservationDirection(0);
+    setPreviewObservation(null);
+  };
+
+  // Avbryt observasjon avstand/retning
+  const handleCancelObservationDistance = () => {
+    setShowObservationRangeModal(false);
+    setShowObservationDirectionUI(false);
+    setObservationRange(250);
+    setObservationDirection(0);
+    setPreviewObservation(null);
+    // Gå tilbake til observasjonsdialogen
+    setShowObservationDialog(true);
   };
 
   const startCompass = async () => {
@@ -2846,6 +2957,85 @@ export default function MapComponent({
             />
           </>
         )}
+
+        {/* Live preview av observasjon radius-sirkel når radius-modal er aktiv */}
+        {showObservationRangeModal && currentPosition && (
+          <Circle
+            key={`obs-radius-preview-${observationRange}-${currentPosition.lat}-${currentPosition.lng}`}
+            center={[currentPosition.lat, currentPosition.lng]}
+            radius={observationRange}
+            pathOptions={{
+              color: '#16a34a',
+              fillColor: '#16a34a',
+              fillOpacity: 0.08,
+              weight: 2,
+              dashArray: '5 5',
+            }}
+          />
+        )}
+        
+        {/* Preview av observasjon når retning velges */}
+        {showObservationDirectionUI && currentPosition && (
+          <>
+            <Circle
+              key={`obs-radius-${observationRange}-${currentPosition.lat}-${currentPosition.lng}`}
+              center={[currentPosition.lat, currentPosition.lng]}
+              radius={observationRange}
+              pathOptions={{
+                color: '#16a34a',
+                fillColor: '#16a34a',
+                fillOpacity: 0.1,
+                weight: 2,
+              }}
+            />
+            {/* Linje fra nåværende posisjon ut til sirkelen i valgt retning */}
+            <Polyline
+              positions={[
+                [currentPosition.lat, currentPosition.lng],
+                [
+                  destinationPoint(
+                    currentPosition.lat,
+                    currentPosition.lng,
+                    observationRange,
+                    observationDirection
+                  ).lat,
+                  destinationPoint(
+                    currentPosition.lat,
+                    currentPosition.lng,
+                    observationRange,
+                    observationDirection
+                  ).lng,
+                ],
+              ]}
+              pathOptions={{ color: '#16a34a', weight: 3 }}
+            />
+            {/* Marker på observasjonsposisjon */}
+            <Circle
+              center={[
+                destinationPoint(
+                  currentPosition.lat,
+                  currentPosition.lng,
+                  observationRange,
+                  observationDirection
+                ).lat,
+                destinationPoint(
+                  currentPosition.lat,
+                  currentPosition.lng,
+                  observationRange,
+                  observationDirection
+                ).lng,
+              ]}
+              radius={observationSize}
+              pathOptions={{
+                color: observationColor,
+                fillColor: observationColor,
+                fillOpacity: 0.7,
+                weight: 2,
+              }}
+            />
+          </>
+        )}
+
         {/* Place markers: kun i aware-mode */}
         {(mode === 'aware' || mode === 'søk') && showMarkers && hasSafePlaces && safePlaces
           .filter(place => {
@@ -3515,6 +3705,102 @@ export default function MapComponent({
           </div>
         </div>
       )}
+
+      {/* Modal for observasjon-radius (første steg) */}
+      {showObservationRangeModal && (
+        <div className="fixed bottom-0 left-0 w-full z-[2002] flex justify-center items-end pointer-events-none">
+          <div className="bg-white rounded-t-lg shadow-lg p-4 w-full max-w-xs mx-auto mb-2 flex flex-col gap-2 pointer-events-auto">
+            <div className="text-base font-semibold text-black mb-1">Avstand til observasjon:</div>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min={50}
+                max={1000}
+                step={5}
+                value={observationRange}
+                onChange={e => setObservationRange(Number(e.target.value))}
+                className="w-16 border rounded px-2 py-1 text-[16px] text-black"
+              />
+              <span className="text-xs text-black">m</span>
+              <input
+                type="range"
+                min={50}
+                max={1000}
+                step={5}
+                value={observationRange}
+                onChange={e => setObservationRange(Number(e.target.value))}
+                className="flex-1 touch-manipulation slider-thumb-25"
+                style={{ 
+                  padding: '12px 0',
+                  margin: '-12px 0'
+                }}
+              />
+            </div>
+            <div className="flex justify-between items-center mt-2 gap-2">
+              <button
+                onClick={handleCancelObservationDistance}
+                className="px-6 py-2 rounded bg-gray-200 hover:bg-gray-300 text-sm text-black"
+              >Avbryt</button>
+              <button
+                onClick={handleObservationRangeOk}
+                className="px-6 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 text-sm"
+              >Neste</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal for observasjon-retning (andre steg) */}
+      {showObservationDirectionUI && (
+        <div className="fixed bottom-0 left-0 w-full z-[2002] flex justify-center items-end pointer-events-none">
+          <div className="bg-white rounded-t-lg shadow-lg p-4 w-full max-w-xs mx-auto mb-2 flex flex-col items-center gap-2 pointer-events-auto">
+            <label className="w-full text-black">
+              <span className="block text-base font-semibold mb-2">Retning til observasjon:</span>
+              <div className="flex items-center gap-2 w-full">
+                <input
+                  type="number"
+                  min={0}
+                  max={359}
+                  value={((observationDirection + 360) % 360)}
+                  onChange={e => {
+                    const raw = Number(e.target.value);
+                    const normalized = isNaN(raw) ? 0 : Math.max(0, Math.min(359, raw));
+                    const internal = normalized > 180 ? normalized - 360 : normalized;
+                    setObservationDirection(internal);
+                  }}
+                  className="w-16 border rounded px-2 py-1 text-[16px] text-black"
+                />
+                <span className="text-xs text-black">°</span>
+                <div className="flex-1 px-2 py-1">
+                  <input
+                    type="range"
+                    min={-180}
+                    max={180}
+                    value={observationDirection}
+                    onChange={e => setObservationDirection(Number(e.target.value))}
+                    className="w-full h-[35px] touch-manipulation slider-thumb-25"
+                    style={{ 
+                      padding: '12px 0',
+                      margin: '-12px 0'
+                    }}
+                  />
+                </div>
+              </div>
+            </label>
+            <div className="flex justify-between items-center mt-2 gap-2 w-full">
+              <button
+                onClick={handleCancelObservationDistance}
+                className="px-6 py-2 rounded bg-gray-200 hover:bg-gray-300 text-sm text-black"
+              >Avbryt</button>
+              <button
+                onClick={handleSaveObservationWithDistance}
+                className="px-6 py-2 rounded bg-green-600 hover:bg-green-700 text-white font-semibold text-sm"
+              >Lagre</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showNewPostDialog && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[2000]">
           <div className="bg-white rounded-lg shadow-lg p-6 w-80 flex flex-col gap-4">
@@ -3592,10 +3878,21 @@ export default function MapComponent({
                 type="text"
                 value={trackName}
                 onChange={e => setTrackName(e.target.value)}
-                placeholder={trackName || "f.eks. Tomas, tiur"}
+                placeholder="Valgfritt - f.eks. Tomas, tiur"
                 className="w-full border rounded px-2 py-1 mt-1 mb-2 text-lg text-[16px] text-gray-900"
                 autoFocus
               />
+            </label>
+            
+            {/* DTG checkbox */}
+            <label className="flex items-center gap-2 cursor-pointer text-sm">
+              <input
+                type="checkbox"
+                checked={trackIncludeDTG}
+                onChange={e => setTrackIncludeDTG(e.target.checked)}
+                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+              />
+              <span className="font-medium text-gray-700">Legg til DTG (dato/tid)</span>
             </label>
 
             <label className="text-base font-semibold text-gray-700">
@@ -3652,10 +3949,21 @@ export default function MapComponent({
                 type="text"
                 value={observationName}
                 onChange={e => setObservationName(e.target.value)}
-                placeholder={observationName || "f.eks. Elg sett"}
+                placeholder="Valgfritt - f.eks. Elg sett"
                 className="w-full border rounded px-2 py-1 mt-1 mb-2 text-lg text-[16px] text-gray-900"
                 autoFocus
               />
+            </label>
+            
+            {/* DTG checkbox */}
+            <label className="flex items-center gap-2 cursor-pointer text-sm">
+              <input
+                type="checkbox"
+                checked={observationIncludeDTG}
+                onChange={e => setObservationIncludeDTG(e.target.checked)}
+                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+              />
+              <span className="font-medium text-gray-700">Legg til DTG (dato/tid)</span>
             </label>
 
             <label className="text-base font-semibold text-gray-700">
@@ -3682,19 +3990,27 @@ export default function MapComponent({
               </div>
             </label>
 
-            <div className="flex gap-2 justify-end mt-2">
+            <div className="flex gap-2 justify-between mt-2">
               <button
                 onClick={handleCancelObservation}
                 className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold"
               >
                 Avbryt
               </button>
-              <button
-                onClick={handleSaveObservationFromDialog}
-                className="px-3 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white font-bold"
-              >
-                Lagre observasjon
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleSaveObservationFromDialog}
+                  className="px-3 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white font-bold"
+                >
+                  Lagre her
+                </button>
+                <button
+                  onClick={handleObservationWithDistance}
+                  className="px-3 py-1 rounded bg-green-600 hover:bg-green-700 text-white font-bold"
+                >
+                  Avstand + retning
+                </button>
+              </div>
             </div>
           </div>
         </div>
