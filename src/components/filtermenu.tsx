@@ -53,24 +53,27 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-lg font-semibold text-gray-800">Quick filters</h3>
       </div>
-      {/* Radius Control */}
-      <div className="mb-3">
-        <label className="text-xs font-medium text-gray-700 block mb-1">
-          Radius: {radius}m
-        </label>
-        <input
-          type="range"
-          min={1000}
-          max={4000}
-          step={500}
-          value={radius}
-          onChange={e => onRadiusChange(Number(e.target.value))}
-          className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer hover:bg-gray-300 transition-colors"
-          style={{
-            background: 'linear-gradient(to right, #3b82f6 0%, #3b82f6 ' + ((radius - 1000) / 3000 * 100) + '%, #e5e7eb ' + ((radius - 1000) / 3000 * 100) + '%, #e5e7eb 100%)'
-          }}
-        />
-      </div>
+      
+      {/* Radius Control - kun i Aware-mode */}
+      {mode === 'aware' && (
+        <div className="mb-3">
+          <label className="text-xs font-medium text-gray-700 block mb-1">
+            Radius: {radius}m
+          </label>
+          <input
+            type="range"
+            min={1000}
+            max={4000}
+            step={500}
+            value={radius}
+            onChange={e => onRadiusChange(Number(e.target.value))}
+            className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer hover:bg-gray-300 transition-colors"
+            style={{
+              background: 'linear-gradient(to right, #3b82f6 0%, #3b82f6 ' + ((radius - 1000) / 3000 * 100) + '%, #e5e7eb ' + ((radius - 1000) / 3000 * 100) + '%, #e5e7eb 100%)'
+            }}
+          />
+        </div>
+      )}
       
       {/* Aware-mode specific filters */}
       {mode === 'aware' && (
@@ -92,7 +95,7 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
             </div>
           )}
           
-          {/* Vis track */}
+          {/* Vis søkespor */}
           {showTracks !== undefined && onShowTracksChange && (
             <div className="mb-3">
               <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
@@ -103,7 +106,7 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
                   className="w-3 h-3 text-blue-600 rounded focus:ring-blue-500"
                 />
                 <span className="font-medium text-gray-700">
-                  Vis track
+                  Vis søkespor
                 </span>
               </label>
             </div>
@@ -128,21 +131,76 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
         </>
       )}
       
-      {/* Vis kun siste skuddpar - kun i track-modus */}
-      {onShowOnlyLastShotChange && mode === 'track' && (
-        <div className="mb-3">
-          <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
-            <input
-              type="checkbox"
-              checked={!!showOnlyLastShot}
-              onChange={e => onShowOnlyLastShotChange(e.target.checked)}
-              className="w-3 h-3 text-blue-600 rounded focus:ring-blue-500"
-            />
-            <span className="font-medium text-gray-700">
-              Vis kun siste skuddpar
-            </span>
-          </label>
-        </div>
+      {/* Shoot-mode (track) specific filters */}
+      {mode === 'track' && (
+        <>
+          {/* Radio buttons for skuddpar visning */}
+          {onShowOnlyLastShotChange && (
+            <div className="mb-3">
+              <div className="text-xs font-medium text-gray-700 mb-2">Skuddpar:</div>
+              <div className="space-y-1">
+                <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+                  <input
+                    type="radio"
+                    name="shotDisplay"
+                    checked={!showOnlyLastShot}
+                    onChange={() => onShowOnlyLastShotChange(false)}
+                    className="w-3 h-3 text-blue-600"
+                  />
+                  <span className="font-medium text-gray-700">
+                    Vis alle skuddpar
+                  </span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+                  <input
+                    type="radio"
+                    name="shotDisplay"
+                    checked={!!showOnlyLastShot}
+                    onChange={() => onShowOnlyLastShotChange(true)}
+                    className="w-3 h-3 text-blue-600"
+                  />
+                  <span className="font-medium text-gray-700">
+                    Vis kun siste skuddpar
+                  </span>
+                </label>
+              </div>
+            </div>
+          )}
+          
+          {/* Vis søkespor */}
+          {showTracks !== undefined && onShowTracksChange && (
+            <div className="mb-3">
+              <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={showTracks}
+                  onChange={e => onShowTracksChange(e.target.checked)}
+                  className="w-3 h-3 text-blue-600 rounded focus:ring-blue-500"
+                />
+                <span className="font-medium text-gray-700">
+                  Vis søkespor
+                </span>
+              </label>
+            </div>
+          )}
+          
+          {/* Vis observasjoner */}
+          {showObservations !== undefined && onShowObservationsChange && (
+            <div className="mb-3">
+              <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={showObservations}
+                  onChange={e => onShowObservationsChange(e.target.checked)}
+                  className="w-3 h-3 text-blue-600 rounded focus:ring-blue-500"
+                />
+                <span className="font-medium text-gray-700">
+                  Vis observasjoner
+                </span>
+              </label>
+            </div>
+          )}
+        </>
       )}
       
       {/* Info i søk-modus */}

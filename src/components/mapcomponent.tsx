@@ -2098,20 +2098,15 @@ export default function MapComponent({
 
   // Last lagrede spor når komponenten mountes og når modus endres
   useEffect(() => {
-    if (mode === 'søk' || mode === 'aware') {
-      const tracks = loadSavedTracks();
-      setSavedTracks(tracks);
-      
-      const finds = loadSavedFinds();
-      setSavedFinds(finds);
-      
-      const observations = loadSavedObservations();
-      setSavedObservations(observations);
-    } else {
-      setSavedTracks([]); // Tøm spor når vi er i track-modus
-      setSavedFinds([]); // Tøm funn når vi er i track-modus
-      setSavedObservations([]); // Tøm observasjoner når vi er i track-modus
-    }
+    // Last data i alle modus (aware, track og søk)
+    const tracks = loadSavedTracks();
+    setSavedTracks(tracks);
+    
+    const finds = loadSavedFinds();
+    setSavedFinds(finds);
+    
+    const observations = loadSavedObservations();
+    setSavedObservations(observations);
   }, [mode, adjustedSelectedTargetIndex, lastPair?.id, showAllTracksAndFinds]); // Reager på endringer i modus, valgt treffpunkt, skuddpar og visningsmodus
 
   // Funksjon for å slette et spesifikt skuddpar
@@ -2486,7 +2481,7 @@ export default function MapComponent({
         ))}
 
         {/* Alle lagrede spor i søk-modus */}
-        {((mode === 'søk' && showAllTracksAndFinds) || (mode === 'aware' && showTracks)) && savedTracks && savedTracks.length > 0 && (
+        {((mode === 'søk' && showAllTracksAndFinds) || (mode === 'aware' && showTracks) || (mode === 'track' && showTracks)) && savedTracks && savedTracks.length > 0 && (
           <>
             {savedTracks.map((track) => (
               <React.Fragment key={`saved-track-${track.id}`}>
@@ -2558,7 +2553,7 @@ export default function MapComponent({
         )}
 
         {/* Alle lagrede funn i søk-modus */}
-        {((mode === 'søk' && showAllTracksAndFinds) || (mode === 'aware' && showObservations)) && savedFinds && savedFinds.length > 0 && (
+        {((mode === 'søk' && showAllTracksAndFinds) || (mode === 'aware' && showObservations) || (mode === 'track' && showObservations)) && savedFinds && savedFinds.length > 0 && (
           <>
             {savedFinds.map((find) => (
               <Marker
@@ -2597,7 +2592,7 @@ export default function MapComponent({
         )}
         
         {/* Alle lagrede observasjoner i søk-modus */}
-        {((mode === 'søk' && showObservations) || (mode === 'aware' && showObservations)) && savedObservations && savedObservations.length > 0 && (
+        {((mode === 'søk' && showObservations) || (mode === 'aware' && showObservations) || (mode === 'track' && showObservations)) && savedObservations && savedObservations.length > 0 && (
           <>
             {savedObservations.map((observation) => (
             <Circle
