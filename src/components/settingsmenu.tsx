@@ -9,6 +9,15 @@ interface CategoryConfig {
   icon: string;
 }
 
+interface CategoryFilter {
+  city: boolean;
+  town: boolean;
+  village: boolean;
+  hamlet: boolean;
+  farm: boolean;
+  isolated_dwelling: boolean;
+}
+
 interface SettingsMenuProps {
   categoryConfigs: Record<string, CategoryConfig>;
   angleRange: number;
@@ -23,6 +32,8 @@ interface SettingsMenuProps {
   onMSRRetikkelOpacityChange?: (opacity: number) => void;
   onMSRRetikkelStyleChange?: (style: 'msr' | 'ivar') => void;
   onMSRRetikkelVerticalPositionChange?: (position: number) => void;
+  categoryFilters?: CategoryFilter;
+  onCategoryChange?: (category: keyof CategoryFilter) => void;
 }
 
 export default function SettingsMenu({ 
@@ -39,7 +50,9 @@ export default function SettingsMenu({
   onShowMSRRetikkelChange,
   onMSRRetikkelOpacityChange,
   onMSRRetikkelStyleChange,
-  onMSRRetikkelVerticalPositionChange
+  onMSRRetikkelVerticalPositionChange,
+  categoryFilters,
+  onCategoryChange
 }: SettingsMenuProps & { currentCenter?: { lat: number, lng: number } }) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [showHomeSaved, setShowHomeSaved] = useState(false);
@@ -48,7 +61,17 @@ export default function SettingsMenu({
   const [isHomeExpanded, setIsHomeExpanded] = useState(false);
   const [isPieSliceExpanded, setIsPieSliceExpanded] = useState(false);
   const [isReticleExpanded, setIsReticleExpanded] = useState(false);
+  const [isFilterExpanded, setIsFilterExpanded] = useState(false);
   const [savedHomePosition, setSavedHomePosition] = useState<{ lat: number; lng: number } | null>(null);
+
+  const categoryLabels: Record<keyof CategoryFilter, string> = {
+    city: 'By',
+    town: 'Tettsted',
+    village: 'Landsby',
+    hamlet: 'Grend',
+    farm: 'Gård',
+    isolated_dwelling: 'Enkeltbolig',
+  };
 
   // Load saved home position from localStorage
   useEffect(() => {
@@ -271,6 +294,43 @@ export default function SettingsMenu({
                   </div>
                 </div>
               )}
+            </div>
+          )}
+        </div>
+      )}
+      
+      {/* Filter Settings Expander */}
+      {categoryFilters && onCategoryChange && (
+        <div className="mb-4 border border-gray-200 rounded-lg overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setIsFilterExpanded(!isFilterExpanded)}
+            className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors"
+          >
+            <span className="text-sm font-medium text-gray-700">Filter settings</span>
+            <span className="text-gray-500 text-sm">{isFilterExpanded ? '▼' : '▶'}</span>
+          </button>
+          
+          {isFilterExpanded && (
+            <div className="p-3 bg-white">
+              <div className="space-y-1">
+                {Object.entries(categoryFilters).map(([category, checked]) => (
+                  <label key={category} className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => onCategoryChange(category as keyof CategoryFilter)}
+                      className="w-3 h-3 text-blue-600 rounded focus:ring-blue-500"
+                    />
+                    <span
+                      className="font-medium"
+                      style={{ color: categoryConfigs[category as keyof CategoryFilter]?.color || '#333' }}
+                    >
+                      {categoryLabels[category as keyof CategoryFilter]}
+                    </span>
+                  </label>
+                ))}
+              </div>
             </div>
           )}
         </div>

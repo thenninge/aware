@@ -360,6 +360,8 @@ export default function Home() {
             onMSRRetikkelOpacityChange={setMSRRetikkelOpacity}
             onMSRRetikkelStyleChange={setMSRRetikkelStyle}
             onMSRRetikkelVerticalPositionChange={setMSRRetikkelVerticalPosition}
+            categoryFilters={categoryFilters}
+            onCategoryChange={handleCategoryChange}
           />
         </div>
       )}
