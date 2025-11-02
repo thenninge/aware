@@ -143,28 +143,6 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
           </label>
         </div>
       )}
-      {/* Kategori-filter */}
-      <div className="mb-3">
-        <div className="text-xs font-medium text-gray-700 mb-2">Filtrer:</div>
-        <div className="space-y-1">
-          {Object.entries(categoryFilters).map(([category, checked]) => (
-            <label key={category} className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
-              <input
-                type="checkbox"
-                checked={checked}
-                onChange={() => onCategoryChange(category as keyof CategoryFilter)}
-                className="w-3 h-3 text-blue-600 rounded focus:ring-blue-500"
-              />
-              <span
-                className="font-medium"
-                style={{ color: categoryConfigs[category as keyof CategoryFilter]?.color || '#333' }}
-              >
-                {categoryLabels[category as keyof CategoryFilter]}
-              </span>
-            </label>
-          ))}
-        </div>
-      </div>
       {/* Nord opp / Retning opp switch */}
       <div className="mt-4 flex items-center justify-between bg-gray-50 px-2 py-2 rounded border">
         <span className="text-xs font-medium text-gray-700">Nord opp</span>
