@@ -57,6 +57,8 @@ export default function Home() {
   const [showOnlyLastShot, setShowOnlyLastShot] = useState(true);
   const [showAllTracksAndFinds, setShowAllTracksAndFinds] = useState(false);
   const [showObservations, setShowObservations] = useState(true);
+  const [showShots, setShowShots] = useState(true); // For Aware-mode
+  const [showTracks, setShowTracks] = useState(true); // For Aware-mode
   const [isTracking, setIsTracking] = useState(false);
   const [trackingPoints, setTrackingPoints] = useState<Position[]>([]);
   
@@ -386,6 +388,10 @@ export default function Home() {
           onShowAllTracksAndFindsChange={setShowAllTracksAndFinds}
           showObservations={showObservations}
           onShowObservationsChange={setShowObservations}
+          showShots={showShots}
+          onShowShotsChange={setShowShots}
+          showTracks={showTracks}
+          onShowTracksChange={setShowTracks}
         />
         </div>
       )}
