@@ -258,20 +258,6 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
           </label>
         </div>
       )}
-      {/* Nord opp / Retning opp switch */}
-      <div className="mt-4 flex items-center justify-between bg-gray-50 px-2 py-2 rounded border">
-        <span className="text-xs font-medium text-gray-700">Nord opp</span>
-        <label className="relative inline-flex items-center cursor-pointer">
-          <input
-            type="checkbox"
-            checked={orientationMode === 'heading'}
-            onChange={e => onOrientationModeChange(e.target.checked ? 'heading' : 'north')}
-            className="sr-only peer"
-          />
-          <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:bg-blue-600 transition-colors"></div>
-          <span className="ml-2 text-xs text-gray-700">Retning opp</span>
-        </label>
-      </div>
     </div>
   );
 }
