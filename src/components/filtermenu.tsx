@@ -36,6 +36,8 @@ interface FilterMenuProps {
   onShowShotsChange?: (v: boolean) => void;
   showTracks?: boolean;
   onShowTracksChange?: (v: boolean) => void;
+  showHuntingBoundary?: boolean;
+  onShowHuntingBoundaryChange?: (v: boolean) => void;
 }
 
 const categoryLabels: Record<keyof CategoryFilter, string> = {
@@ -47,7 +49,7 @@ const categoryLabels: Record<keyof CategoryFilter, string> = {
   isolated_dwelling: 'Enkeltbolig',
 };
 
-export default function FilterMenu({ categoryFilters, onCategoryChange, radius, onRadiusChange, showMarkers, onShowMarkersChange, orientationMode, onOrientationModeChange, categoryConfigs, showOnlyLastShot, onShowOnlyLastShotChange, mode, showAllTracksAndFinds, onShowAllTracksAndFindsChange, showObservations, onShowObservationsChange, showShots, onShowShotsChange, showTracks, onShowTracksChange }: FilterMenuProps) {
+export default function FilterMenu({ categoryFilters, onCategoryChange, radius, onRadiusChange, showMarkers, onShowMarkersChange, orientationMode, onOrientationModeChange, categoryConfigs, showOnlyLastShot, onShowOnlyLastShotChange, mode, showAllTracksAndFinds, onShowAllTracksAndFindsChange, showObservations, onShowObservationsChange, showShots, onShowShotsChange, showTracks, onShowTracksChange, showHuntingBoundary, onShowHuntingBoundaryChange }: FilterMenuProps) {
   return (
     <div className="bg-white rounded-lg shadow-lg p-4 min-w-[220px] max-w-xs">
       <div className="flex items-center justify-between mb-2">
@@ -128,6 +130,23 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
               </label>
             </div>
           )}
+          
+          {/* Jaktgrenser */}
+          {showHuntingBoundary !== undefined && onShowHuntingBoundaryChange && (
+            <div className="mb-3">
+              <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={showHuntingBoundary}
+                  onChange={e => onShowHuntingBoundaryChange(e.target.checked)}
+                  className="w-3 h-3 text-blue-600 rounded focus:ring-blue-500"
+                />
+                <span className="font-medium text-gray-700">
+                  Jaktgrenser
+                </span>
+              </label>
+            </div>
+          )}
         </>
       )}
       
@@ -200,6 +219,23 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
               </label>
             </div>
           )}
+          
+          {/* Jaktgrenser */}
+          {showHuntingBoundary !== undefined && onShowHuntingBoundaryChange && (
+            <div className="mb-3">
+              <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={showHuntingBoundary}
+                  onChange={e => onShowHuntingBoundaryChange(e.target.checked)}
+                  className="w-3 h-3 text-blue-600 rounded focus:ring-blue-500"
+                />
+                <span className="font-medium text-gray-700">
+                  Jaktgrenser
+                </span>
+              </label>
+            </div>
+          )}
         </>
       )}
       
@@ -254,6 +290,23 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
             />
             <span className="font-medium text-gray-700">
               Vis observasjoner
+            </span>
+          </label>
+        </div>
+      )}
+      
+      {/* Jaktgrenser i søk-modus */}
+      {mode === 'søk' && showHuntingBoundary !== undefined && onShowHuntingBoundaryChange && (
+        <div className="mb-3">
+          <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+            <input
+              type="checkbox"
+              checked={showHuntingBoundary}
+              onChange={e => onShowHuntingBoundaryChange(e.target.checked)}
+              className="w-3 h-3 text-blue-600 rounded focus:ring-blue-500"
+            />
+            <span className="font-medium text-gray-700">
+              Jaktgrenser
             </span>
           </label>
         </div>

@@ -39,6 +39,7 @@ interface SettingsMenuProps {
   showShots?: boolean;
   showTracks?: boolean;
   showObservations?: boolean;
+  showHuntingBoundary?: boolean;
   targetSize?: number;
   shotSize?: number;
   observationSize?: number;
@@ -77,6 +78,7 @@ export default function SettingsMenu({
   showShots,
   showTracks,
   showObservations,
+  showHuntingBoundary,
   targetSize,
   shotSize,
   observationSize,
@@ -665,6 +667,7 @@ export default function SettingsMenu({
             showShots,
             showTracks,
             showObservations,
+            showHuntingBoundary,
             targetSize,
             shotSize,
             observationSize,

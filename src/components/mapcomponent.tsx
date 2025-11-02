@@ -71,6 +71,7 @@ interface MapComponentProps {
   shotColor?: string;
   targetColor?: string;
   targetLineWeight?: number;
+  showHuntingBoundary?: boolean;
 }
 
 interface CategoryFilter {
@@ -752,6 +753,7 @@ export default function MapComponent({
   shotColor = '#2563eb',
   targetColor = '#dc2626',
   targetLineWeight = 4,
+  showHuntingBoundary = false,
   activeTeam = null,
 }: MapComponentProps) {
   const [showTargetDialog, setShowTargetDialog] = useState(false);
@@ -2367,6 +2369,13 @@ export default function MapComponent({
           verticalPosition={msrRetikkelVerticalPosition}
           currentPosition={currentPosition}
         />
+        
+        {/* Jaktgrenser - placeholder for future implementation */}
+        {showHuntingBoundary && (
+          <>
+            {/* TODO: Implement hunting boundary rendering here */}
+          </>
+        )}
 
         {/* Radius circle: kun i aware-mode */}
         {mode === 'aware' && searchPosition && (

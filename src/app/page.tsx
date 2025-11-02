@@ -59,6 +59,7 @@ export default function Home() {
   const [showObservations, setShowObservations] = useState(true);
   const [showShots, setShowShots] = useState(true); // For Aware-mode
   const [showTracks, setShowTracks] = useState(true); // For Aware-mode
+  const [showHuntingBoundary, setShowHuntingBoundary] = useState(false); // Default off
   const [isTracking, setIsTracking] = useState(false);
   const [trackingPoints, setTrackingPoints] = useState<Position[]>([]);
   
@@ -142,6 +143,7 @@ export default function Home() {
         if (defaults.shotColor !== undefined) setShotColor(defaults.shotColor);
         if (defaults.targetColor !== undefined) setTargetColor(defaults.targetColor);
         if (defaults.targetLineWeight !== undefined) setTargetLineWeight(defaults.targetLineWeight);
+        if (defaults.showHuntingBoundary !== undefined) setShowHuntingBoundary(defaults.showHuntingBoundary);
       } catch (e) {
         console.error('Error loading defaults:', e);
       }
@@ -430,6 +432,8 @@ export default function Home() {
           onShowShotsChange={setShowShots}
           showTracks={showTracks}
           onShowTracksChange={setShowTracks}
+          showHuntingBoundary={showHuntingBoundary}
+          onShowHuntingBoundaryChange={setShowHuntingBoundary}
         />
         </div>
       )}
@@ -475,6 +479,7 @@ export default function Home() {
         shotColor={shotColor}
         targetColor={targetColor}
         targetLineWeight={targetLineWeight}
+        showHuntingBoundary={showHuntingBoundary}
         activeTeam={authState.activeTeam?.id || null}
       />
 

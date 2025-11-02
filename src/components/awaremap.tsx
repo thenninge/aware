@@ -77,6 +77,7 @@ interface AwareMapProps {
   shotColor?: string;
   targetColor?: string;
   targetLineWeight?: number;
+  showHuntingBoundary?: boolean;
 }
 
 export default function AwareMap({
@@ -121,6 +122,7 @@ export default function AwareMap({
   shotColor,
   targetColor,
   targetLineWeight,
+  showHuntingBoundary,
 }: AwareMapProps) {
   const [isClient, setIsClient] = useState(false);
   const [hasError, setHasError] = useState(false);
@@ -198,6 +200,7 @@ export default function AwareMap({
         shotColor={shotColor}
         targetColor={targetColor}
         targetLineWeight={targetLineWeight}
+        showHuntingBoundary={showHuntingBoundary}
       />
     </div>
   );
