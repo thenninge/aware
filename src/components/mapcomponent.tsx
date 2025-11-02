@@ -64,6 +64,10 @@ interface MapComponentProps {
   showObservations?: boolean;
   showShots?: boolean;
   showTracks?: boolean;
+  targetSize?: number;
+  shotSize?: number;
+  observationSize?: number;
+  targetLineColor?: string;
 }
 
 interface CategoryFilter {
@@ -738,6 +742,10 @@ export default function MapComponent({
   showObservations = true,
   showShots = true,
   showTracks = true,
+  targetSize = 15,
+  shotSize = 5,
+  observationSize = 2.5,
+  targetLineColor = '#ff00ff',
   activeTeam = null,
 }: MapComponentProps) {
   const [showTargetDialog, setShowTargetDialog] = useState(false);
@@ -2598,7 +2606,7 @@ export default function MapComponent({
             <Circle
                 key={`saved-observation-${observation.id}`}
                 center={[observation.position.lat, observation.position.lng]}
-                radius={2.5} // 2.5 meter radius = 5x5 meter firkant
+                radius={observationSize}
                 pathOptions={{
                   color: observation.color,
                   fillColor: 'transparent',
@@ -2730,7 +2738,7 @@ export default function MapComponent({
                       {sisteSkyteplass.current && (
                         <Circle
                           center={[sisteSkyteplass.current.lat, sisteSkyteplass.current.lng]}
-                          radius={5}
+                          radius={shotSize}
                           pathOptions={{
                             color: '#2563eb',
                             weight: 1.5,
@@ -2742,7 +2750,7 @@ export default function MapComponent({
                       {sisteTreffpunkt?.target && (
                         <Circle
                           center={[sisteTreffpunkt.target.lat, sisteTreffpunkt.target.lng]}
-                          radius={15}
+                          radius={targetSize}
                           pathOptions={{
                             color: 'rgba(220,38,38,0.8)',
                             weight: 2,
@@ -2768,7 +2776,7 @@ export default function MapComponent({
                         {selectedTarget.target && (
                           <Circle
                             center={[selectedTarget.target.lat, selectedTarget.target.lng]}
-                            radius={15}
+                            radius={targetSize}
                             pathOptions={{
                               color: 'rgba(220,38,38,0.8)',
                               weight: 2,
@@ -2785,7 +2793,7 @@ export default function MapComponent({
                     {pair && pair.current && (
                       <Circle
                         center={[pair.current.lat, pair.current.lng]}
-                        radius={5}
+                        radius={shotSize}
                         pathOptions={{
                           color: '#2563eb',
                           weight: 1.5,
@@ -2804,7 +2812,7 @@ export default function MapComponent({
                     {pair && pair.target && (
                       <Circle
                         center={[pair.target.lat, pair.target.lng]}
-                        radius={15}
+                        radius={targetSize}
                         pathOptions={{
                           color: 'rgba(220,38,38,0.8)',
                           weight: 2,
@@ -2831,7 +2839,7 @@ export default function MapComponent({
                           <Polyline
                             key={polyKey}
                             positions={positions}
-                            pathOptions={{ color: '#ff00ff', weight: 4, dashArray: '8 12' }}
+                            pathOptions={{ color: targetLineColor, weight: 4, dashArray: '8 12' }}
                           />
                         );
                       })()

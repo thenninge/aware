@@ -70,6 +70,10 @@ interface AwareMapProps {
   showObservations?: boolean;
   showShots?: boolean;
   showTracks?: boolean;
+  targetSize?: number;
+  shotSize?: number;
+  observationSize?: number;
+  targetLineColor?: string;
 }
 
 export default function AwareMap({
@@ -107,6 +111,10 @@ export default function AwareMap({
   showObservations,
   showShots,
   showTracks,
+  targetSize,
+  shotSize,
+  observationSize,
+  targetLineColor,
 }: AwareMapProps) {
   const [isClient, setIsClient] = useState(false);
   const [hasError, setHasError] = useState(false);
@@ -177,6 +185,11 @@ export default function AwareMap({
         showObservations={showObservations}
         showShots={showShots}
         showTracks={showTracks}
+        targetSize={targetSize}
+        shotSize={shotSize}
+        observationSize={observationSize}
+        targetLineColor={targetLineColor}
+        activeTeam={activeTeam}
       />
     </div>
   );

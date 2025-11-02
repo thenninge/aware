@@ -39,6 +39,14 @@ interface SettingsMenuProps {
   showShots?: boolean;
   showTracks?: boolean;
   showObservations?: boolean;
+  targetSize?: number;
+  shotSize?: number;
+  observationSize?: number;
+  targetLineColor?: string;
+  onTargetSizeChange?: (size: number) => void;
+  onShotSizeChange?: (size: number) => void;
+  onObservationSizeChange?: (size: number) => void;
+  onTargetLineColorChange?: (color: string) => void;
 }
 
 export default function SettingsMenu({ 
@@ -62,7 +70,15 @@ export default function SettingsMenu({
   onShowMarkersChange,
   showShots,
   showTracks,
-  showObservations
+  showObservations,
+  targetSize,
+  shotSize,
+  observationSize,
+  targetLineColor,
+  onTargetSizeChange,
+  onShotSizeChange,
+  onObservationSizeChange,
+  onTargetLineColorChange
 }: SettingsMenuProps & { currentCenter?: { lat: number, lng: number } }) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [showHomeSaved, setShowHomeSaved] = useState(false);
@@ -377,10 +393,82 @@ export default function SettingsMenu({
         
         {isShootTrackExpanded && (
           <div className="p-3 bg-white">
+            {/* Target size */}
+            {targetSize !== undefined && onTargetSizeChange && (
+              <div className="mb-3">
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Target size: {targetSize}m
+                </label>
+                <input
+                  type="range"
+                  min="5"
+                  max="50"
+                  step="5"
+                  value={targetSize}
+                  onChange={(e) => onTargetSizeChange(Number(e.target.value))}
+                  className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer hover:bg-gray-300 transition-colors"
+                />
+              </div>
+            )}
+            
+            {/* Standplass size */}
+            {shotSize !== undefined && onShotSizeChange && (
+              <div className="mb-3">
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Standplass size: {shotSize}m
+                </label>
+                <input
+                  type="range"
+                  min="2"
+                  max="20"
+                  step="1"
+                  value={shotSize}
+                  onChange={(e) => onShotSizeChange(Number(e.target.value))}
+                  className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer hover:bg-gray-300 transition-colors"
+                />
+              </div>
+            )}
+            
+            {/* Observasjons size */}
+            {observationSize !== undefined && onObservationSizeChange && (
+              <div className="mb-3">
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Observasjons size: {observationSize}m
+                </label>
+                <input
+                  type="range"
+                  min="1"
+                  max="10"
+                  step="0.5"
+                  value={observationSize}
+                  onChange={(e) => onObservationSizeChange(Number(e.target.value))}
+                  className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer hover:bg-gray-300 transition-colors"
+                />
+              </div>
+            )}
+            
+            {/* Target line color */}
+            {targetLineColor !== undefined && onTargetLineColorChange && (
+              <div className="mb-3">
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Target line color:
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={targetLineColor}
+                    onChange={(e) => onTargetLineColorChange(e.target.value)}
+                    className="w-12 h-8 border rounded cursor-pointer"
+                  />
+                  <span className="text-xs text-gray-600">{targetLineColor}</span>
+                </div>
+              </div>
+            )}
+            
             {onDeleteAllShots && (
               <button
                 type="button"
-                className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded shadow-lg text-sm"
+                className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded shadow-lg text-sm mt-2"
                 onClick={onDeleteAllShots}
               >
                 Slett alle skuddpar
@@ -510,7 +598,11 @@ export default function SettingsMenu({
             showMarkers,
             showShots,
             showTracks,
-            showObservations
+            showObservations,
+            targetSize,
+            shotSize,
+            observationSize,
+            targetLineColor
           };
           localStorage.setItem('aware_settings_defaults', JSON.stringify(defaults));
           setShowDefaultsSaved(true);

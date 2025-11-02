@@ -62,6 +62,12 @@ export default function Home() {
   const [isTracking, setIsTracking] = useState(false);
   const [trackingPoints, setTrackingPoints] = useState<Position[]>([]);
   
+  // State for Shoot & Track settings
+  const [targetSize, setTargetSize] = useState(15); // meters
+  const [shotSize, setShotSize] = useState(5); // meters
+  const [observationSize, setObservationSize] = useState(2.5); // meters
+  const [targetLineColor, setTargetLineColor] = useState('#ff00ff'); // magenta
+  
   // State for valgt treffpunkt i søk-modus
   const [selectedTargetIndex, setSelectedTargetIndex] = useState(0);
   
@@ -126,6 +132,10 @@ export default function Home() {
         if (defaults.showShots !== undefined) setShowShots(defaults.showShots);
         if (defaults.showTracks !== undefined) setShowTracks(defaults.showTracks);
         if (defaults.showObservations !== undefined) setShowObservations(defaults.showObservations);
+        if (defaults.targetSize !== undefined) setTargetSize(defaults.targetSize);
+        if (defaults.shotSize !== undefined) setShotSize(defaults.shotSize);
+        if (defaults.observationSize !== undefined) setObservationSize(defaults.observationSize);
+        if (defaults.targetLineColor !== undefined) setTargetLineColor(defaults.targetLineColor);
       } catch (e) {
         console.error('Error loading defaults:', e);
       }
@@ -374,6 +384,14 @@ export default function Home() {
             showShots={showShots}
             showTracks={showTracks}
             showObservations={showObservations}
+            targetSize={targetSize}
+            shotSize={shotSize}
+            observationSize={observationSize}
+            targetLineColor={targetLineColor}
+            onTargetSizeChange={setTargetSize}
+            onShotSizeChange={setShotSize}
+            onObservationSizeChange={setObservationSize}
+            onTargetLineColorChange={setTargetLineColor}
           />
         </div>
       )}
@@ -438,6 +456,10 @@ export default function Home() {
         showObservations={showObservations}
         showShots={showShots}
         showTracks={showTracks}
+        targetSize={targetSize}
+        shotSize={shotSize}
+        observationSize={observationSize}
+        targetLineColor={targetLineColor}
         activeTeam={authState.activeTeam?.id || null}
       />
 
