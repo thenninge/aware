@@ -67,6 +67,8 @@ export default function Home() {
   const [shotSize, setShotSize] = useState(5); // meters
   const [observationSize, setObservationSize] = useState(2.5); // meters
   const [targetLineColor, setTargetLineColor] = useState('#ff00ff'); // magenta
+  const [shotColor, setShotColor] = useState('#2563eb'); // blue
+  const [targetColor, setTargetColor] = useState('#dc2626'); // red
   
   // State for valgt treffpunkt i søk-modus
   const [selectedTargetIndex, setSelectedTargetIndex] = useState(0);
@@ -136,6 +138,8 @@ export default function Home() {
         if (defaults.shotSize !== undefined) setShotSize(defaults.shotSize);
         if (defaults.observationSize !== undefined) setObservationSize(defaults.observationSize);
         if (defaults.targetLineColor !== undefined) setTargetLineColor(defaults.targetLineColor);
+        if (defaults.shotColor !== undefined) setShotColor(defaults.shotColor);
+        if (defaults.targetColor !== undefined) setTargetColor(defaults.targetColor);
       } catch (e) {
         console.error('Error loading defaults:', e);
       }
@@ -388,10 +392,14 @@ export default function Home() {
             shotSize={shotSize}
             observationSize={observationSize}
             targetLineColor={targetLineColor}
+            shotColor={shotColor}
+            targetColor={targetColor}
             onTargetSizeChange={setTargetSize}
             onShotSizeChange={setShotSize}
             onObservationSizeChange={setObservationSize}
             onTargetLineColorChange={setTargetLineColor}
+            onShotColorChange={setShotColor}
+            onTargetColorChange={setTargetColor}
           />
         </div>
       )}
@@ -460,6 +468,8 @@ export default function Home() {
         shotSize={shotSize}
         observationSize={observationSize}
         targetLineColor={targetLineColor}
+        shotColor={shotColor}
+        targetColor={targetColor}
         activeTeam={authState.activeTeam?.id || null}
       />
 

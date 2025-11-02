@@ -43,10 +43,14 @@ interface SettingsMenuProps {
   shotSize?: number;
   observationSize?: number;
   targetLineColor?: string;
+  shotColor?: string;
+  targetColor?: string;
   onTargetSizeChange?: (size: number) => void;
   onShotSizeChange?: (size: number) => void;
   onObservationSizeChange?: (size: number) => void;
   onTargetLineColorChange?: (color: string) => void;
+  onShotColorChange?: (color: string) => void;
+  onTargetColorChange?: (color: string) => void;
 }
 
 export default function SettingsMenu({ 
@@ -75,10 +79,14 @@ export default function SettingsMenu({
   shotSize,
   observationSize,
   targetLineColor,
+  shotColor,
+  targetColor,
   onTargetSizeChange,
   onShotSizeChange,
   onObservationSizeChange,
-  onTargetLineColorChange
+  onTargetLineColorChange,
+  onShotColorChange,
+  onTargetColorChange
 }: SettingsMenuProps & { currentCenter?: { lat: number, lng: number } }) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [showHomeSaved, setShowHomeSaved] = useState(false);
@@ -447,6 +455,42 @@ export default function SettingsMenu({
               </div>
             )}
             
+            {/* Skuddplass color */}
+            {shotColor !== undefined && onShotColorChange && (
+              <div className="mb-3">
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Skuddplass color:
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={shotColor}
+                    onChange={(e) => onShotColorChange(e.target.value)}
+                    className="w-12 h-8 border rounded cursor-pointer"
+                  />
+                  <span className="text-xs text-gray-600">{shotColor}</span>
+                </div>
+              </div>
+            )}
+            
+            {/* Treffpunkt color */}
+            {targetColor !== undefined && onTargetColorChange && (
+              <div className="mb-3">
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Treffpunkt color:
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={targetColor}
+                    onChange={(e) => onTargetColorChange(e.target.value)}
+                    className="w-12 h-8 border rounded cursor-pointer"
+                  />
+                  <span className="text-xs text-gray-600">{targetColor}</span>
+                </div>
+              </div>
+            )}
+            
             {/* Target line color */}
             {targetLineColor !== undefined && onTargetLineColorChange && (
               <div className="mb-3">
@@ -602,7 +646,9 @@ export default function SettingsMenu({
             targetSize,
             shotSize,
             observationSize,
-            targetLineColor
+            targetLineColor,
+            shotColor,
+            targetColor
           };
           localStorage.setItem('aware_settings_defaults', JSON.stringify(defaults));
           setShowDefaultsSaved(true);

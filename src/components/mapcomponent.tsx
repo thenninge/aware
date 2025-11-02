@@ -68,6 +68,8 @@ interface MapComponentProps {
   shotSize?: number;
   observationSize?: number;
   targetLineColor?: string;
+  shotColor?: string;
+  targetColor?: string;
 }
 
 interface CategoryFilter {
@@ -746,6 +748,8 @@ export default function MapComponent({
   shotSize = 5,
   observationSize = 2.5,
   targetLineColor = '#ff00ff',
+  shotColor = '#2563eb',
+  targetColor = '#dc2626',
   activeTeam = null,
 }: MapComponentProps) {
   const [showTargetDialog, setShowTargetDialog] = useState(false);
@@ -2740,9 +2744,9 @@ export default function MapComponent({
                           center={[sisteSkyteplass.current.lat, sisteSkyteplass.current.lng]}
                           radius={shotSize}
                           pathOptions={{
-                            color: '#2563eb',
+                            color: shotColor,
                             weight: 1.5,
-                            fillColor: '#2563eb',
+                            fillColor: shotColor,
                             fillOpacity: 0.5,
                           }}
                         />
@@ -2752,9 +2756,9 @@ export default function MapComponent({
                           center={[sisteTreffpunkt.target.lat, sisteTreffpunkt.target.lng]}
                           radius={targetSize}
                           pathOptions={{
-                            color: 'rgba(220,38,38,0.8)',
+                            color: targetColor,
                             weight: 2,
-                            fillColor: 'rgba(220,38,38,0.4)',
+                            fillColor: targetColor,
                             fillOpacity: 0.4,
                           }}
                         />
@@ -2778,9 +2782,9 @@ export default function MapComponent({
                             center={[selectedTarget.target.lat, selectedTarget.target.lng]}
                             radius={targetSize}
                             pathOptions={{
-                              color: 'rgba(220,38,38,0.8)',
+                              color: targetColor,
                               weight: 2,
-                              fillColor: 'rgba(220,38,38,0.4)',
+                              fillColor: targetColor,
                               fillOpacity: 0.4,
                             }}
                           />
@@ -2795,9 +2799,9 @@ export default function MapComponent({
                         center={[pair.current.lat, pair.current.lng]}
                         radius={shotSize}
                         pathOptions={{
-                          color: '#2563eb',
+                          color: shotColor,
                           weight: 1.5,
-                          fillColor: '#2563eb',
+                          fillColor: shotColor,
                           fillOpacity: 0.5,
                         }}
                         eventHandlers={{
@@ -2814,9 +2818,9 @@ export default function MapComponent({
                         center={[pair.target.lat, pair.target.lng]}
                         radius={targetSize}
                         pathOptions={{
-                          color: 'rgba(220,38,38,0.8)',
+                          color: targetColor,
                           weight: 2,
-                          fillColor: 'rgba(220,38,38,0.4)',
+                          fillColor: targetColor,
                           fillOpacity: 0.4,
                         }}
                         eventHandlers={{

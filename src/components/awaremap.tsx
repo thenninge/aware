@@ -74,6 +74,8 @@ interface AwareMapProps {
   shotSize?: number;
   observationSize?: number;
   targetLineColor?: string;
+  shotColor?: string;
+  targetColor?: string;
 }
 
 export default function AwareMap({
@@ -115,6 +117,8 @@ export default function AwareMap({
   shotSize,
   observationSize,
   targetLineColor,
+  shotColor,
+  targetColor,
 }: AwareMapProps) {
   const [isClient, setIsClient] = useState(false);
   const [hasError, setHasError] = useState(false);
@@ -189,6 +193,8 @@ export default function AwareMap({
         shotSize={shotSize}
         observationSize={observationSize}
         targetLineColor={targetLineColor}
+        shotColor={shotColor}
+        targetColor={targetColor}
       />
     </div>
   );
