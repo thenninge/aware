@@ -189,7 +189,6 @@ export default function AwareMap({
         shotSize={shotSize}
         observationSize={observationSize}
         targetLineColor={targetLineColor}
-        activeTeam={activeTeam}
       />
     </div>
   );
