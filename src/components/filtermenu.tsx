@@ -47,7 +47,7 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
   return (
     <div className="bg-white rounded-lg shadow-lg p-4 min-w-[220px] max-w-xs">
       <div className="flex items-center justify-between mb-2">
-        <h3 className="text-lg font-semibold text-gray-800">Filter</h3>
+        <h3 className="text-lg font-semibold text-gray-800">Quick filters</h3>
       </div>
       {/* Radius Control */}
       <div className="mb-3">
