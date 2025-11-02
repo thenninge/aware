@@ -34,6 +34,8 @@ interface SettingsMenuProps {
   onMSRRetikkelVerticalPositionChange?: (position: number) => void;
   categoryFilters?: CategoryFilter;
   onCategoryChange?: (category: keyof CategoryFilter) => void;
+  showMarkers?: boolean;
+  onShowMarkersChange?: (show: boolean) => void;
 }
 
 export default function SettingsMenu({ 
@@ -52,7 +54,9 @@ export default function SettingsMenu({
   onMSRRetikkelStyleChange,
   onMSRRetikkelVerticalPositionChange,
   categoryFilters,
-  onCategoryChange
+  onCategoryChange,
+  showMarkers,
+  onShowMarkersChange
 }: SettingsMenuProps & { currentCenter?: { lat: number, lng: number } }) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [showHomeSaved, setShowHomeSaved] = useState(false);
@@ -313,6 +317,23 @@ export default function SettingsMenu({
           
           {isFilterExpanded && (
             <div className="p-3 bg-white">
+              {/* Vis bebyggelse */}
+              {showMarkers !== undefined && onShowMarkersChange && (
+                <div className="mb-3">
+                  <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={showMarkers}
+                      onChange={e => onShowMarkersChange(e.target.checked)}
+                      className="w-3 h-3 text-blue-600 rounded focus:ring-blue-500"
+                    />
+                    <span className="font-medium text-gray-700">
+                      Vis bebyggelse
+                    </span>
+                  </label>
+                </div>
+              )}
+              
               <div className="space-y-1">
                 {Object.entries(categoryFilters).map(([category, checked]) => (
                   <label key={category} className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">

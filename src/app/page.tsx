@@ -362,6 +362,8 @@ export default function Home() {
             onMSRRetikkelVerticalPositionChange={setMSRRetikkelVerticalPosition}
             categoryFilters={categoryFilters}
             onCategoryChange={handleCategoryChange}
+            showMarkers={showMarkers}
+            onShowMarkersChange={handleShowMarkersChange}
           />
         </div>
       )}

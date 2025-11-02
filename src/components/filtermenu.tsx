@@ -67,20 +67,6 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
           }}
         />
       </div>
-      {/* Vis treff i kart */}
-      <div className="mb-3">
-        <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
-          <input
-            type="checkbox"
-            checked={showMarkers}
-            onChange={e => onShowMarkersChange(e.target.checked)}
-            className="w-3 h-3 text-blue-600 rounded focus:ring-blue-500"
-          />
-          <span className="font-medium text-gray-700">
-            Vis bebyggelse
-          </span>
-        </label>
-      </div>
       {/* Vis kun siste skuddpar - skjul i søk-modus */}
       {onShowOnlyLastShotChange && mode !== 'søk' && (
         <div className="mb-3">
