@@ -74,6 +74,8 @@ interface MapComponentProps {
   showHuntingBoundary?: boolean;
   huntingAreas?: HuntingArea[];
   activeHuntingAreaId?: string | null;
+  huntingBoundaryColor?: string;
+  huntingBoundaryWeight?: number;
   isDefiningHuntingArea?: boolean;
   onHuntingAreaDefined?: (area: HuntingArea) => void;
   onCancelHuntingAreaDefinition?: () => void;
@@ -788,6 +790,8 @@ export default function MapComponent({
   showHuntingBoundary = false,
   huntingAreas = [],
   activeHuntingAreaId = null,
+  huntingBoundaryColor = '#00ff00',
+  huntingBoundaryWeight = 3,
   isDefiningHuntingArea = false,
   onHuntingAreaDefined,
   onCancelHuntingAreaDefinition,
@@ -829,8 +833,6 @@ export default function MapComponent({
   const [huntingAreaPoints, setHuntingAreaPoints] = useState<[number, number][]>([]);
   const [showSaveHuntingAreaDialog, setShowSaveHuntingAreaDialog] = useState(false);
   const [huntingAreaName, setHuntingAreaName] = useState('');
-  const [huntingAreaColor, setHuntingAreaColor] = useState('#00ff00');
-  const [huntingAreaLineWeight, setHuntingAreaLineWeight] = useState(3);
   const [currentTrackingId, setCurrentTrackingId] = useState<string | null>(null);
   const [showFindDialog, setShowFindDialog] = useState(false);
   const [newFindPosition, setNewFindPosition] = useState<Position | null>(null);
@@ -907,8 +909,6 @@ export default function MapComponent({
   const handleCancelHuntingArea = () => {
     setHuntingAreaPoints([]);
     setHuntingAreaName('');
-    setHuntingAreaColor('#00ff00');
-    setHuntingAreaLineWeight(3);
     onCancelHuntingAreaDefinition?.();
   };
   
@@ -930,8 +930,8 @@ export default function MapComponent({
       id: Date.now().toString(),
       name: huntingAreaName.trim(),
       coordinates: [...huntingAreaPoints, huntingAreaPoints[0]], // Close the polygon
-      color: huntingAreaColor,
-      lineWeight: huntingAreaLineWeight,
+      color: huntingBoundaryColor,
+      lineWeight: huntingBoundaryWeight,
       created_at: new Date().toISOString(),
     };
     
@@ -940,8 +940,6 @@ export default function MapComponent({
     // Reset state
     setHuntingAreaPoints([]);
     setHuntingAreaName('');
-    setHuntingAreaColor('#00ff00');
-    setHuntingAreaLineWeight(3);
     setShowSaveHuntingAreaDialog(false);
   };
 
@@ -2475,8 +2473,8 @@ export default function MapComponent({
               key={`hunting-area-${activeArea.id}`}
               positions={activeArea.coordinates}
               pathOptions={{
-                color: activeArea.color || '#00ff00',
-                weight: activeArea.lineWeight || 3,
+                color: huntingBoundaryColor || activeArea.color || '#00ff00',
+                weight: huntingBoundaryWeight || activeArea.lineWeight || 3,
                 opacity: 0.8,
               }}
             >
@@ -2500,8 +2498,8 @@ export default function MapComponent({
                 center={point}
                 radius={3}
                 pathOptions={{
-                  color: '#00ff00',
-                  fillColor: '#00ff00',
+                  color: huntingBoundaryColor,
+                  fillColor: huntingBoundaryColor,
                   fillOpacity: 0.8,
                   weight: 2,
                 }}
@@ -2513,8 +2511,8 @@ export default function MapComponent({
               <Polyline
                 positions={huntingAreaPoints}
                 pathOptions={{
-                  color: '#00ff00',
-                  weight: 3,
+                  color: huntingBoundaryColor,
+                  weight: huntingBoundaryWeight,
                   opacity: 0.8,
                   dashArray: '5, 5',
                 }}
@@ -3779,28 +3777,9 @@ export default function MapComponent({
               />
             </label>
             
-            <label className="text-base font-semibold text-gray-700">
-              Farge på grense:
-              <input
-                type="color"
-                value={huntingAreaColor}
-                onChange={e => setHuntingAreaColor(e.target.value)}
-                className="mt-1 w-full h-10 border border-gray-300 rounded cursor-pointer"
-              />
-            </label>
-            
-            <label className="text-base font-semibold text-gray-700">
-              Linjetykkelse:
-              <input
-                type="range"
-                min="1"
-                max="10"
-                value={huntingAreaLineWeight}
-                onChange={e => setHuntingAreaLineWeight(Number(e.target.value))}
-                className="mt-1 w-full"
-              />
-              <div className="text-xs text-gray-600 mt-1">{huntingAreaLineWeight}px</div>
-            </label>
+            <div className="text-xs text-gray-500">
+              Farge og tykkelse justeres i Innstillinger → Jaktfelt
+            </div>
             
             <div className="flex gap-2 justify-end">
               <button

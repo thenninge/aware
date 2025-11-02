@@ -67,6 +67,8 @@ export default function Home() {
   const [huntingAreas, setHuntingAreas] = useState<HuntingArea[]>([]);
   const [activeHuntingAreaId, setActiveHuntingAreaId] = useState<string | null>(null);
   const [isDefiningHuntingArea, setIsDefiningHuntingArea] = useState(false);
+  const [huntingBoundaryColor, setHuntingBoundaryColor] = useState('#00ff00'); // green
+  const [huntingBoundaryWeight, setHuntingBoundaryWeight] = useState(3); // pixels
   
   // State for Shoot & Track settings
   const [targetSize, setTargetSize] = useState(15); // meters
@@ -149,6 +151,8 @@ export default function Home() {
         if (defaults.targetColor !== undefined) setTargetColor(defaults.targetColor);
         if (defaults.targetLineWeight !== undefined) setTargetLineWeight(defaults.targetLineWeight);
         if (defaults.showHuntingBoundary !== undefined) setShowHuntingBoundary(defaults.showHuntingBoundary);
+        if (defaults.huntingBoundaryColor !== undefined) setHuntingBoundaryColor(defaults.huntingBoundaryColor);
+        if (defaults.huntingBoundaryWeight !== undefined) setHuntingBoundaryWeight(defaults.huntingBoundaryWeight);
       } catch (e) {
         console.error('Error loading defaults:', e);
       }
@@ -464,6 +468,10 @@ export default function Home() {
             activeHuntingAreaId={activeHuntingAreaId}
             onDefineNewHuntingArea={handleDefineNewHuntingArea}
             onActiveHuntingAreaChange={setActiveHuntingAreaId}
+            huntingBoundaryColor={huntingBoundaryColor}
+            huntingBoundaryWeight={huntingBoundaryWeight}
+            onHuntingBoundaryColorChange={setHuntingBoundaryColor}
+            onHuntingBoundaryWeightChange={setHuntingBoundaryWeight}
           />
         </div>
       )}
@@ -540,6 +548,8 @@ export default function Home() {
         showHuntingBoundary={showHuntingBoundary}
         huntingAreas={huntingAreas}
         activeHuntingAreaId={activeHuntingAreaId}
+        huntingBoundaryColor={huntingBoundaryColor}
+        huntingBoundaryWeight={huntingBoundaryWeight}
         isDefiningHuntingArea={isDefiningHuntingArea}
         onHuntingAreaDefined={handleHuntingAreaDefined}
         onCancelHuntingAreaDefinition={handleCancelHuntingAreaDefinition}

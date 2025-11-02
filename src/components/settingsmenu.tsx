@@ -58,6 +58,10 @@ interface SettingsMenuProps {
   activeHuntingAreaId?: string | null;
   onDefineNewHuntingArea?: () => void;
   onActiveHuntingAreaChange?: (id: string | null) => void;
+  huntingBoundaryColor?: string;
+  huntingBoundaryWeight?: number;
+  onHuntingBoundaryColorChange?: (color: string) => void;
+  onHuntingBoundaryWeightChange?: (weight: number) => void;
 }
 
 export interface HuntingArea {
@@ -110,7 +114,11 @@ export default function SettingsMenu({
   huntingAreas,
   activeHuntingAreaId,
   onDefineNewHuntingArea,
-  onActiveHuntingAreaChange
+  onActiveHuntingAreaChange,
+  huntingBoundaryColor,
+  huntingBoundaryWeight,
+  onHuntingBoundaryColorChange,
+  onHuntingBoundaryWeightChange
 }: SettingsMenuProps & { currentCenter?: { lat: number, lng: number } }) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [showHomeSaved, setShowHomeSaved] = useState(false);
@@ -591,7 +599,7 @@ export default function SettingsMenu({
             
             {/* Velg aktivt jaktfelt dropdown */}
             {huntingAreas !== undefined && onActiveHuntingAreaChange && (
-              <div>
+              <div className="mb-3">
                 <label className="block text-xs font-medium text-gray-700 mb-1">
                   Velg aktivt jaktfelt:
                 </label>
@@ -612,6 +620,42 @@ export default function SettingsMenu({
                     Ingen jaktfelt definert ennå
                   </p>
                 )}
+              </div>
+            )}
+            
+            {/* Jaktgrense farge */}
+            {huntingBoundaryColor !== undefined && onHuntingBoundaryColorChange && (
+              <div className="mb-3">
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Jaktgrense farge:
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={huntingBoundaryColor}
+                    onChange={(e) => onHuntingBoundaryColorChange(e.target.value)}
+                    className="w-12 h-8 border rounded cursor-pointer"
+                  />
+                  <span className="text-xs text-gray-600">{huntingBoundaryColor}</span>
+                </div>
+              </div>
+            )}
+            
+            {/* Jaktgrense tykkelse */}
+            {huntingBoundaryWeight !== undefined && onHuntingBoundaryWeightChange && (
+              <div className="mb-3">
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Jaktgrense tykkelse: {huntingBoundaryWeight}px
+                </label>
+                <input
+                  type="range"
+                  min="1"
+                  max="10"
+                  step="1"
+                  value={huntingBoundaryWeight}
+                  onChange={(e) => onHuntingBoundaryWeightChange(Number(e.target.value))}
+                  className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer hover:bg-gray-300 transition-colors"
+                />
               </div>
             )}
           </div>
@@ -746,7 +790,9 @@ export default function SettingsMenu({
             targetLineColor,
             shotColor,
             targetColor,
-            targetLineWeight
+            targetLineWeight,
+            huntingBoundaryColor,
+            huntingBoundaryWeight
           };
           localStorage.setItem('aware_settings_defaults', JSON.stringify(defaults));
           setShowDefaultsSaved(true);
