@@ -36,6 +36,9 @@ interface SettingsMenuProps {
   onCategoryChange?: (category: keyof CategoryFilter) => void;
   showMarkers?: boolean;
   onShowMarkersChange?: (show: boolean) => void;
+  showShots?: boolean;
+  showTracks?: boolean;
+  showObservations?: boolean;
 }
 
 export default function SettingsMenu({ 
@@ -56,7 +59,10 @@ export default function SettingsMenu({
   categoryFilters,
   onCategoryChange,
   showMarkers,
-  onShowMarkersChange
+  onShowMarkersChange,
+  showShots,
+  showTracks,
+  showObservations
 }: SettingsMenuProps & { currentCenter?: { lat: number, lng: number } }) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [showHomeSaved, setShowHomeSaved] = useState(false);
@@ -472,7 +478,12 @@ export default function SettingsMenu({
             msrRetikkelOpacity,
             msrRetikkelStyle,
             msrRetikkelVerticalPosition,
-            categoryConfigs
+            categoryConfigs,
+            categoryFilters,
+            showMarkers,
+            showShots,
+            showTracks,
+            showObservations
           };
           localStorage.setItem('aware_settings_defaults', JSON.stringify(defaults));
           setShowDefaultsSaved(true);

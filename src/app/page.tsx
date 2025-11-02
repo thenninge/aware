@@ -121,6 +121,11 @@ export default function Home() {
         if (defaults.msrRetikkelStyle !== undefined) setMSRRetikkelStyle(defaults.msrRetikkelStyle);
         if (defaults.msrRetikkelVerticalPosition !== undefined) setMSRRetikkelVerticalPosition(defaults.msrRetikkelVerticalPosition);
         if (defaults.categoryConfigs !== undefined) setCategoryConfigs(defaults.categoryConfigs);
+        if (defaults.categoryFilters !== undefined) setCategoryFilters(defaults.categoryFilters);
+        if (defaults.showMarkers !== undefined) setShowMarkers(defaults.showMarkers);
+        if (defaults.showShots !== undefined) setShowShots(defaults.showShots);
+        if (defaults.showTracks !== undefined) setShowTracks(defaults.showTracks);
+        if (defaults.showObservations !== undefined) setShowObservations(defaults.showObservations);
       } catch (e) {
         console.error('Error loading defaults:', e);
       }
@@ -366,6 +371,9 @@ export default function Home() {
             onCategoryChange={handleCategoryChange}
             showMarkers={showMarkers}
             onShowMarkersChange={handleShowMarkersChange}
+            showShots={showShots}
+            showTracks={showTracks}
+            showObservations={showObservations}
           />
         </div>
       )}
