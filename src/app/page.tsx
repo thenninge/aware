@@ -279,12 +279,17 @@ export default function Home() {
         });
         
         if (!response.ok) {
-          console.error('Failed to save hunting area to Supabase');
+          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+          console.error('Failed to save hunting area to Supabase:', errorData);
+          alert(`Feil ved lagring av jaktfelt: ${errorData.error || 'Ukjent feil'}`);
         } else {
           console.log('Hunting area saved to Supabase successfully');
+          const savedArea = await response.json();
+          console.log('Saved area:', savedArea);
         }
       } catch (error) {
         console.error('Error saving hunting area:', error);
+        alert(`Feil ved lagring av jaktfelt: ${(error as Error).message}`);
       }
     }
   };

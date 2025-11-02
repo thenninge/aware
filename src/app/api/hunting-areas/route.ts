@@ -136,9 +136,16 @@ export async function POST(request: NextRequest) {
 
     if (createError) {
       console.error('Error creating hunting area:', createError);
-      return NextResponse.json({ error: createError.message }, { status: 500 });
+      console.error('Insert data was:', { id, teamid: teamId, name, coordinates, color, line_weight: lineWeight });
+      return NextResponse.json({ 
+        error: createError.message,
+        details: createError.details,
+        hint: createError.hint,
+        code: createError.code 
+      }, { status: 500 });
     }
 
+    console.log('Successfully created hunting area:', newHuntingArea);
     return NextResponse.json(newHuntingArea);
   } catch (error: any) {
     console.error('Error in POST /api/hunting-areas:', error);
