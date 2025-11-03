@@ -424,7 +424,7 @@ function CompassSlice({
   centerLat,
   centerLng,
   radius = 100, // meters
-  angleRange = 15, // ± degrees (total 30 degree slice)
+  angleRange = 1, // ± degrees (total 2 degree slice - narrow arrow)
 }: { 
   heading: number | null; 
   mode: 'off' | 'arrow' | 'map';
@@ -2575,7 +2575,7 @@ export default function MapComponent({
             centerLat={currentPosition.lat}
             centerLng={currentPosition.lng}
             radius={100}
-            angleRange={15}
+            angleRange={1}
           />
         )}
 
