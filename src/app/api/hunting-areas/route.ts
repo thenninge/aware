@@ -24,28 +24,38 @@ function getSupabaseAdmin() {
 // GET - Hent hunting areas for aktivt team
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    console.log('GET /api/hunting-areas - Starting');
     
+    const session = await getServerSession(authOptions);
     const userId = session?.user?.googleId || session?.user?.email;
+    console.log('GET - User:', userId);
+    
     if (!userId) {
+      console.error('GET - No userId');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
     const teamId = searchParams.get('teamId');
+    console.log('GET - Team ID:', teamId);
 
     if (!teamId) {
+      console.error('GET - No teamId');
       return NextResponse.json({ error: 'Team ID is required' }, { status: 400 });
     }
 
     // Verify user has access to this team
     const supabaseAdmin = getSupabaseAdmin();
+    console.log('GET - Checking team access...');
+    
     const { data: teamAccess, error: accessError } = await supabaseAdmin
       .from('team_members')
       .select('*')
       .eq('teamid', teamId)
       .eq('userid', userId)
       .single();
+
+    console.log('GET - Team access check:', { hasAccess: !!teamAccess, error: accessError?.code });
 
     if (accessError && accessError.code !== 'PGRST116') {
       console.error('Error checking team access:', accessError);
@@ -59,22 +69,30 @@ export async function GET(request: NextRequest) {
       .eq('ownerid', userId)
       .single();
 
+    console.log('GET - Owner check:', { isOwner: !!ownedTeam });
+
     if (!teamAccess && !ownedTeam) {
+      console.error('GET - Access denied for user', userId, 'on team', teamId);
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
     // Get hunting areas for this team
+    console.log('GET - Fetching hunting areas for team:', teamId);
+    
     const { data: huntingAreas, error: huntingAreasError } = await supabaseAdmin
       .from('hunting_areas')
       .select('*')
       .eq('teamid', teamId)
       .order('created_at', { ascending: false });
 
+    console.log('GET - Hunting areas result:', { count: huntingAreas?.length, error: huntingAreasError });
+
     if (huntingAreasError) {
       console.error('Error fetching hunting areas:', huntingAreasError);
       return NextResponse.json({ error: huntingAreasError.message }, { status: 500 });
     }
 
+    console.log('GET - Returning', huntingAreas?.length || 0, 'hunting areas');
     return NextResponse.json(huntingAreas || []);
   } catch (error: any) {
     console.error('Error in GET /api/hunting-areas:', error);
