@@ -3453,13 +3453,18 @@ export default function MapComponent({
           
           {/* Live-posisjon-knapp */}
           <button
-            onClick={() => onLiveModeChange?.(!isLiveMode)}
+            onClick={() => {
+              const newLiveMode = !isLiveMode;
+              onLiveModeChange?.(newLiveMode);
+              // Auto-lock map when GPS is enabled, unlock when disabled
+              setIsMapLocked(newLiveMode);
+            }}
             className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
               isLiveMode 
                 ? 'bg-green-600 hover:bg-green-700 text-white' 
                 : 'bg-gray-600 hover:bg-gray-700 text-white'
             }`}
-            title={isLiveMode ? 'Live GPS ON' : 'Live GPS'}
+            title={isLiveMode ? 'Live GPS ON (locked)' : 'Live GPS'}
           >
             🛰️
           </button>
@@ -3489,21 +3494,6 @@ export default function MapComponent({
               title="Kompass status"
             >
               🧭
-            </button>
-          )}
-          
-          {/* Lock map on GPS-knapp - kun når GPS er aktiv */}
-          {isLiveMode && (
-            <button
-              onClick={() => setIsMapLocked(!isMapLocked)}
-              className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
-                isMapLocked 
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white' 
-                  : 'bg-gray-600 hover:bg-gray-700 text-white'
-              }`}
-              title={isMapLocked ? 'Map locked to GPS' : 'Lock map to GPS'}
-            >
-              {isMapLocked ? '🔒' : '🔓'}
             </button>
           )}
         </div>
