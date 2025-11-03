@@ -675,7 +675,7 @@ export default function MapComponent({
   onTrackingChange,
   trackingPoints = [],
   onTrackingPointsChange,
-      showMSRRetikkel = true,
+      showMSRRetikkel = false,
     msrRetikkelOpacity = 80,
     msrRetikkelStyle = 'msr',
     msrRetikkelVerticalPosition = 50,
