@@ -88,6 +88,12 @@ interface AwareMapProps {
   onHuntingAreaDefined?: (area: HuntingArea) => void;
   onCancelHuntingAreaDefinition?: () => void;
   onRefreshHuntingAreas?: () => void;
+  onRegisterSync?: (syncFn: () => void) => void;
+  compassSliceLength?: number;
+  compassMode?: 'off' | 'on';
+  isCompassLocked?: boolean;
+  onCompassModeChange?: (mode: 'off' | 'on') => void;
+  onCompassLockedChange?: (locked: boolean) => void;
 }
 
 export default function AwareMap({
@@ -142,6 +148,12 @@ export default function AwareMap({
   onHuntingAreaDefined,
   onCancelHuntingAreaDefinition,
   onRefreshHuntingAreas,
+  onRegisterSync,
+  compassSliceLength,
+  compassMode,
+  isCompassLocked,
+  onCompassModeChange,
+  onCompassLockedChange,
 }: AwareMapProps) {
   const [isClient, setIsClient] = useState(false);
   const [hasError, setHasError] = useState(false);
@@ -229,6 +241,12 @@ export default function AwareMap({
         onHuntingAreaDefined={onHuntingAreaDefined}
         onCancelHuntingAreaDefinition={onCancelHuntingAreaDefinition}
         onRefreshHuntingAreas={onRefreshHuntingAreas}
+        onRegisterSync={onRegisterSync}
+        compassSliceLength={compassSliceLength}
+        compassMode={compassMode}
+        isCompassLocked={isCompassLocked}
+        onCompassModeChange={onCompassModeChange}
+        onCompassLockedChange={onCompassLockedChange}
       />
     </div>
   );

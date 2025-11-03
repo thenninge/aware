@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { MapContainer, TileLayer, Marker, useMap, Circle, Polyline, Tooltip, Popup, LayersControl } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMap, Circle, Polyline, Polygon, Tooltip, Popup, LayersControl } from 'react-leaflet';
 import L from 'leaflet';
 import MSRRetikkel from './msr-retikkel';
 import 'leaflet/dist/leaflet.css';
@@ -82,6 +82,12 @@ interface MapComponentProps {
   onHuntingAreaDefined?: (area: HuntingArea) => void;
   onCancelHuntingAreaDefinition?: () => void;
   onRefreshHuntingAreas?: () => void;
+  onRegisterSync?: (syncFn: () => void) => void;
+  compassSliceLength?: number; // % of screen height
+  compassMode?: 'off' | 'on';
+  isCompassLocked?: boolean;
+  onCompassModeChange?: (mode: 'off' | 'on') => void;
+  onCompassLockedChange?: (locked: boolean) => void;
 }
 
 interface CategoryFilter {
@@ -416,6 +422,129 @@ function MapController({
   );
 }
 
+// Component to show compass direction as a red pie slice (fixed screen pixels)
+function CompassSlice({ 
+  heading, 
+  isActive,
+  isLocked,
+  centerLat,
+  centerLng,
+  lengthPercent = 30, // % of screen height
+  angleRange = 1, // ± degrees (total 2 degree slice - narrow arrow)
+}: { 
+  heading: number | null; 
+  isActive: boolean;
+  isLocked: boolean;
+  centerLat: number;
+  centerLng: number;
+  lengthPercent?: number;
+  angleRange?: number;
+}) {
+  const map = useMap();
+  const [radiusMeters, setRadiusMeters] = useState(100);
+
+  // Calculate radius in meters based on screen height and zoom
+  useEffect(() => {
+    if (!map) return;
+
+    const updateRadius = () => {
+      const screenHeight = window.innerHeight;
+      const sliceLengthPixels = (lengthPercent / 100) * screenHeight;
+      
+      // Get current zoom and center
+      const zoom = map.getZoom();
+      const center = map.getCenter();
+      
+      // Calculate meters per pixel at current zoom
+      const metersPerPixel = 156543.03392 * Math.cos(center.lat * Math.PI / 180) / Math.pow(2, zoom);
+      
+      // Convert pixels to meters
+      const meters = sliceLengthPixels * metersPerPixel;
+      setRadiusMeters(meters);
+    };
+
+    updateRadius();
+
+    // Update on zoom or move
+    map.on('zoomend', updateRadius);
+    map.on('moveend', updateRadius);
+    window.addEventListener('resize', updateRadius);
+
+    return () => {
+      map.off('zoomend', updateRadius);
+      map.off('moveend', updateRadius);
+      window.removeEventListener('resize', updateRadius);
+    };
+  }, [map, lengthPercent]);
+
+  if (!isActive || heading === null) return null;
+
+  // If locked: slice points up (north), if unlocked: slice points at heading
+  const direction = isLocked ? 0 : heading;
+
+  // Calculate arc points for the pie slice
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const startAngle = direction - angleRange;
+  const endAngle = direction + angleRange;
+
+  const points: [number, number][] = [[centerLat, centerLng]];
+
+  // Generate arc edge points
+  for (let angle = startAngle; angle <= endAngle; angle += 2) {
+    const rad = toRad(angle);
+    const lat = centerLat + (radiusMeters * Math.cos(rad)) / 111000;
+    const lng = centerLng + (radiusMeters * Math.sin(rad)) / (111000 * Math.cos(toRad(centerLat)));
+    points.push([lat, lng]);
+  }
+
+  // Close the slice back to center
+  points.push([centerLat, centerLng]);
+
+  return (
+    <Polygon
+      positions={points}
+      pathOptions={{
+        fillColor: '#ef4444',
+        fillOpacity: 0.4,
+        color: '#ef4444',
+        weight: 2,
+        opacity: 0.8,
+      }}
+    />
+  );
+}
+
+// Component to rotate map based on compass heading
+function MapRotator({ 
+  heading, 
+  isEnabled 
+}: { 
+  heading: number | null; 
+  isEnabled: boolean; 
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!isEnabled || heading === null || !map) return;
+
+    const container = map.getContainer();
+    const rotation = -heading; // Negative because we rotate counter-clockwise
+
+    // Apply rotation to map container
+    container.style.transform = `rotate(${rotation}deg)`;
+    container.style.transformOrigin = 'center center';
+    container.style.transition = 'transform 0.1s linear';
+    
+    return () => {
+      // Reset rotation when disabled
+      container.style.transform = '';
+      container.style.transition = '';
+    };
+  }, [map, heading, isEnabled]);
+
+  return null;
+}
+
 // Component to handle hunting area definition clicks
 function HuntingAreaClickHandler({
   isDefiningHuntingArea,
@@ -704,7 +833,13 @@ export default function MapComponent({
   onHuntingAreaDefined,
   onCancelHuntingAreaDefinition,
   onRefreshHuntingAreas,
+  onRegisterSync,
   activeTeam = null,
+  compassSliceLength = 30, // % of screen height
+  compassMode: externalCompassMode,
+  isCompassLocked: externalIsCompassLocked,
+  onCompassModeChange,
+  onCompassLockedChange,
 }: MapComponentProps) {
   const [showTargetDialog, setShowTargetDialog] = useState(false);
   const instanceId = useRef(Math.random());
@@ -729,9 +864,13 @@ export default function MapComponent({
   const [isScanning, setIsScanning] = useState(false);
   const [savedPairs, setSavedPairs] = useState<PointPair[]>([]);
   
+  // Use props or default to 'off'
+  const compassMode = externalCompassMode || 'off';
+  const isCompassLocked = externalIsCompassLocked || false;
+  
   // Use compass hook with iOS-optimized settings
   const compass = useCompass({
-    isEnabled: isLiveMode,
+    isEnabled: compassMode !== 'off',
     onHeadingChange: (heading) => {
       setCurrentPosition(prev => ({
         ...prev,
@@ -740,9 +879,12 @@ export default function MapComponent({
         heading,
       }));
     },
-    smoothingAlpha: 0.25, // EMA smoothing factor
-    stallMs: 700, // Faster stall detection
-    watchdogPeriodMs: 250, // Check more frequently
+    smoothingAlpha: 0.22,      // Tuned: smooth needle, not sluggish (default 0.22)
+    stallMs: 650,              // Faster stall detection (default 650)
+    watchdogPeriodMs: 220,     // Check frequently for recovery (default 220)
+    minRenderIntervalMs: 50,   // Max ~20 fps UI update (default 50)
+    minDeltaDeg: 0.8,          // Deadband: ignore tiny changes (default 0.8)
+    enableTiltGuard: true,     // Drop readings at extreme tilt >75° (default true)
     onStall: () => {
       console.warn('[MapComponent] Compass stall detected - auto-recovery in progress');
     },
@@ -1487,6 +1629,13 @@ export default function MapComponent({
       }
     }
   };
+
+  // Register sync function with parent component
+  useEffect(() => {
+    if (onRegisterSync) {
+      onRegisterSync(handleSyncData);
+    }
+  }, [onRegisterSync]);
 
   // Håndter lagring av spor fra dialog
   const handleSaveTrackFromDialog = () => {
@@ -2471,6 +2620,25 @@ export default function MapComponent({
           onPointAdded={handleAddHuntingAreaPoint}
         />
 
+        {/* Compass slice - shows direction as red pie slice */}
+        {currentPosition && (
+          <CompassSlice 
+            heading={currentPosition.heading || null}
+            isActive={compassMode === 'on'}
+            isLocked={isCompassLocked}
+            centerLat={currentPosition.lat}
+            centerLng={currentPosition.lng}
+            lengthPercent={compassSliceLength}
+            angleRange={1}
+          />
+        )}
+
+        {/* Map rotator - rotates map when compass is locked */}
+        <MapRotator 
+          heading={currentPosition?.heading || null}
+          isEnabled={compassMode === 'on' && isCompassLocked}
+        />
+
         {/* MSR-retikkel controller */}
         <MSRRetikkel 
           isVisible={localShowMSRRetikkel}
@@ -3289,8 +3457,8 @@ export default function MapComponent({
                     : `${(totalDistance / 1000).toFixed(2)}km`)
                 : '0m'
               }
-            </span>
-            </div>
+                     </span>
+             </div>
 
           {/* Måle-knapp - avlang */}
           <button
@@ -3305,24 +3473,14 @@ export default function MapComponent({
           >
             📏
           </button>
-          </div>
-        )}
-
+        </div>
+      )}
+      
                         {/* Start/Stopp spor knapp kun i søk-modus */}
         {mode === 'søk' && (
           <div className="fixed bottom-4 inset-x-0 z-[2001] flex flex-wrap justify-center items-center gap-2 px-2 -ml-[15px]" style={{ pointerEvents: 'none' }}>
-            {/* Synkroniser knapp */}
-          <button
-              onClick={handleSyncData}
-              className="w-12 h-12 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white border-blue-700"
-              title="Synkroniser alle data med teamet"
-              style={{ pointerEvents: 'auto' }}
-            >
-                      🔄
-          </button>
-
                     {/* Obs-knapp */}
-          <button
+            <button
                       onClick={toggleObservationMode}
                       className="flex-1 min-w-[60px] max-w-[55px] w-auto h-12 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex items-center justify-center px-[0.375em] py-[0.375em] bg-orange-600 hover:bg-orange-700 text-white border-orange-700"
                       title="Legg til observasjon"
@@ -3423,25 +3581,72 @@ export default function MapComponent({
               )}
               
               {/* Pil venstre - forrige treffpunkt */}
-              <button
+          <button
                 onClick={onPreviousTarget}
                 className="w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white"
                 title="Forrige treffpunkt"
               >
                 ←
-              </button>
+          </button>
               
               {/* Pil høyre - neste treffpunkt */}
-              <button
+          <button
                 onClick={onNextTarget}
                 className="w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white"
                 title="Neste treffpunkt"
               >
                 →
-              </button>
+          </button>
             </>
           )}
 
+          {/* Kompass-knapp - toggle on/off */}
+            <button
+            onClick={async () => {
+              if (compassMode === 'off') {
+                // Turn on compass
+                try {
+                  await compass.startCompass();
+                  onCompassModeChange?.('on');
+                  onCompassLockedChange?.(false); // Default: arrow rotates
+                } catch (error) {
+                  alert((error as Error).message);
+                }
+              } else {
+                // Turn off compass
+                compass.stopCompass();
+                onCompassModeChange?.('off');
+                onCompassLockedChange?.(false);
+              }
+            }}
+            className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
+              compassMode === 'off'
+                ? 'bg-gray-600 hover:bg-gray-700 text-white'
+                : 'bg-green-600 hover:bg-green-700 text-white'
+            }`}
+            title={compassMode === 'off' ? 'Start kompass' : 'Stopp kompass'}
+            >
+              🧭
+            </button>
+          
+          {/* Live-posisjon-knapp */}
+            <button
+              onClick={() => {
+              const newLiveMode = !isLiveMode;
+              onLiveModeChange?.(newLiveMode);
+              // Auto-lock map when GPS is enabled, unlock when disabled
+              setIsMapLocked(newLiveMode);
+            }}
+            className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
+              isLiveMode 
+                ? 'bg-green-600 hover:bg-green-700 text-white' 
+                : 'bg-gray-600 hover:bg-gray-700 text-white'
+            }`}
+            title={isLiveMode ? 'Live GPS ON (locked)' : 'Live GPS'}
+          >
+            🛰️
+            </button>
+          
           {/* Layer-knapp */}
           <button
             className="w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center bg-white/90 border border-gray-300 hover:bg-gray-100"
@@ -3451,62 +3656,6 @@ export default function MapComponent({
           >
             <span className="w-7 h-7 flex items-center justify-center"><LayersIcon /></span>
           </button>
-          {/* Live-posisjon-knapp */}
-          <button
-            onClick={() => onLiveModeChange?.(!isLiveMode)}
-            className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
-              isLiveMode 
-                ? 'bg-green-600 hover:bg-green-700 text-white' 
-                : 'bg-gray-600 hover:bg-gray-700 text-white'
-            }`}
-            title={isLiveMode ? 'Live GPS ON' : 'Live GPS'}
-          >
-            🛰️
-          </button>
-          
-          {/* Lock map on GPS-knapp - kun når GPS er aktiv */}
-          {isLiveMode && (
-            <button
-              onClick={() => setIsMapLocked(!isMapLocked)}
-              className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
-                isMapLocked 
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white' 
-                  : 'bg-gray-600 hover:bg-gray-700 text-white'
-              }`}
-              title={isMapLocked ? 'Map locked to GPS' : 'Lock map to GPS'}
-            >
-              {isMapLocked ? '🔒' : '🔓'}
-            </button>
-          )}
-          {/* Kompass start-knapp */}
-          {isLiveMode && !compass.isActive && (
-            <button
-              onClick={async () => {
-                try {
-                  await compass.startCompass();
-                  alert('Kompass startet!');
-                } catch (error) {
-                  alert((error as Error).message);
-                }
-              }}
-              className="w-12 h-12 rounded-full shadow-lg bg-green-600 hover:bg-green-700 text-white flex items-center justify-center"
-              title="Start kompass"
-            >
-              🧭
-            </button>
-          )}
-          {/* Kompass status-knapp */}
-          {isLiveMode && compass.isActive && (
-            <button
-              onClick={() => {
-                alert(`Kompass status:\nCurrent (smoothed): ${compass.currentHeading?.toFixed(1) || 'N/A'}°\nRaw: ${compass.rawHeading?.toFixed(1) || 'N/A'}°\nLast valid: ${compass.lastValidHeading?.toFixed(1) || 'N/A'}°\nAktiv: ${compass.isActive}\nPermission: ${compass.permissionState}\nSupported: ${compass.isSupported ? 'Ja' : 'Nei'}${compass.error ? '\nError: ' + compass.error : ''}`);
-              }}
-              className="w-12 h-12 rounded-full shadow-lg bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center"
-              title="Kompass status"
-            >
-              🧭
-            </button>
-          )}
         </div>
 
       {/* Kartrotasjon (bare i live-mode og rotateMap) */}

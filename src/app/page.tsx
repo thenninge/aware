@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, useCallback } from 'react';
 import AwareMap from '@/components/awaremap';
 import SettingsMenu, { HuntingArea } from '@/components/settingsmenu';
 import FilterMenu from '@/components/filtermenu';
@@ -89,6 +89,11 @@ export default function Home() {
   const [msrRetikkelOpacity, setMSRRetikkelOpacity] = useState(80);
   const [msrRetikkelStyle, setMSRRetikkelStyle] = useState<'msr' | 'ivar'>('ivar');
   const [msrRetikkelVerticalPosition, setMSRRetikkelVerticalPosition] = useState(50);
+  
+  // State for Compass
+  const [compassSliceLength, setCompassSliceLength] = useState(30); // % of screen height
+  const [compassMode, setCompassMode] = useState<'off' | 'on'>('off');
+  const [isCompassLocked, setIsCompassLocked] = useState(false);
   const [categoryConfigs, setCategoryConfigs] = useState<Record<keyof CategoryFilter, CategoryConfig>>({
     city: {
       color: '#1e40af', // Dark blue
@@ -387,6 +392,15 @@ export default function Home() {
     window.location.reload();
   };
 
+  // Sync callback registered by MapComponent
+  const syncCallbackRef = useRef<(() => void) | null>(null);
+  
+  const handleSyncFromFilter = () => {
+    if (syncCallbackRef.current) {
+      syncCallbackRef.current();
+    }
+  };
+
   // Funksjoner for å navigere mellom treffpunkter i søk-modus
   const handlePreviousTarget = () => {
     setSelectedTargetIndex(prev => {
@@ -439,6 +453,23 @@ export default function Home() {
             <span className="text-lg">☰</span>
           </button>
         </div>
+        
+        {/* Lock-knapp - under admin-knappen, kun synlig når kompass er på */}
+        {compassMode === 'on' && (
+          <div className="fixed top-16 right-4 z-[2001]">
+            <button
+              onClick={() => setIsCompassLocked(!isCompassLocked)}
+              className={`w-10 h-10 rounded-lg shadow-lg flex items-center justify-center transition-colors ${
+                isCompassLocked
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                  : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+              }`}
+              title={isCompassLocked ? 'Låst: Kart roterer' : 'Ulåst: Pil roterer'}
+            >
+              <span className="text-lg">⬆️</span>
+            </button>
+          </div>
+        )}
         
         {/* Mode-toggle og menyknapper alltid synlig, fixed og midtjustert, også på mobil */}
       <div className="fixed top-0 left-1/2 -translate-x-1/2 z-[2001] flex justify-center items-center w-full max-w-xs px-2 py-2 gap-2">
@@ -549,6 +580,8 @@ export default function Home() {
             onHuntingBoundaryColorChange={setHuntingBoundaryColor}
             onHuntingBoundaryWeightChange={setHuntingBoundaryWeight}
             onHuntingBoundaryOpacityChange={setHuntingBoundaryOpacity}
+            compassSliceLength={compassSliceLength}
+            onCompassSliceLengthChange={setCompassSliceLength}
           />
         </div>
       )}
@@ -577,6 +610,7 @@ export default function Home() {
           onShowTracksChange={setShowTracks}
           showHuntingBoundary={showHuntingBoundary}
           onShowHuntingBoundaryChange={setShowHuntingBoundary}
+          onSync={handleSyncFromFilter}
         />
         </div>
       )}
@@ -632,7 +666,13 @@ export default function Home() {
         onHuntingAreaDefined={handleHuntingAreaDefined}
         onCancelHuntingAreaDefinition={handleCancelHuntingAreaDefinition}
         onRefreshHuntingAreas={loadHuntingAreas}
+        onRegisterSync={(fn) => { syncCallbackRef.current = fn; }}
         activeTeam={authState.activeTeam?.id || null}
+        compassSliceLength={compassSliceLength}
+        compassMode={compassMode}
+        isCompassLocked={isCompassLocked}
+        onCompassModeChange={setCompassMode}
+        onCompassLockedChange={setIsCompassLocked}
       />
 
       {/* Admin Menu */}

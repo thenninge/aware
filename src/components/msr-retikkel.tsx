@@ -8,10 +8,11 @@ interface MSRRetikkelProps {
   opacity: number;
   style: 'msr' | 'ivar';
   verticalPosition?: number; // 0-100, kun for ivar-style
-  currentPosition?: { lat: number; lng: number };
+  currentPosition?: { lat: number; lng: number; heading?: number };
+  compassMode?: 'off' | 'arrow' | 'map';
 }
 
-export default function MSRRetikkel({ isVisible, opacity, style, verticalPosition = 50, currentPosition }: MSRRetikkelProps) {
+export default function MSRRetikkel({ isVisible, opacity, style, verticalPosition = 50, currentPosition, compassMode = 'off' }: MSRRetikkelProps) {
   const map = useMap();
   const [scaleValues, setScaleValues] = useState({ x: 0, y: 0 });
   const [screenSize, setScreenSize] = useState({ width: 0, height: 0 });
