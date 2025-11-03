@@ -3298,8 +3298,8 @@ export default function MapComponent({
                     : `${(totalDistance / 1000).toFixed(2)}km`)
                 : '0m'
               }
-            </span>
-            </div>
+                     </span>
+             </div>
 
           {/* Måle-knapp - avlang */}
           <button
@@ -3314,14 +3314,14 @@ export default function MapComponent({
           >
             📏
           </button>
-          </div>
-        )}
-
+        </div>
+      )}
+      
                         {/* Start/Stopp spor knapp kun i søk-modus */}
         {mode === 'søk' && (
           <div className="fixed bottom-4 inset-x-0 z-[2001] flex flex-wrap justify-center items-center gap-2 px-2 -ml-[15px]" style={{ pointerEvents: 'none' }}>
                     {/* Obs-knapp */}
-          <button
+            <button
                       onClick={toggleObservationMode}
                       className="flex-1 min-w-[60px] max-w-[55px] w-auto h-12 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex items-center justify-center px-[0.375em] py-[0.375em] bg-orange-600 hover:bg-orange-700 text-white border-orange-700"
                       title="Legg til observasjon"
@@ -3422,13 +3422,13 @@ export default function MapComponent({
               )}
               
               {/* Pil venstre - forrige treffpunkt */}
-              <button
+          <button
                 onClick={onPreviousTarget}
                 className="w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white"
                 title="Forrige treffpunkt"
               >
                 ←
-              </button>
+          </button>
               
               {/* Pil høyre - neste treffpunkt */}
               <button
@@ -3441,6 +3441,16 @@ export default function MapComponent({
             </>
           )}
 
+          {/* Layer-knapp */}
+          <button
+            className="w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center bg-white/90 border border-gray-300 hover:bg-gray-100"
+            onClick={() => setLayerIdx((layerIdx + 1) % LAYER_CONFIGS.length)}
+            title={`Bytt kartlag (${LAYER_CONFIGS[layerIdx].name})`}
+            style={{ zIndex: 2002 }}
+          >
+            <span className="w-7 h-7 flex items-center justify-center"><LayersIcon /></span>
+          </button>
+          
           {/* Live-posisjon-knapp */}
           <button
             onClick={() => onLiveModeChange?.(!isLiveMode)}
@@ -3454,32 +3464,8 @@ export default function MapComponent({
             🛰️
           </button>
           
-          {/* Layer-knapp */}
-          <button
-            className="w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center bg-white/90 border border-gray-300 hover:bg-gray-100"
-            onClick={() => setLayerIdx((layerIdx + 1) % LAYER_CONFIGS.length)}
-            title={`Bytt kartlag (${LAYER_CONFIGS[layerIdx].name})`}
-            style={{ zIndex: 2002 }}
-          >
-            <span className="w-7 h-7 flex items-center justify-center"><LayersIcon /></span>
-          </button>
-          
-          {/* Lock map on GPS-knapp - kun når GPS er aktiv */}
-          {isLiveMode && (
-            <button
-              onClick={() => setIsMapLocked(!isMapLocked)}
-              className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
-                isMapLocked 
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white' 
-                  : 'bg-gray-600 hover:bg-gray-700 text-white'
-              }`}
-              title={isMapLocked ? 'Map locked to GPS' : 'Lock map to GPS'}
-            >
-              {isMapLocked ? '🔒' : '🔓'}
-            </button>
-          )}
-          {/* Kompass start-knapp */}
-          {isLiveMode && !compass.isActive && (
+          {/* Kompass-knapp - alltid synlig */}
+          {!compass.isActive ? (
             <button
               onClick={async () => {
                 try {
@@ -3494,9 +3480,7 @@ export default function MapComponent({
             >
               🧭
             </button>
-          )}
-          {/* Kompass status-knapp */}
-          {isLiveMode && compass.isActive && (
+          ) : (
             <button
               onClick={() => {
                 alert(`Kompass status:\nCurrent (smoothed): ${compass.currentHeading?.toFixed(1) || 'N/A'}°\nRaw: ${compass.rawHeading?.toFixed(1) || 'N/A'}°\nLast valid: ${compass.lastValidHeading?.toFixed(1) || 'N/A'}°\nAktiv: ${compass.isActive}\nPermission: ${compass.permissionState}\nSupported: ${compass.isSupported ? 'Ja' : 'Nei'}${compass.error ? '\nError: ' + compass.error : ''}`);
@@ -3505,6 +3489,21 @@ export default function MapComponent({
               title="Kompass status"
             >
               🧭
+            </button>
+          )}
+          
+          {/* Lock map on GPS-knapp - kun når GPS er aktiv */}
+          {isLiveMode && (
+            <button
+              onClick={() => setIsMapLocked(!isMapLocked)}
+              className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
+                isMapLocked 
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+                  : 'bg-gray-600 hover:bg-gray-700 text-white'
+              }`}
+              title={isMapLocked ? 'Map locked to GPS' : 'Lock map to GPS'}
+            >
+              {isMapLocked ? '🔒' : '🔓'}
             </button>
           )}
         </div>
