@@ -22,11 +22,18 @@ DROP POLICY IF EXISTS "Users can insert hunting areas for their teams" ON huntin
 DROP POLICY IF EXISTS "Users can update hunting areas for their teams" ON hunting_areas;
 DROP POLICY IF EXISTS "Users can delete hunting areas for their teams" ON hunting_areas;
 
--- RLS Policies: Allow users to manage hunting areas for their teams
+-- RLS Policies: Allow service role (API) full access, users only their teams
+CREATE POLICY "Service role has full access"
+ON hunting_areas FOR ALL
+USING (
+  current_setting('request.jwt.claims', true)::json->>'role' = 'service_role'
+);
+
 CREATE POLICY "Users can view hunting areas for their teams"
 ON hunting_areas FOR SELECT
 USING (
-  teamid IN (
+  current_setting('request.jwt.claims', true)::json->>'role' = 'service_role'
+  OR teamid IN (
     SELECT teamid FROM team_members WHERE userid = auth.uid()::text
   )
 );
@@ -34,7 +41,8 @@ USING (
 CREATE POLICY "Users can insert hunting areas for their teams"
 ON hunting_areas FOR INSERT
 WITH CHECK (
-  teamid IN (
+  current_setting('request.jwt.claims', true)::json->>'role' = 'service_role'
+  OR teamid IN (
     SELECT teamid FROM team_members WHERE userid = auth.uid()::text
   )
 );
@@ -42,7 +50,8 @@ WITH CHECK (
 CREATE POLICY "Users can update hunting areas for their teams"
 ON hunting_areas FOR UPDATE
 USING (
-  teamid IN (
+  current_setting('request.jwt.claims', true)::json->>'role' = 'service_role'
+  OR teamid IN (
     SELECT teamid FROM team_members WHERE userid = auth.uid()::text
   )
 );
@@ -50,7 +59,8 @@ USING (
 CREATE POLICY "Users can delete hunting areas for their teams"
 ON hunting_areas FOR DELETE
 USING (
-  teamid IN (
+  current_setting('request.jwt.claims', true)::json->>'role' = 'service_role'
+  OR teamid IN (
     SELECT teamid FROM team_members WHERE userid = auth.uid()::text
   )
 );

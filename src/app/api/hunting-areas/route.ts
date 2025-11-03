@@ -77,26 +77,35 @@ export async function GET(request: NextRequest) {
 // POST - Opprett ny hunting area for aktivt team
 export async function POST(request: NextRequest) {
   try {
+    console.log('POST /api/hunting-areas - Starting');
+    
     const session = await getServerSession(authOptions);
+    console.log('Session:', { hasSession: !!session, userId: session?.user?.googleId || session?.user?.email });
     
     const userId = session?.user?.googleId || session?.user?.email;
     if (!userId) {
+      console.error('No userId found in session');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await request.json();
     const { teamId, id, name, coordinates, color, lineWeight } = body;
+    console.log('Request body:', { teamId, id, name, coordinatesLength: coordinates?.length, color, lineWeight });
 
     if (!teamId) {
+      console.error('Missing teamId');
       return NextResponse.json({ error: 'Team ID is required' }, { status: 400 });
     }
 
     if (!id || !name || !coordinates) {
+      console.error('Missing required fields:', { id: !!id, name: !!name, coordinates: !!coordinates });
       return NextResponse.json({ error: 'Missing required fields: id, name, coordinates' }, { status: 400 });
     }
 
     // Verify user has access to this team
+    console.log('Getting Supabase admin client...');
     const supabaseAdmin = getSupabaseAdmin();
+    console.log('Supabase admin client created, checking team access...');
     const { data: teamAccess, error: accessError } = await supabaseAdmin
       .from('team_members')
       .select('*')
@@ -117,22 +126,30 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (!teamAccess && !ownedTeam) {
+      console.error('Access denied - user not member or owner of team');
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
+    console.log('User has access to team, proceeding to insert hunting area...');
+    
     // Create new hunting area
+    const insertData = {
+      id,
+      teamid: teamId,
+      name,
+      coordinates,
+      color: color || '#00ff00',
+      line_weight: lineWeight || 3,
+    };
+    console.log('Inserting hunting area:', insertData);
+    
     const { data: newHuntingArea, error: createError } = await supabaseAdmin
       .from('hunting_areas')
-      .insert({
-        id,
-        teamid: teamId,
-        name,
-        coordinates,
-        color: color || '#00ff00',
-        line_weight: lineWeight || 3,
-      })
+      .insert(insertData)
       .select()
       .single();
+    
+    console.log('Insert result:', { success: !!newHuntingArea, error: createError });
 
     if (createError) {
       console.error('Error creating hunting area:', createError);
