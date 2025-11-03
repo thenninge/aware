@@ -741,6 +741,11 @@ export default function MapComponent({
       }));
     },
     smoothingAlpha: 0.25, // EMA smoothing factor
+    stallMs: 700, // Faster stall detection
+    watchdogPeriodMs: 250, // Check more frequently
+    onStall: () => {
+      console.warn('[MapComponent] Compass stall detected - auto-recovery in progress');
+    },
   });
   
   // Tracking state for søk-modus

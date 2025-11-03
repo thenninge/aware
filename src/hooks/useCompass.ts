@@ -4,6 +4,9 @@ interface UseCompassOptions {
   isEnabled: boolean;
   onHeadingChange?: (heading: number) => void;
   smoothingAlpha?: number; // EMA smoothing factor (0-1, default 0.25)
+  stallMs?: number; // Stall threshold in ms (default 700)
+  watchdogPeriodMs?: number; // Watchdog check interval (default 250)
+  onStall?: () => void; // Callback when stall detected
 }
 
 interface UseCompassReturn {
@@ -43,6 +46,9 @@ export function useCompass({
   isEnabled,
   onHeadingChange,
   smoothingAlpha = 0.25,
+  stallMs = 700,
+  watchdogPeriodMs = 250,
+  onStall,
 }: UseCompassOptions): UseCompassReturn {
   const [isActive, setIsActive] = useState(false);
   const [currentHeading, setCurrentHeading] = useState<number | null>(null);
@@ -163,18 +169,32 @@ export function useCompass({
       rafRef.current = requestAnimationFrame(tick);
     }
 
-    // Watchdog: re-attach if no events for >1.2s (iOS stall)
+    // Watchdog: re-attach raskere og smartere
     if (watchdogRef.current == null) {
       watchdogRef.current = window.setInterval(() => {
         const idle = performance.now() - (lastEventTsRef.current || 0);
-        if (idle > 1200) {
-          // re-kick the stream
+        if (idle > stallMs) {
+          console.warn('[useCompass] ⚠️ Stall detected:', idle, 'ms - attempting recovery');
+          onStall?.(); // Optional telemetry
+
+          // 1) Soft kick: re-attach immediately
           detachListener();
-          setTimeout(attachListener, 0);
+          attachListener();
+
+          // 2) Hard kick if still dead after short timeout
+          setTimeout(() => {
+            const stillIdle = performance.now() - (lastEventTsRef.current || 0);
+            if (stillIdle > stallMs * 1.25) {
+              console.warn('[useCompass] ⚠️ Hard recovery needed');
+              detachListener();
+              // Minimal delay can help some WebKit builds
+              setTimeout(attachListener, 0);
+            }
+          }, Math.min(120, stallMs * 0.2));
         }
-      }, 800);
+      }, watchdogPeriodMs);
     }
-  }, [attachListener, detachListener, isSupported, onHeadingChange]);
+  }, [attachListener, detachListener, isSupported, onHeadingChange, stallMs, watchdogPeriodMs, onStall]);
 
   // Stop compass
   const stopCompass = useCallback(() => {
@@ -211,6 +231,26 @@ export function useCompass({
       window.removeEventListener('pageshow', onPageShow);
     };
   }, [isEnabled, isActive, attachListener, detachListener, stopCompass]);
+
+  // Gesture-kick: wake stream on user touch (iOS builds wake faster from gesture)
+  useEffect(() => {
+    if (!isActive) return;
+
+    const poke = () => {
+      const idle = performance.now() - (lastEventTsRef.current || 0);
+      if (idle > stallMs) {
+        console.log('[useCompass] 👆 Gesture kick - recovering from stall');
+        detachListener();
+        attachListener();
+      }
+    };
+
+    window.addEventListener('pointerdown', poke, { passive: true } as AddEventListenerOptions);
+
+    return () => {
+      window.removeEventListener('pointerdown', poke as any);
+    };
+  }, [isActive, stallMs, attachListener, detachListener]);
 
   return {
     isActive,
