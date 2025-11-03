@@ -3431,13 +3431,13 @@ export default function MapComponent({
           </button>
               
               {/* Pil høyre - neste treffpunkt */}
-              <button
+          <button
                 onClick={onNextTarget}
                 className="w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white"
                 title="Neste treffpunkt"
               >
                 →
-              </button>
+          </button>
             </>
           )}
 
