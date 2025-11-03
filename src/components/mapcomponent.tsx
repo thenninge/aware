@@ -83,6 +83,7 @@ interface MapComponentProps {
   onCancelHuntingAreaDefinition?: () => void;
   onRefreshHuntingAreas?: () => void;
   onRegisterSync?: (syncFn: () => void) => void;
+  compassSliceLength?: number; // % of screen height
 }
 
 interface CategoryFilter {
@@ -417,22 +418,59 @@ function MapController({
   );
 }
 
-// Component to show compass direction as a red pie slice
+// Component to show compass direction as a red pie slice (fixed screen pixels)
 function CompassSlice({ 
   heading, 
   mode,
   centerLat,
   centerLng,
-  radius = 100, // meters
+  lengthPercent = 30, // % of screen height
   angleRange = 1, // ± degrees (total 2 degree slice - narrow arrow)
 }: { 
   heading: number | null; 
   mode: 'off' | 'arrow' | 'map';
   centerLat: number;
   centerLng: number;
-  radius?: number;
+  lengthPercent?: number;
   angleRange?: number;
 }) {
+  const map = useMap();
+  const [radiusMeters, setRadiusMeters] = useState(100);
+
+  // Calculate radius in meters based on screen height and zoom
+  useEffect(() => {
+    if (!map) return;
+
+    const updateRadius = () => {
+      const screenHeight = window.innerHeight;
+      const sliceLengthPixels = (lengthPercent / 100) * screenHeight;
+      
+      // Get current zoom and center
+      const zoom = map.getZoom();
+      const center = map.getCenter();
+      
+      // Calculate meters per pixel at current zoom
+      const metersPerPixel = 156543.03392 * Math.cos(center.lat * Math.PI / 180) / Math.pow(2, zoom);
+      
+      // Convert pixels to meters
+      const meters = sliceLengthPixels * metersPerPixel;
+      setRadiusMeters(meters);
+    };
+
+    updateRadius();
+
+    // Update on zoom or move
+    map.on('zoomend', updateRadius);
+    map.on('moveend', updateRadius);
+    window.addEventListener('resize', updateRadius);
+
+    return () => {
+      map.off('zoomend', updateRadius);
+      map.off('moveend', updateRadius);
+      window.removeEventListener('resize', updateRadius);
+    };
+  }, [map, lengthPercent]);
+
   if (mode === 'off' || heading === null) return null;
 
   // In 'arrow' mode: slice points at heading, in 'map' mode: slice points up (north)
@@ -448,8 +486,8 @@ function CompassSlice({
   // Generate arc edge points
   for (let angle = startAngle; angle <= endAngle; angle += 2) {
     const rad = toRad(angle);
-    const lat = centerLat + (radius * Math.cos(rad)) / 111000;
-    const lng = centerLng + (radius * Math.sin(rad)) / (111000 * Math.cos(toRad(centerLat)));
+    const lat = centerLat + (radiusMeters * Math.cos(rad)) / 111000;
+    const lng = centerLng + (radiusMeters * Math.sin(rad)) / (111000 * Math.cos(toRad(centerLat)));
     points.push([lat, lng]);
   }
 
@@ -791,6 +829,7 @@ export default function MapComponent({
   onRefreshHuntingAreas,
   onRegisterSync,
   activeTeam = null,
+  compassSliceLength = 30, // % of screen height
 }: MapComponentProps) {
   const [showTargetDialog, setShowTargetDialog] = useState(false);
   const instanceId = useRef(Math.random());
@@ -2574,7 +2613,7 @@ export default function MapComponent({
             mode={compassMode}
             centerLat={currentPosition.lat}
             centerLng={currentPosition.lng}
-            radius={100}
+            lengthPercent={compassSliceLength}
             angleRange={1}
           />
         )}

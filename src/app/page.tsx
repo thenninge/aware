@@ -89,6 +89,9 @@ export default function Home() {
   const [msrRetikkelOpacity, setMSRRetikkelOpacity] = useState(80);
   const [msrRetikkelStyle, setMSRRetikkelStyle] = useState<'msr' | 'ivar'>('ivar');
   const [msrRetikkelVerticalPosition, setMSRRetikkelVerticalPosition] = useState(50);
+  
+  // State for Compass
+  const [compassSliceLength, setCompassSliceLength] = useState(30); // % of screen height
   const [categoryConfigs, setCategoryConfigs] = useState<Record<keyof CategoryFilter, CategoryConfig>>({
     city: {
       color: '#1e40af', // Dark blue
@@ -558,6 +561,8 @@ export default function Home() {
             onHuntingBoundaryColorChange={setHuntingBoundaryColor}
             onHuntingBoundaryWeightChange={setHuntingBoundaryWeight}
             onHuntingBoundaryOpacityChange={setHuntingBoundaryOpacity}
+            compassSliceLength={compassSliceLength}
+            onCompassSliceLengthChange={setCompassSliceLength}
           />
         </div>
       )}
@@ -644,6 +649,7 @@ export default function Home() {
         onRefreshHuntingAreas={loadHuntingAreas}
         onRegisterSync={(fn) => { syncCallbackRef.current = fn; }}
         activeTeam={authState.activeTeam?.id || null}
+        compassSliceLength={compassSliceLength}
       />
 
       {/* Admin Menu */}

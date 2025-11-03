@@ -89,6 +89,7 @@ interface AwareMapProps {
   onCancelHuntingAreaDefinition?: () => void;
   onRefreshHuntingAreas?: () => void;
   onRegisterSync?: (syncFn: () => void) => void;
+  compassSliceLength?: number;
 }
 
 export default function AwareMap({
@@ -144,6 +145,7 @@ export default function AwareMap({
   onCancelHuntingAreaDefinition,
   onRefreshHuntingAreas,
   onRegisterSync,
+  compassSliceLength,
 }: AwareMapProps) {
   const [isClient, setIsClient] = useState(false);
   const [hasError, setHasError] = useState(false);
@@ -232,6 +234,7 @@ export default function AwareMap({
         onCancelHuntingAreaDefinition={onCancelHuntingAreaDefinition}
         onRefreshHuntingAreas={onRefreshHuntingAreas}
         onRegisterSync={onRegisterSync}
+        compassSliceLength={compassSliceLength}
       />
     </div>
   );

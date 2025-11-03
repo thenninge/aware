@@ -65,6 +65,8 @@ interface SettingsMenuProps {
   onHuntingBoundaryColorChange?: (color: string) => void;
   onHuntingBoundaryWeightChange?: (weight: number) => void;
   onHuntingBoundaryOpacityChange?: (opacity: number) => void;
+  compassSliceLength?: number; // 0-100 (% of screen height)
+  onCompassSliceLengthChange?: (length: number) => void;
 }
 
 export interface HuntingArea {
@@ -124,7 +126,9 @@ export default function SettingsMenu({
   huntingBoundaryOpacity,
   onHuntingBoundaryColorChange,
   onHuntingBoundaryWeightChange,
-  onHuntingBoundaryOpacityChange
+  onHuntingBoundaryOpacityChange,
+  compassSliceLength,
+  onCompassSliceLengthChange
 }: SettingsMenuProps & { currentCenter?: { lat: number, lng: number } }) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [showHomeSaved, setShowHomeSaved] = useState(false);
@@ -133,6 +137,7 @@ export default function SettingsMenu({
   const [isHomeExpanded, setIsHomeExpanded] = useState(false);
   const [isPieSliceExpanded, setIsPieSliceExpanded] = useState(false);
   const [isReticleExpanded, setIsReticleExpanded] = useState(false);
+  const [isCompassExpanded, setIsCompassExpanded] = useState(false);
   const [isFilterExpanded, setIsFilterExpanded] = useState(false);
   const [isShootTrackExpanded, setIsShootTrackExpanded] = useState(false);
   const [isHuntingAreaExpanded, setIsHuntingAreaExpanded] = useState(false);
@@ -368,6 +373,46 @@ export default function SettingsMenu({
                   </div>
                 </div>
               )}
+            </div>
+          )}
+        </div>
+      )}
+      
+      {/* Compass Settings Expander */}
+      {compassSliceLength !== undefined && onCompassSliceLengthChange && (
+        <div className="mb-4 border border-gray-200 rounded-lg overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setIsCompassExpanded(!isCompassExpanded)}
+            className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors"
+          >
+            <span className="text-sm font-medium text-gray-700">Compass settings</span>
+            <span className="text-gray-500 text-sm">{isCompassExpanded ? '▼' : '▶'}</span>
+          </button>
+          
+          {isCompassExpanded && (
+            <div className="p-3 bg-white">
+              {/* Compass Slice Length */}
+              <div className="mb-3">
+                <label className="text-xs font-medium text-gray-700 block mb-1">
+                  Indikatorlengde: {compassSliceLength}%
+                </label>
+                <input
+                  type="range"
+                  min="10"
+                  max="50"
+                  step="5"
+                  value={compassSliceLength}
+                  onChange={(e) => onCompassSliceLengthChange(Number(e.target.value))}
+                  className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer hover:bg-gray-300 transition-colors"
+                  style={{
+                    background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${(compassSliceLength - 10) / 40 * 100}%, #e5e7eb ${(compassSliceLength - 10) / 40 * 100}%, #e5e7eb 100%)`
+                  }}
+                />
+                <div className="text-xs text-gray-500 mt-1">
+                  Prosent av skjermhøyde
+                </div>
+              </div>
             </div>
           )}
         </div>
