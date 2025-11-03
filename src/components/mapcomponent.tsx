@@ -879,9 +879,12 @@ export default function MapComponent({
         heading,
       }));
     },
-    smoothingAlpha: 0.25, // EMA smoothing factor
-    stallMs: 700, // Faster stall detection
-    watchdogPeriodMs: 250, // Check more frequently
+    smoothingAlpha: 0.22,      // Tuned: smooth needle, not sluggish (default 0.22)
+    stallMs: 650,              // Faster stall detection (default 650)
+    watchdogPeriodMs: 220,     // Check frequently for recovery (default 220)
+    minRenderIntervalMs: 50,   // Max ~20 fps UI update (default 50)
+    minDeltaDeg: 0.8,          // Deadband: ignore tiny changes (default 0.8)
+    enableTiltGuard: true,     // Drop readings at extreme tilt >75° (default true)
     onStall: () => {
       console.warn('[MapComponent] Compass stall detected - auto-recovery in progress');
     },

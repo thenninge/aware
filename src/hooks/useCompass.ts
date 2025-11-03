@@ -1,65 +1,100 @@
+// useCompass.ts
+// Smooth, resilient compass hook for iOS/Android web (Next/Vercel friendly)
+
 import { useState, useCallback, useEffect, useRef } from 'react';
 
-interface UseCompassOptions {
+export interface UseCompassOptions {
   isEnabled: boolean;
   onHeadingChange?: (heading: number) => void;
-  smoothingAlpha?: number; // EMA smoothing factor (0-1, default 0.25)
-  stallMs?: number; // Stall threshold in ms (default 700)
-  watchdogPeriodMs?: number; // Watchdog check interval (default 250)
-  onStall?: () => void; // Callback when stall detected
+
+  // Smoothing (EMA)
+  smoothingAlpha?: number;        // default 0.22 (0..1, lavere = roligere)
+
+  // Stall/recovery
+  stallMs?: number;               // default 650 ms: hvor lenge uten events før vi antar stall
+  watchdogPeriodMs?: number;      // default 220 ms: hvor ofte vi sjekker for stall
+  onStall?: () => void;           // valgfri callback når stall oppdages
+
+  // Tegnehastighet/ro
+  minRenderIntervalMs?: number;   // default 50 ms: maks ~20 fps for UI-oppdatering
+  minDeltaDeg?: number;           // default 0.8°: deadband – ignorer små endringer
+  enableTiltGuard?: boolean;      // default true: dropp målinger ved ekstrem tilt
 }
 
-interface UseCompassReturn {
+export interface UseCompassReturn {
+  // Tilstand
   isActive: boolean;
-  currentHeading: number | null;
-  rawHeading: number | null;
-  lastValidHeading: number | null;
-  startCompass: () => Promise<void>;
-  stopCompass: () => void;
   isSupported: boolean;
   permissionState: 'unknown' | 'granted' | 'denied' | 'not-required';
   error?: string;
+
+  // Verdier
+  currentHeading: number | null;  // smoothed [0..360)
+  rawHeading: number | null;      // siste rå vinkel [0..360)
+  lastValidHeading: number | null;
+
+  // Kontroll
+  startCompass: () => Promise<void>;  // kall i bruker-gest (onClick)
+  stopCompass: () => void;
 }
 
-// Normalize 0..360
+// ---------- Utils ----------
 function normalizeDeg(x: number): number {
   let d = x % 360;
   if (d < 0) d += 360;
   return d;
 }
 
-// Wrap-aware EMA
-function makeSmoother(alpha = 0.25) {
+function wrapDiff(a: number, b: number): number {
+  let d = a - b;
+  if (d > 180) d -= 360;
+  if (d < -180) d += 360;
+  return d;
+}
+
+function angAbsDiff(a: number, b: number): number {
+  return Math.abs(wrapDiff(a, b));
+}
+
+// EMA smoothing som tar hensyn til 0/360-wrap
+function makeSmoother(alpha = 0.22) {
   let prev: number | null = null;
   return (v: number) => {
     if (prev == null) { prev = v; return v; }
-    let diff = v - prev;
-    if (diff > 180) diff -= 360;
-    if (diff < -180) diff += 360;
-    const out = normalizeDeg(prev + alpha * diff);
+    const out = normalizeDeg(prev + alpha * wrapDiff(v, prev));
     prev = out;
     return out;
   };
 }
 
+// ---------- Hook ----------
 export function useCompass({
   isEnabled,
   onHeadingChange,
-  smoothingAlpha = 0.25,
-  stallMs = 700,
-  watchdogPeriodMs = 250,
+
+  // Defaults tunet for “smud” nål og rask recovery
+  smoothingAlpha = 0.22,
+  stallMs = 650,
+  watchdogPeriodMs = 220,
   onStall,
+
+  minRenderIntervalMs = 50,
+  minDeltaDeg = 0.8,
+  enableTiltGuard = true,
 }: UseCompassOptions): UseCompassReturn {
+  // Offentlig state
   const [isActive, setIsActive] = useState(false);
   const [currentHeading, setCurrentHeading] = useState<number | null>(null);
   const [rawHeading, setRawHeading] = useState<number | null>(null);
   const [lastValidHeading, setLastValidHeading] = useState<number | null>(null);
-  const [permissionState, setPermissionState] = useState<'unknown' | 'granted' | 'denied' | 'not-required'>('unknown');
+  const [permissionState, setPermissionState] =
+    useState<'unknown' | 'granted' | 'denied' | 'not-required'>('unknown');
   const [error, setError] = useState<string | undefined>(undefined);
 
-  const isSupported = typeof window !== 'undefined' && 'DeviceOrientationEvent' in window;
+  const isSupported =
+    typeof window !== 'undefined' && 'DeviceOrientationEvent' in window;
 
-  // Refs for internals
+  // Interne refs
   const smootherRef = useRef(makeSmoother(smoothingAlpha));
   const lastEventTsRef = useRef<number>(0);
   const lastRawRef = useRef<number | null>(null);
@@ -69,17 +104,31 @@ export function useCompass({
   const watchdogRef = useRef<number | null>(null);
   const removeOrientationRef = useRef<(() => void) | null>(null);
 
-  // Recreate smoother if alpha changes
+  const lastRenderTsRef = useRef(0);
+  const lastSentHeadingRef = useRef<number | null>(null);
+
+  // Oppdater smoother hvis alpha endres
   useEffect(() => {
     smootherRef.current = makeSmoother(smoothingAlpha);
   }, [smoothingAlpha]);
 
-  // Compute heading from event
+  // Heading fra event (bruk iOS webkitCompassHeading om tilgjengelig)
   const computeHeading = useCallback((evt: DeviceOrientationEvent): number | null => {
     const anyEvt: any = evt as any;
+
+    // Tilt guard (ved ekstrem tilt gir mange enheter dårlig heading)
+    if (enableTiltGuard) {
+      const { beta, gamma } = evt;
+      if (typeof beta === 'number' && typeof gamma === 'number') {
+        const absTilt = Math.max(Math.abs(beta), Math.abs(gamma));
+        if (absTilt > 75) return null; // dropp oppdatering
+      }
+    }
+
     if (typeof anyEvt.webkitCompassHeading === 'number' && !isNaN(anyEvt.webkitCompassHeading)) {
       return normalizeDeg(anyEvt.webkitCompassHeading);
     }
+
     if (typeof evt.alpha === 'number' && evt.alpha != null) {
       const ang =
         (window.screen.orientation && typeof window.screen.orientation.angle === 'number')
@@ -88,9 +137,9 @@ export function useCompass({
       return normalizeDeg(360 - (evt.alpha + (ang || 0)));
     }
     return null;
-  }, []);
+  }, [enableTiltGuard]);
 
-  // Attach/remove deviceorientation listener
+  // Lytter
   const attachListener = useCallback(() => {
     if (activeRef.current) return;
 
@@ -115,7 +164,7 @@ export function useCompass({
     removeOrientationRef.current = null;
   }, []);
 
-  // Start compass
+  // Start
   const startCompass = useCallback(async () => {
     if (!isSupported) {
       const msg = 'DeviceOrientation ikke støttet';
@@ -124,7 +173,7 @@ export function useCompass({
       throw new Error(msg);
     }
 
-    // iOS permission model (must be called from a user gesture)
+    // Må kalles fra bruker-gest i iOS
     try {
       const D: any = DeviceOrientationEvent;
       if (typeof D?.requestPermission === 'function') {
@@ -147,56 +196,72 @@ export function useCompass({
     setError(undefined);
     setIsActive(true);
 
-    // Attach sensor listener
+    // Koble på sensoren
     attachListener();
 
-    // RAF render loop (decouples UI from event cadence)
+    // rAF-tegneloop med throttling + deadband
     if (rafRef.current == null) {
       const tick = () => {
         const now = performance.now();
         const raw = lastRawRef.current;
-        const stale = lastEventTsRef.current ? now - lastEventTsRef.current : Infinity;
 
-        if (raw != null) {
+        if (raw != null && now - lastRenderTsRef.current >= minRenderIntervalMs) {
           const smooth = smootherRef.current(raw);
-          setRawHeading(raw);
-          setCurrentHeading(smooth);
-          setLastValidHeading(smooth);
-          onHeadingChange?.(smooth);
+          const lastSent = lastSentHeadingRef.current;
+
+          if (lastSent == null || angAbsDiff(smooth, lastSent) >= minDeltaDeg) {
+            setRawHeading(raw);
+            setCurrentHeading(smooth);
+            setLastValidHeading(smooth);
+            onHeadingChange?.(smooth);
+
+            lastSentHeadingRef.current = smooth;
+            lastRenderTsRef.current = now;
+          }
         }
         rafRef.current = requestAnimationFrame(tick);
       };
       rafRef.current = requestAnimationFrame(tick);
     }
 
-    // Watchdog: re-attach raskere og smartere
+    // Watchdog: re-attach ved stall, pause når skjult
     if (watchdogRef.current == null) {
       watchdogRef.current = window.setInterval(() => {
+        if (document.visibilityState === 'hidden') return;
         const idle = performance.now() - (lastEventTsRef.current || 0);
         if (idle > stallMs) {
-          console.warn('[useCompass] ⚠️ Stall detected:', idle, 'ms - attempting recovery');
-          onStall?.(); // Optional telemetry
-
-          // 1) Soft kick: re-attach immediately
+          onStall?.();
+          // Soft kick
           detachListener();
+          smootherRef.current = makeSmoother(smoothingAlpha);
           attachListener();
 
-          // 2) Hard kick if still dead after short timeout
+          // Hard kick hvis fortsatt dødt
           setTimeout(() => {
             const stillIdle = performance.now() - (lastEventTsRef.current || 0);
             if (stillIdle > stallMs * 1.25) {
-              console.warn('[useCompass] ⚠️ Hard recovery needed');
               detachListener();
-              // Minimal delay can help some WebKit builds
+              smootherRef.current = makeSmoother(smoothingAlpha);
               setTimeout(attachListener, 0);
             }
           }, Math.min(120, stallMs * 0.2));
         }
       }, watchdogPeriodMs);
     }
-  }, [attachListener, detachListener, isSupported, onHeadingChange, stallMs, watchdogPeriodMs, onStall]);
+  }, [
+    isSupported,
+    attachListener,
+    detachListener,
+    onHeadingChange,
+    stallMs,
+    watchdogPeriodMs,
+    onStall,
+    smoothingAlpha,
+    minRenderIntervalMs,
+    minDeltaDeg,
+  ]);
 
-  // Stop compass
+  // Stop
   const stopCompass = useCallback(() => {
     setIsActive(false);
     detachListener();
@@ -204,10 +269,10 @@ export function useCompass({
     if (watchdogRef.current != null) { clearInterval(watchdogRef.current); watchdogRef.current = null; }
     setCurrentHeading(null);
     setRawHeading(null);
-    // keep lastValidHeading as last known good value
+    // bevar lastValidHeading
   }, [detachListener]);
 
-  // Lifecycle: visibility/pageshow
+  // Lifecycle
   useEffect(() => {
     if (!isEnabled) {
       if (isActive) stopCompass();
@@ -217,7 +282,6 @@ export function useCompass({
       if (document.visibilityState === 'visible' && isActive) {
         attachListener();
       } else if (document.visibilityState === 'hidden') {
-        // optional: drop listener to save energy; watchdog will revive anyway
         detachListener();
       }
     };
@@ -232,35 +296,37 @@ export function useCompass({
     };
   }, [isEnabled, isActive, attachListener, detachListener, stopCompass]);
 
-  // Gesture-kick: wake stream on user touch (iOS builds wake faster from gesture)
+  // Gesture-kick med cooldown (vekker stream raskt ved berøring)
   useEffect(() => {
     if (!isActive) return;
 
+    let lastKick = 0;
+    const kickCooldownMs = 300;
+
     const poke = () => {
-      const idle = performance.now() - (lastEventTsRef.current || 0);
+      const now = performance.now();
+      if (now - lastKick < kickCooldownMs) return;
+      const idle = now - (lastEventTsRef.current || 0);
       if (idle > stallMs) {
-        console.log('[useCompass] 👆 Gesture kick - recovering from stall');
+        lastKick = now;
         detachListener();
         attachListener();
       }
     };
 
     window.addEventListener('pointerdown', poke, { passive: true } as AddEventListenerOptions);
-
-    return () => {
-      window.removeEventListener('pointerdown', poke as any);
-    };
+    return () => window.removeEventListener('pointerdown', poke as any);
   }, [isActive, stallMs, attachListener, detachListener]);
 
   return {
     isActive,
+    isSupported,
+    permissionState,
+    error,
     currentHeading,
     rawHeading,
     lastValidHeading,
     startCompass,
     stopCompass,
-    isSupported,
-    permissionState,
-    error,
   };
 }
