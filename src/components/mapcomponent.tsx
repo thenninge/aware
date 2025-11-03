@@ -82,6 +82,7 @@ interface MapComponentProps {
   onHuntingAreaDefined?: (area: HuntingArea) => void;
   onCancelHuntingAreaDefinition?: () => void;
   onRefreshHuntingAreas?: () => void;
+  onRegisterSync?: (syncFn: () => void) => void;
 }
 
 interface CategoryFilter {
@@ -704,6 +705,7 @@ export default function MapComponent({
   onHuntingAreaDefined,
   onCancelHuntingAreaDefinition,
   onRefreshHuntingAreas,
+  onRegisterSync,
   activeTeam = null,
 }: MapComponentProps) {
   const [showTargetDialog, setShowTargetDialog] = useState(false);
@@ -1487,6 +1489,13 @@ export default function MapComponent({
       }
     }
   };
+
+  // Register sync function with parent component
+  useEffect(() => {
+    if (onRegisterSync) {
+      onRegisterSync(handleSyncData);
+    }
+  }, [onRegisterSync]);
 
   // Håndter lagring av spor fra dialog
   const handleSaveTrackFromDialog = () => {
@@ -3311,16 +3320,6 @@ export default function MapComponent({
                         {/* Start/Stopp spor knapp kun i søk-modus */}
         {mode === 'søk' && (
           <div className="fixed bottom-4 inset-x-0 z-[2001] flex flex-wrap justify-center items-center gap-2 px-2 -ml-[15px]" style={{ pointerEvents: 'none' }}>
-            {/* Synkroniser knapp */}
-          <button
-              onClick={handleSyncData}
-              className="w-12 h-12 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white border-blue-700"
-              title="Synkroniser alle data med teamet"
-              style={{ pointerEvents: 'auto' }}
-            >
-                      🔄
-          </button>
-
                     {/* Obs-knapp */}
           <button
                       onClick={toggleObservationMode}

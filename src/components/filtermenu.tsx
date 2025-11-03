@@ -38,6 +38,7 @@ interface FilterMenuProps {
   onShowTracksChange?: (v: boolean) => void;
   showHuntingBoundary?: boolean;
   onShowHuntingBoundaryChange?: (v: boolean) => void;
+  onSync?: () => void;
 }
 
 const categoryLabels: Record<keyof CategoryFilter, string> = {
@@ -49,7 +50,7 @@ const categoryLabels: Record<keyof CategoryFilter, string> = {
   isolated_dwelling: 'Enkeltbolig',
 };
 
-export default function FilterMenu({ categoryFilters, onCategoryChange, radius, onRadiusChange, showMarkers, onShowMarkersChange, orientationMode, onOrientationModeChange, categoryConfigs, showOnlyLastShot, onShowOnlyLastShotChange, mode, showAllTracksAndFinds, onShowAllTracksAndFindsChange, showObservations, onShowObservationsChange, showShots, onShowShotsChange, showTracks, onShowTracksChange, showHuntingBoundary, onShowHuntingBoundaryChange }: FilterMenuProps) {
+export default function FilterMenu({ categoryFilters, onCategoryChange, radius, onRadiusChange, showMarkers, onShowMarkersChange, orientationMode, onOrientationModeChange, categoryConfigs, showOnlyLastShot, onShowOnlyLastShotChange, mode, showAllTracksAndFinds, onShowAllTracksAndFindsChange, showObservations, onShowObservationsChange, showShots, onShowShotsChange, showTracks, onShowTracksChange, showHuntingBoundary, onShowHuntingBoundaryChange, onSync }: FilterMenuProps) {
   return (
     <div className="bg-white rounded-lg shadow-lg p-4 min-w-[220px] max-w-xs">
       <div className="flex items-center justify-between mb-2">
@@ -309,6 +310,19 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
               Jaktgrenser
             </span>
           </label>
+        </div>
+      )}
+      
+      {/* Sync button i track-modus */}
+      {mode === 'søk' && onSync && (
+        <div className="mt-4 pt-3 border-t border-gray-200">
+          <button
+            onClick={onSync}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded shadow-lg text-sm flex items-center justify-center gap-2"
+          >
+            <span>🔄</span>
+            <span>Synkroniser</span>
+          </button>
         </div>
       )}
     </div>

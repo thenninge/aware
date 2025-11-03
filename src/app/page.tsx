@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, useCallback } from 'react';
 import AwareMap from '@/components/awaremap';
 import SettingsMenu, { HuntingArea } from '@/components/settingsmenu';
 import FilterMenu from '@/components/filtermenu';
@@ -387,6 +387,15 @@ export default function Home() {
     window.location.reload();
   };
 
+  // Sync callback registered by MapComponent
+  const syncCallbackRef = useRef<(() => void) | null>(null);
+  
+  const handleSyncFromFilter = () => {
+    if (syncCallbackRef.current) {
+      syncCallbackRef.current();
+    }
+  };
+
   // Funksjoner for å navigere mellom treffpunkter i søk-modus
   const handlePreviousTarget = () => {
     setSelectedTargetIndex(prev => {
@@ -577,6 +586,7 @@ export default function Home() {
           onShowTracksChange={setShowTracks}
           showHuntingBoundary={showHuntingBoundary}
           onShowHuntingBoundaryChange={setShowHuntingBoundary}
+          onSync={handleSyncFromFilter}
         />
         </div>
       )}
@@ -632,6 +642,7 @@ export default function Home() {
         onHuntingAreaDefined={handleHuntingAreaDefined}
         onCancelHuntingAreaDefinition={handleCancelHuntingAreaDefinition}
         onRefreshHuntingAreas={loadHuntingAreas}
+        onRegisterSync={(fn) => { syncCallbackRef.current = fn; }}
         activeTeam={authState.activeTeam?.id || null}
       />
 
