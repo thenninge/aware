@@ -443,10 +443,20 @@ export default function Home() {
         return (
           <div className="w-full h-screen">
 
-        {/* Admin hamburger-knapp og Lock-knapp oppe til høyre */}
-        <div className="fixed top-4 right-4 z-[2001] flex gap-2">
-          {/* Lock-knapp - kun synlig når kompass er på */}
-          {compassMode === 'on' && (
+        {/* Admin hamburger-knapp oppe til høyre */}
+        <div className="fixed top-4 right-4 z-[2001]">
+          <button
+            onClick={() => setIsAdminExpanded(!isAdminExpanded)}
+            className="w-10 h-10 bg-gray-800 hover:bg-gray-700 text-white rounded-lg shadow-lg flex items-center justify-center transition-colors"
+            title="Admin Panel"
+          >
+            <span className="text-lg">☰</span>
+          </button>
+        </div>
+        
+        {/* Lock-knapp - under admin-knappen, kun synlig når kompass er på */}
+        {compassMode === 'on' && (
+          <div className="fixed top-16 right-4 z-[2001]">
             <button
               onClick={() => setIsCompassLocked(!isCompassLocked)}
               className={`w-10 h-10 rounded-lg shadow-lg flex items-center justify-center transition-colors ${
@@ -458,16 +468,8 @@ export default function Home() {
             >
               <span className="text-lg">⬆️</span>
             </button>
-          )}
-          
-          <button
-            onClick={() => setIsAdminExpanded(!isAdminExpanded)}
-            className="w-10 h-10 bg-gray-800 hover:bg-gray-700 text-white rounded-lg shadow-lg flex items-center justify-center transition-colors"
-            title="Admin Panel"
-          >
-            <span className="text-lg">☰</span>
-          </button>
-        </div>
+          </div>
+        )}
         
         {/* Mode-toggle og menyknapper alltid synlig, fixed og midtjustert, også på mobil */}
       <div className="fixed top-0 left-1/2 -translate-x-1/2 z-[2001] flex justify-center items-center w-full max-w-xs px-2 py-2 gap-2">
