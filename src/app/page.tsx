@@ -69,6 +69,7 @@ export default function Home() {
   const [isDefiningHuntingArea, setIsDefiningHuntingArea] = useState(false);
   const [huntingBoundaryColor, setHuntingBoundaryColor] = useState('#00ff00'); // green
   const [huntingBoundaryWeight, setHuntingBoundaryWeight] = useState(3); // pixels
+  const [huntingBoundaryOpacity, setHuntingBoundaryOpacity] = useState(80); // 0-100
   
   // State for Shoot & Track settings
   const [targetSize, setTargetSize] = useState(15); // meters
@@ -153,6 +154,7 @@ export default function Home() {
         if (defaults.showHuntingBoundary !== undefined) setShowHuntingBoundary(defaults.showHuntingBoundary);
         if (defaults.huntingBoundaryColor !== undefined) setHuntingBoundaryColor(defaults.huntingBoundaryColor);
         if (defaults.huntingBoundaryWeight !== undefined) setHuntingBoundaryWeight(defaults.huntingBoundaryWeight);
+        if (defaults.huntingBoundaryOpacity !== undefined) setHuntingBoundaryOpacity(defaults.huntingBoundaryOpacity);
       } catch (e) {
         console.error('Error loading defaults:', e);
       }
@@ -543,8 +545,10 @@ export default function Home() {
             onDeleteHuntingArea={handleDeleteHuntingArea}
             huntingBoundaryColor={huntingBoundaryColor}
             huntingBoundaryWeight={huntingBoundaryWeight}
+            huntingBoundaryOpacity={huntingBoundaryOpacity}
             onHuntingBoundaryColorChange={setHuntingBoundaryColor}
             onHuntingBoundaryWeightChange={setHuntingBoundaryWeight}
+            onHuntingBoundaryOpacityChange={setHuntingBoundaryOpacity}
           />
         </div>
       )}
@@ -623,6 +627,7 @@ export default function Home() {
         activeHuntingAreaId={activeHuntingAreaId}
         huntingBoundaryColor={huntingBoundaryColor}
         huntingBoundaryWeight={huntingBoundaryWeight}
+        huntingBoundaryOpacity={huntingBoundaryOpacity}
         isDefiningHuntingArea={isDefiningHuntingArea}
         onHuntingAreaDefined={handleHuntingAreaDefined}
         onCancelHuntingAreaDefinition={handleCancelHuntingAreaDefinition}

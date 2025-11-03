@@ -83,6 +83,7 @@ interface AwareMapProps {
   activeHuntingAreaId?: string | null;
   huntingBoundaryColor?: string;
   huntingBoundaryWeight?: number;
+  huntingBoundaryOpacity?: number;
   isDefiningHuntingArea?: boolean;
   onHuntingAreaDefined?: (area: HuntingArea) => void;
   onCancelHuntingAreaDefinition?: () => void;
@@ -136,6 +137,7 @@ export default function AwareMap({
   activeHuntingAreaId,
   huntingBoundaryColor,
   huntingBoundaryWeight,
+  huntingBoundaryOpacity,
   isDefiningHuntingArea,
   onHuntingAreaDefined,
   onCancelHuntingAreaDefinition,
@@ -222,6 +224,7 @@ export default function AwareMap({
         activeHuntingAreaId={activeHuntingAreaId}
         huntingBoundaryColor={huntingBoundaryColor}
         huntingBoundaryWeight={huntingBoundaryWeight}
+        huntingBoundaryOpacity={huntingBoundaryOpacity}
         isDefiningHuntingArea={isDefiningHuntingArea}
         onHuntingAreaDefined={onHuntingAreaDefined}
         onCancelHuntingAreaDefinition={onCancelHuntingAreaDefinition}

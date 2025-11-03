@@ -61,8 +61,10 @@ interface SettingsMenuProps {
   onDeleteHuntingArea?: (id: string) => void;
   huntingBoundaryColor?: string;
   huntingBoundaryWeight?: number;
+  huntingBoundaryOpacity?: number;
   onHuntingBoundaryColorChange?: (color: string) => void;
   onHuntingBoundaryWeightChange?: (weight: number) => void;
+  onHuntingBoundaryOpacityChange?: (opacity: number) => void;
 }
 
 export interface HuntingArea {
@@ -119,8 +121,10 @@ export default function SettingsMenu({
   onDeleteHuntingArea,
   huntingBoundaryColor,
   huntingBoundaryWeight,
+  huntingBoundaryOpacity,
   onHuntingBoundaryColorChange,
-  onHuntingBoundaryWeightChange
+  onHuntingBoundaryWeightChange,
+  onHuntingBoundaryOpacityChange
 }: SettingsMenuProps & { currentCenter?: { lat: number, lng: number } }) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [showHomeSaved, setShowHomeSaved] = useState(false);
@@ -673,6 +677,24 @@ export default function SettingsMenu({
                 />
               </div>
             )}
+            
+            {/* Jaktgrense opasitet */}
+            {huntingBoundaryOpacity !== undefined && onHuntingBoundaryOpacityChange && (
+              <div className="mb-3">
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Jaktgrense opasitet: {huntingBoundaryOpacity}%
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="5"
+                  value={huntingBoundaryOpacity}
+                  onChange={(e) => onHuntingBoundaryOpacityChange(Number(e.target.value))}
+                  className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer hover:bg-gray-300 transition-colors"
+                />
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -807,7 +829,8 @@ export default function SettingsMenu({
             targetColor,
             targetLineWeight,
             huntingBoundaryColor,
-            huntingBoundaryWeight
+            huntingBoundaryWeight,
+            huntingBoundaryOpacity
           };
           localStorage.setItem('aware_settings_defaults', JSON.stringify(defaults));
           setShowDefaultsSaved(true);

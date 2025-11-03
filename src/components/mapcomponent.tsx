@@ -76,6 +76,7 @@ interface MapComponentProps {
   activeHuntingAreaId?: string | null;
   huntingBoundaryColor?: string;
   huntingBoundaryWeight?: number;
+  huntingBoundaryOpacity?: number;
   isDefiningHuntingArea?: boolean;
   onHuntingAreaDefined?: (area: HuntingArea) => void;
   onCancelHuntingAreaDefinition?: () => void;
@@ -793,6 +794,7 @@ export default function MapComponent({
   activeHuntingAreaId = null,
   huntingBoundaryColor = '#00ff00',
   huntingBoundaryWeight = 3,
+  huntingBoundaryOpacity = 80,
   isDefiningHuntingArea = false,
   onHuntingAreaDefined,
   onCancelHuntingAreaDefinition,
@@ -2605,7 +2607,7 @@ export default function MapComponent({
               pathOptions={{
                 color: huntingBoundaryColor || activeArea.color || '#00ff00',
                 weight: huntingBoundaryWeight || activeArea.lineWeight || 3,
-                opacity: 0.8,
+                opacity: (huntingBoundaryOpacity || 80) / 100,
               }}
             >
               <Popup>
@@ -2630,7 +2632,7 @@ export default function MapComponent({
                 pathOptions={{
                   color: huntingBoundaryColor,
                   fillColor: huntingBoundaryColor,
-                  fillOpacity: 0.8,
+                  fillOpacity: (huntingBoundaryOpacity || 80) / 100,
                   weight: 2,
                 }}
               />
@@ -2643,7 +2645,7 @@ export default function MapComponent({
                 pathOptions={{
                   color: huntingBoundaryColor,
                   weight: huntingBoundaryWeight,
-                  opacity: 0.8,
+                  opacity: (huntingBoundaryOpacity || 80) / 100,
                   dashArray: '5, 5',
                 }}
               />
