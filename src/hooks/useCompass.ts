@@ -18,28 +18,24 @@ interface UseCompassReturn {
   error?: string;
 }
 
-// Normalize degrees to 0-360
+// Normalize 0..360
 function normalizeDeg(x: number): number {
   let d = x % 360;
   if (d < 0) d += 360;
   return d;
 }
 
-// Exponential Moving Average smoothing
+// Wrap-aware EMA
 function makeSmoother(alpha = 0.25) {
   let prev: number | null = null;
   return (v: number) => {
-    if (prev == null) {
-      prev = v;
-      return v;
-    }
-    // Find shortest path around 0/360
+    if (prev == null) { prev = v; return v; }
     let diff = v - prev;
     if (diff > 180) diff -= 360;
     if (diff < -180) diff += 360;
-    const smoothed = normalizeDeg(prev + alpha * diff);
-    prev = smoothed;
-    return smoothed;
+    const out = normalizeDeg(prev + alpha * diff);
+    prev = out;
+    return out;
   };
 }
 
@@ -54,217 +50,167 @@ export function useCompass({
   const [lastValidHeading, setLastValidHeading] = useState<number | null>(null);
   const [permissionState, setPermissionState] = useState<'unknown' | 'granted' | 'denied' | 'not-required'>('unknown');
   const [error, setError] = useState<string | undefined>(undefined);
-  
-  const smootherRef = useRef(makeSmoother(smoothingAlpha));
-  const listenerActive = useRef(false);
-  const lastEventTime = useRef<number>(0);
+
   const isSupported = typeof window !== 'undefined' && 'DeviceOrientationEvent' in window;
 
-  // Compute heading from device orientation event
+  // Refs for internals
+  const smootherRef = useRef(makeSmoother(smoothingAlpha));
+  const lastEventTsRef = useRef<number>(0);
+  const lastRawRef = useRef<number | null>(null);
+  const activeRef = useRef(false);
+
+  const rafRef = useRef<number | null>(null);
+  const watchdogRef = useRef<number | null>(null);
+  const removeOrientationRef = useRef<(() => void) | null>(null);
+
+  // Recreate smoother if alpha changes
+  useEffect(() => {
+    smootherRef.current = makeSmoother(smoothingAlpha);
+  }, [smoothingAlpha]);
+
+  // Compute heading from event
   const computeHeading = useCallback((evt: DeviceOrientationEvent): number | null => {
-    // iOS legacy webkitCompassHeading
     const anyEvt: any = evt as any;
     if (typeof anyEvt.webkitCompassHeading === 'number' && !isNaN(anyEvt.webkitCompassHeading)) {
-      // webkitCompassHeading er allerede "sann nord" (0 = nord, øker med klokka)
       return normalizeDeg(anyEvt.webkitCompassHeading);
     }
-
-    // Standard alpha (må justeres med screen orientation)
     if (typeof evt.alpha === 'number' && evt.alpha != null) {
-      const alpha = evt.alpha; // 0–360
-      
-      // Korriger for skjermrotasjon
-      const orientationAngle =
+      const ang =
         (window.screen.orientation && typeof window.screen.orientation.angle === 'number')
           ? window.screen.orientation.angle
-          : (window.orientation as number) || 0;
-
-      // Kompass = 360 - (alpha + orientationAngle)
-      const heading = normalizeDeg(360 - (alpha + (orientationAngle || 0)));
-      return heading;
+          : ((window as any).orientation || 0);
+      return normalizeDeg(360 - (evt.alpha + (ang || 0)));
     }
-
     return null;
   }, []);
 
-  // Compass event handler
-  const handleCompass = useCallback((event: DeviceOrientationEvent) => {
-    const now = Date.now();
-    lastEventTime.current = now;
-    
-    const raw = computeHeading(event);
-    
-    console.log('[useCompass] Event fired at', now, '- raw:', raw, 'alpha:', event.alpha, 'webkitCompassHeading:', (event as any).webkitCompassHeading);
-    
-    if (raw == null || isNaN(raw)) {
-      console.warn('[useCompass] Invalid heading computed');
-      return;
-    }
-    
-    // Apply EMA smoothing
-    const smoothed = smootherRef.current(raw);
-    
-    // Update state
-    setRawHeading(raw);
-    setCurrentHeading(smoothed);
-    setLastValidHeading(smoothed);
-    onHeadingChange?.(smoothed);
-    
-    console.log('[useCompass] Heading updated:', { raw, smoothed, timestamp: now });
-  }, [computeHeading, onHeadingChange]);
+  // Attach/remove deviceorientation listener
+  const attachListener = useCallback(() => {
+    if (activeRef.current) return;
 
-  // Start compass function
+    const onOrientation = (evt: DeviceOrientationEvent) => {
+      const raw = computeHeading(evt);
+      if (raw == null || Number.isNaN(raw)) return;
+      lastRawRef.current = raw;
+      lastEventTsRef.current = performance.now();
+    };
+
+    window.addEventListener('deviceorientation', onOrientation, { passive: true } as AddEventListenerOptions);
+    activeRef.current = true;
+
+    removeOrientationRef.current = () => {
+      window.removeEventListener('deviceorientation', onOrientation as any);
+      activeRef.current = false;
+    };
+  }, [computeHeading]);
+
+  const detachListener = useCallback(() => {
+    removeOrientationRef.current?.();
+    removeOrientationRef.current = null;
+  }, []);
+
+  // Start compass
   const startCompass = useCallback(async () => {
-    // Already active?
-    if (listenerActive.current) {
-      console.log('[useCompass] Already active');
-      return;
-    }
-
     if (!isSupported) {
       const msg = 'DeviceOrientation ikke støttet';
-      console.warn('[useCompass]', msg);
       setError(msg);
       setPermissionState('denied');
-      throw new Error('Kompass ikke støttet på denne enheten');
+      throw new Error(msg);
     }
 
-    // iOS permission flow
-    const needsPermission = (DeviceOrientationEvent as any).requestPermission instanceof Function;
-
+    // iOS permission model (must be called from a user gesture)
     try {
-      if (needsPermission) {
-        console.log('[useCompass] Requesting iOS permission...');
-        const res = await (DeviceOrientationEvent as any).requestPermission();
+      const D: any = DeviceOrientationEvent;
+      if (typeof D?.requestPermission === 'function') {
+        const res = await D.requestPermission();
         if (res !== 'granted') {
-          const msg = 'Permission not granted';
-          console.warn('[useCompass]', msg);
-          setError(msg);
           setPermissionState('denied');
-          throw new Error('Ingen tilgang til kompass');
+          setError('Permission not granted');
+          throw new Error('Permission not granted');
         }
         setPermissionState('granted');
       } else {
         setPermissionState('not-required');
       }
-      
-      setError(undefined);
-      setIsActive(true);
-      listenerActive.current = true;
-      console.log('[useCompass] Compass started successfully');
     } catch (e: any) {
-      const msg = e?.message || 'Permission error';
-      console.error('[useCompass]', msg);
-      setError(msg);
       setPermissionState('denied');
+      setError(e?.message || 'Permission error');
       throw e;
     }
-  }, [isSupported]);
 
-  // Stop compass function
+    setError(undefined);
+    setIsActive(true);
+
+    // Attach sensor listener
+    attachListener();
+
+    // RAF render loop (decouples UI from event cadence)
+    if (rafRef.current == null) {
+      const tick = () => {
+        const now = performance.now();
+        const raw = lastRawRef.current;
+        const stale = lastEventTsRef.current ? now - lastEventTsRef.current : Infinity;
+
+        if (raw != null) {
+          const smooth = smootherRef.current(raw);
+          setRawHeading(raw);
+          setCurrentHeading(smooth);
+          setLastValidHeading(smooth);
+          onHeadingChange?.(smooth);
+        }
+        rafRef.current = requestAnimationFrame(tick);
+      };
+      rafRef.current = requestAnimationFrame(tick);
+    }
+
+    // Watchdog: re-attach if no events for >1.2s (iOS stall)
+    if (watchdogRef.current == null) {
+      watchdogRef.current = window.setInterval(() => {
+        const idle = performance.now() - (lastEventTsRef.current || 0);
+        if (idle > 1200) {
+          // re-kick the stream
+          detachListener();
+          setTimeout(attachListener, 0);
+        }
+      }, 800);
+    }
+  }, [attachListener, detachListener, isSupported, onHeadingChange]);
+
+  // Stop compass
   const stopCompass = useCallback(() => {
-    console.log('[useCompass] Stopping compass');
     setIsActive(false);
-    listenerActive.current = false;
+    detachListener();
+    if (rafRef.current != null) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
+    if (watchdogRef.current != null) { clearInterval(watchdogRef.current); watchdogRef.current = null; }
     setCurrentHeading(null);
     setRawHeading(null);
-  }, []);
+    // keep lastValidHeading as last known good value
+  }, [detachListener]);
 
-  // Event listener management with iOS-specific keep-alive
+  // Lifecycle: visibility/pageshow
   useEffect(() => {
-    if (!isActive || !isEnabled) {
+    if (!isEnabled) {
+      if (isActive) stopCompass();
       return;
     }
-
-    console.log('[useCompass] Setting up compass listeners');
-    
-    const onOrientation = (evt: DeviceOrientationEvent) => handleCompass(evt);
-
-    // Add deviceorientation listener with passive for better performance
-    window.addEventListener('deviceorientation', onOrientation, { passive: true } as AddEventListenerOptions);
-    listenerActive.current = true;
-
-    // iOS keep-alive: re-subscribe when page becomes visible
-    const onVisible = () => {
-      if (document.visibilityState === 'visible' && !listenerActive.current) {
-        console.log('[useCompass] Page visible, re-adding listener');
-        window.addEventListener('deviceorientation', onOrientation, { passive: true } as AddEventListenerOptions);
-        listenerActive.current = true;
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible' && isActive) {
+        attachListener();
+      } else if (document.visibilityState === 'hidden') {
+        // optional: drop listener to save energy; watchdog will revive anyway
+        detachListener();
       }
     };
+    const onPageShow = () => { if (isActive) attachListener(); };
 
-    // iOS: remove listener when hidden (prevents freezing)
-    const onHidden = () => {
-      if (document.visibilityState === 'hidden' && listenerActive.current) {
-        console.log('[useCompass] Page hidden, removing listener');
-        window.removeEventListener('deviceorientation', onOrientation as any);
-        listenerActive.current = false;
-      }
-    };
-
-    // Handle page show/hide (iOS back/forward cache)
-    const onPageShow = () => {
-      console.log('[useCompass] Page show event');
-      if (!listenerActive.current) {
-        window.addEventListener('deviceorientation', onOrientation, { passive: true } as AddEventListenerOptions);
-        listenerActive.current = true;
-      }
-    };
-
-    const onPageHide = () => {
-      console.log('[useCompass] Page hide event');
-      if (listenerActive.current) {
-        window.removeEventListener('deviceorientation', onOrientation as any);
-        listenerActive.current = false;
-      }
-    };
-
-    // Reset smoother when screen orientation changes
-    const onOrientationChange = () => {
-      console.log('[useCompass] Screen orientation changed, resetting smoother');
-      smootherRef.current = makeSmoother(smoothingAlpha);
-    };
-
-    // Add all lifecycle listeners
-    document.addEventListener('visibilitychange', onVisible);
-    document.addEventListener('visibilitychange', onHidden);
+    document.addEventListener('visibilitychange', onVisibility);
     window.addEventListener('pageshow', onPageShow);
-    window.addEventListener('pagehide', onPageHide);
-    window.addEventListener('orientationchange', onOrientationChange);
 
-    // Heartbeat: Check if events are still coming (iOS debugging)
-    const heartbeatInterval = setInterval(() => {
-      const now = Date.now();
-      const timeSinceLastEvent = now - lastEventTime.current;
-      
-      if (timeSinceLastEvent > 2000) {
-        console.warn('[useCompass] ⚠️ No compass events for', timeSinceLastEvent, 'ms - listener may be dead');
-        console.log('[useCompass] listenerActive:', listenerActive.current, 'visibility:', document.visibilityState);
-      } else {
-        console.log('[useCompass] ✓ Heartbeat OK - last event', timeSinceLastEvent, 'ms ago');
-      }
-    }, 3000); // Check every 3 seconds
-
-    // Cleanup
     return () => {
-      console.log('[useCompass] Cleaning up all listeners');
-      clearInterval(heartbeatInterval);
-      window.removeEventListener('deviceorientation', onOrientation as any);
-      document.removeEventListener('visibilitychange', onVisible);
-      document.removeEventListener('visibilitychange', onHidden);
+      document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('pageshow', onPageShow);
-      window.removeEventListener('pagehide', onPageHide);
-      window.removeEventListener('orientationchange', onOrientationChange);
-      listenerActive.current = false;
     };
-  }, [isActive, isEnabled, handleCompass, smoothingAlpha]);
-
-  // Cleanup when disabled
-  useEffect(() => {
-    if (!isEnabled && isActive) {
-      stopCompass();
-    }
-  }, [isEnabled, isActive, stopCompass]);
+  }, [isEnabled, isActive, attachListener, detachListener, stopCompass]);
 
   return {
     isActive,
@@ -278,4 +224,3 @@ export function useCompass({
     error,
   };
 }
-
