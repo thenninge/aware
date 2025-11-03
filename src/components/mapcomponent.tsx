@@ -3380,6 +3380,22 @@ export default function MapComponent({
         </div>
       )}
       
+      {/* MSR-retikkel Button - Bottom Left */}
+      <div className="fixed bottom-4 left-4 sm:bottom-4 sm:left-4 bottom-2 left-2 z-[2000] flex flex-col gap-2" style={{ pointerEvents: 'auto' }}>
+          {/* MSR-retikkel knapp */}
+          <button
+            className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
+              localShowMSRRetikkel 
+                ? 'bg-red-600 hover:bg-red-700 text-white' 
+                : 'bg-gray-600 hover:bg-gray-700 text-white'
+            }`}
+            onClick={() => setLocalShowMSRRetikkel(!localShowMSRRetikkel)}
+            title={localShowMSRRetikkel ? 'MSR-retikkel ON' : 'MSR-retikkel OFF'}
+          >
+            📐
+          </button>
+      </div>
+
       {/* Scan & Live Buttons - Bottom Right */}
       <div className="fixed bottom-4 right-4 sm:bottom-4 sm:right-4 bottom-2 right-2 z-[2000] flex flex-col gap-2" style={{ pointerEvents: 'auto' }}>
           {/* Scan-knapp kun i aware-mode */}
@@ -3426,19 +3442,6 @@ export default function MapComponent({
             </>
           )}
 
-          {/* MSR-retikkel knapp */}
-          <button
-            className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
-              localShowMSRRetikkel 
-                ? 'bg-red-600 hover:bg-red-700 text-white' 
-                : 'bg-gray-600 hover:bg-gray-700 text-white'
-            }`}
-            onClick={() => setLocalShowMSRRetikkel(!localShowMSRRetikkel)}
-            title={localShowMSRRetikkel ? 'MSR-retikkel ON' : 'MSR-retikkel OFF'}
-          >
-            📐
-          </button>
-          
           {/* Layer-knapp */}
           <button
             className="w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center bg-white/90 border border-gray-300 hover:bg-gray-100"
