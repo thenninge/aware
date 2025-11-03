@@ -85,7 +85,7 @@ export default function Home() {
   
   // State for MSR-retikkel
   const [angleRange, setAngleRange] = useState(5);
-  const [showMSRRetikkel, setShowMSRRetikkel] = useState(true);
+  const [showMSRRetikkel, setShowMSRRetikkel] = useState(false);
   const [msrRetikkelOpacity, setMSRRetikkelOpacity] = useState(80);
   const [msrRetikkelStyle, setMSRRetikkelStyle] = useState<'msr' | 'ivar'>('ivar');
   const [msrRetikkelVerticalPosition, setMSRRetikkelVerticalPosition] = useState(50);
