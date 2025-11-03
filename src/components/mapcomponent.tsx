@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { MapContainer, TileLayer, Marker, useMap, Circle, Polyline, Tooltip, Popup, LayersControl } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMap, Circle, Polyline, Polygon, Tooltip, Popup, LayersControl } from 'react-leaflet';
 import L from 'leaflet';
 import MSRRetikkel from './msr-retikkel';
 import 'leaflet/dist/leaflet.css';
@@ -417,6 +417,90 @@ function MapController({
   );
 }
 
+// Component to show compass direction as a red pie slice
+function CompassSlice({ 
+  heading, 
+  mode,
+  centerLat,
+  centerLng,
+  radius = 100, // meters
+  angleRange = 15, // ± degrees (total 30 degree slice)
+}: { 
+  heading: number | null; 
+  mode: 'off' | 'arrow' | 'map';
+  centerLat: number;
+  centerLng: number;
+  radius?: number;
+  angleRange?: number;
+}) {
+  if (mode === 'off' || heading === null) return null;
+
+  // In 'arrow' mode: slice points at heading, in 'map' mode: slice points up (north)
+  const direction = mode === 'arrow' ? heading : 0;
+
+  // Calculate arc points for the pie slice
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const startAngle = direction - angleRange;
+  const endAngle = direction + angleRange;
+
+  const points: [number, number][] = [[centerLat, centerLng]];
+
+  // Generate arc edge points
+  for (let angle = startAngle; angle <= endAngle; angle += 2) {
+    const rad = toRad(angle);
+    const lat = centerLat + (radius * Math.cos(rad)) / 111000;
+    const lng = centerLng + (radius * Math.sin(rad)) / (111000 * Math.cos(toRad(centerLat)));
+    points.push([lat, lng]);
+  }
+
+  // Close the slice back to center
+  points.push([centerLat, centerLng]);
+
+  return (
+    <Polygon
+      positions={points}
+      pathOptions={{
+        fillColor: '#ef4444',
+        fillOpacity: 0.4,
+        color: '#ef4444',
+        weight: 2,
+        opacity: 0.8,
+      }}
+    />
+  );
+}
+
+// Component to rotate map based on compass heading
+function MapRotator({ 
+  heading, 
+  isEnabled 
+}: { 
+  heading: number | null; 
+  isEnabled: boolean; 
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!isEnabled || heading === null || !map) return;
+
+    const container = map.getContainer();
+    const rotation = -heading; // Negative because we rotate counter-clockwise
+
+    // Apply rotation to map container
+    container.style.transform = `rotate(${rotation}deg)`;
+    container.style.transformOrigin = 'center center';
+    container.style.transition = 'transform 0.1s linear';
+    
+    return () => {
+      // Reset rotation when disabled
+      container.style.transform = '';
+      container.style.transition = '';
+    };
+  }, [map, heading, isEnabled]);
+
+  return null;
+}
+
 // Component to handle hunting area definition clicks
 function HuntingAreaClickHandler({
   isDefiningHuntingArea,
@@ -731,9 +815,12 @@ export default function MapComponent({
   const [isScanning, setIsScanning] = useState(false);
   const [savedPairs, setSavedPairs] = useState<PointPair[]>([]);
   
+  // Compass mode: 'off' | 'arrow' | 'map'
+  const [compassMode, setCompassMode] = useState<'off' | 'arrow' | 'map'>('off');
+  
   // Use compass hook with iOS-optimized settings
   const compass = useCompass({
-    isEnabled: isLiveMode,
+    isEnabled: compassMode !== 'off',
     onHeadingChange: (heading) => {
       setCurrentPosition(prev => ({
         ...prev,
@@ -2480,6 +2567,24 @@ export default function MapComponent({
           onPointAdded={handleAddHuntingAreaPoint}
         />
 
+        {/* Compass slice - shows direction as red pie slice */}
+        {currentPosition && (
+          <CompassSlice 
+            heading={currentPosition.heading || null}
+            mode={compassMode}
+            centerLat={currentPosition.lat}
+            centerLng={currentPosition.lng}
+            radius={100}
+            angleRange={15}
+          />
+        )}
+
+        {/* Map rotator - rotates map when compassMode is 'map' */}
+        <MapRotator 
+          heading={currentPosition?.heading || null}
+          isEnabled={compassMode === 'map'}
+        />
+
         {/* MSR-retikkel controller */}
         <MSRRetikkel 
           isVisible={localShowMSRRetikkel}
@@ -2487,6 +2592,7 @@ export default function MapComponent({
           style={localMSRRetikkelStyle}
           verticalPosition={msrRetikkelVerticalPosition}
           currentPosition={currentPosition}
+          compassMode={compassMode}
         />
         
         {/* Jaktgrenser - render active hunting area boundary */}
@@ -3469,33 +3575,43 @@ export default function MapComponent({
             🛰️
           </button>
           
-          {/* Kompass-knapp - alltid synlig */}
-          {!compass.isActive ? (
-            <button
-              onClick={async () => {
+          {/* Kompass-knapp - cycles through modes: off -> arrow -> map -> off */}
+          <button
+            onClick={async () => {
+              if (compassMode === 'off') {
+                // First click: start compass with arrow rotation
                 try {
                   await compass.startCompass();
-                  // No alert - visual feedback from button color change is enough
+                  setCompassMode('arrow');
                 } catch (error) {
                   alert((error as Error).message);
                 }
-              }}
-              className="w-12 h-12 rounded-full shadow-lg bg-green-600 hover:bg-green-700 text-white flex items-center justify-center"
-              title="Start kompass"
-            >
-              🧭
-            </button>
-          ) : (
-            <button
-              onClick={() => {
-                alert(`Kompass status:\nCurrent (smoothed): ${compass.currentHeading?.toFixed(1) || 'N/A'}°\nRaw: ${compass.rawHeading?.toFixed(1) || 'N/A'}°\nLast valid: ${compass.lastValidHeading?.toFixed(1) || 'N/A'}°\nAktiv: ${compass.isActive}\nPermission: ${compass.permissionState}\nSupported: ${compass.isSupported ? 'Ja' : 'Nei'}${compass.error ? '\nError: ' + compass.error : ''}`);
-              }}
-              className="w-12 h-12 rounded-full shadow-lg bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center"
-              title="Kompass status"
-            >
-              🧭
-            </button>
-          )}
+              } else if (compassMode === 'arrow') {
+                // Second click: switch to map rotation
+                setCompassMode('map');
+              } else {
+                // Third click: turn off
+                compass.stopCompass();
+                setCompassMode('off');
+              }
+            }}
+            className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
+              compassMode === 'off'
+                ? 'bg-gray-600 hover:bg-gray-700 text-white'
+                : compassMode === 'arrow'
+                ? 'bg-green-600 hover:bg-green-700 text-white'
+                : 'bg-blue-600 hover:bg-blue-700 text-white'
+            }`}
+            title={
+              compassMode === 'off'
+                ? 'Start kompass'
+                : compassMode === 'arrow'
+                ? 'Kompass: Pil roterer'
+                : 'Kompass: Kart roterer'
+            }
+          >
+            🧭
+          </button>
         </div>
 
       {/* Kartrotasjon (bare i live-mode og rotateMap) */}
