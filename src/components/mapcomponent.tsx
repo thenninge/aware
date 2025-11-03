@@ -3441,13 +3441,36 @@ export default function MapComponent({
             </>
           )}
 
+          {/* Layer-knapp */}
+          <button
+            className="w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center bg-white/90 border border-gray-300 hover:bg-gray-100"
+            onClick={() => setLayerIdx((layerIdx + 1) % LAYER_CONFIGS.length)}
+            title={`Bytt kartlag (${LAYER_CONFIGS[layerIdx].name})`}
+            style={{ zIndex: 2002 }}
+          >
+            <span className="w-7 h-7 flex items-center justify-center"><LayersIcon /></span>
+          </button>
+          
+          {/* Live-posisjon-knapp */}
+          <button
+            onClick={() => onLiveModeChange?.(!isLiveMode)}
+            className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
+              isLiveMode 
+                ? 'bg-green-600 hover:bg-green-700 text-white' 
+                : 'bg-gray-600 hover:bg-gray-700 text-white'
+            }`}
+            title={isLiveMode ? 'Live GPS ON' : 'Live GPS'}
+          >
+            🛰️
+          </button>
+          
           {/* Kompass-knapp - alltid synlig */}
           {!compass.isActive ? (
             <button
               onClick={async () => {
                 try {
                   await compass.startCompass();
-                  alert('Kompass startet!');
+                  // No alert - visual feedback from button color change is enough
                 } catch (error) {
                   alert((error as Error).message);
                 }
@@ -3468,29 +3491,6 @@ export default function MapComponent({
               🧭
             </button>
           )}
-          
-          {/* Live-posisjon-knapp */}
-          <button
-            onClick={() => onLiveModeChange?.(!isLiveMode)}
-            className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
-              isLiveMode 
-                ? 'bg-green-600 hover:bg-green-700 text-white' 
-                : 'bg-gray-600 hover:bg-gray-700 text-white'
-            }`}
-            title={isLiveMode ? 'Live GPS ON' : 'Live GPS'}
-          >
-            🛰️
-          </button>
-          
-          {/* Layer-knapp */}
-          <button
-            className="w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center bg-white/90 border border-gray-300 hover:bg-gray-100"
-            onClick={() => setLayerIdx((layerIdx + 1) % LAYER_CONFIGS.length)}
-            title={`Bytt kartlag (${LAYER_CONFIGS[layerIdx].name})`}
-            style={{ zIndex: 2002 }}
-          >
-            <span className="w-7 h-7 flex items-center justify-center"><LayersIcon /></span>
-          </button>
           
           {/* Lock map on GPS-knapp - kun når GPS er aktiv */}
           {isLiveMode && (
