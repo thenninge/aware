@@ -729,7 +729,7 @@ export default function MapComponent({
   const [isScanning, setIsScanning] = useState(false);
   const [savedPairs, setSavedPairs] = useState<PointPair[]>([]);
   
-  // Use compass hook
+  // Use compass hook with iOS-optimized settings
   const compass = useCompass({
     isEnabled: isLiveMode,
     onHeadingChange: (heading) => {
@@ -740,8 +740,7 @@ export default function MapComponent({
         heading,
       }));
     },
-    averagingSamples: 3,
-    throttleMs: 100,
+    smoothingAlpha: 0.25, // EMA smoothing factor
   });
   
   // Tracking state for søk-modus
@@ -3492,7 +3491,7 @@ export default function MapComponent({
           {isLiveMode && compass.isActive && (
             <button
               onClick={() => {
-                alert(`Kompass status:\nCurrent heading: ${compass.currentHeading?.toFixed(1) || 'N/A'}°\nLast valid heading: ${compass.lastValidHeading?.toFixed(1) || 'N/A'}°\nKompass aktiv: ${compass.isActive}\nPermission: ${compass.permissionState}\nSupported: ${compass.isSupported ? 'Ja' : 'Nei'}`);
+                alert(`Kompass status:\nCurrent (smoothed): ${compass.currentHeading?.toFixed(1) || 'N/A'}°\nRaw: ${compass.rawHeading?.toFixed(1) || 'N/A'}°\nLast valid: ${compass.lastValidHeading?.toFixed(1) || 'N/A'}°\nAktiv: ${compass.isActive}\nPermission: ${compass.permissionState}\nSupported: ${compass.isSupported ? 'Ja' : 'Nei'}${compass.error ? '\nError: ' + compass.error : ''}`);
               }}
               className="w-12 h-12 rounded-full shadow-lg bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center"
               title="Kompass status"
