@@ -57,6 +57,7 @@ export function useCompass({
   
   const smootherRef = useRef(makeSmoother(smoothingAlpha));
   const listenerActive = useRef(false);
+  const lastEventTime = useRef<number>(0);
   const isSupported = typeof window !== 'undefined' && 'DeviceOrientationEvent' in window;
 
   // Compute heading from device orientation event
@@ -88,8 +89,17 @@ export function useCompass({
 
   // Compass event handler
   const handleCompass = useCallback((event: DeviceOrientationEvent) => {
+    const now = Date.now();
+    lastEventTime.current = now;
+    
     const raw = computeHeading(event);
-    if (raw == null || isNaN(raw)) return;
+    
+    console.log('[useCompass] Event fired at', now, '- raw:', raw, 'alpha:', event.alpha, 'webkitCompassHeading:', (event as any).webkitCompassHeading);
+    
+    if (raw == null || isNaN(raw)) {
+      console.warn('[useCompass] Invalid heading computed');
+      return;
+    }
     
     // Apply EMA smoothing
     const smoothed = smootherRef.current(raw);
@@ -100,7 +110,7 @@ export function useCompass({
     setLastValidHeading(smoothed);
     onHeadingChange?.(smoothed);
     
-    console.log('[useCompass] Heading updated:', { raw, smoothed });
+    console.log('[useCompass] Heading updated:', { raw, smoothed, timestamp: now });
   }, [computeHeading, onHeadingChange]);
 
   // Start compass function
@@ -222,9 +232,23 @@ export function useCompass({
     window.addEventListener('pagehide', onPageHide);
     window.addEventListener('orientationchange', onOrientationChange);
 
+    // Heartbeat: Check if events are still coming (iOS debugging)
+    const heartbeatInterval = setInterval(() => {
+      const now = Date.now();
+      const timeSinceLastEvent = now - lastEventTime.current;
+      
+      if (timeSinceLastEvent > 2000) {
+        console.warn('[useCompass] ⚠️ No compass events for', timeSinceLastEvent, 'ms - listener may be dead');
+        console.log('[useCompass] listenerActive:', listenerActive.current, 'visibility:', document.visibilityState);
+      } else {
+        console.log('[useCompass] ✓ Heartbeat OK - last event', timeSinceLastEvent, 'ms ago');
+      }
+    }, 3000); // Check every 3 seconds
+
     // Cleanup
     return () => {
       console.log('[useCompass] Cleaning up all listeners');
+      clearInterval(heartbeatInterval);
       window.removeEventListener('deviceorientation', onOrientation as any);
       document.removeEventListener('visibilitychange', onVisible);
       document.removeEventListener('visibilitychange', onHidden);
