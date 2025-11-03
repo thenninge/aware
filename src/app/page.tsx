@@ -92,6 +92,8 @@ export default function Home() {
   
   // State for Compass
   const [compassSliceLength, setCompassSliceLength] = useState(30); // % of screen height
+  const [compassMode, setCompassMode] = useState<'off' | 'on'>('off');
+  const [isCompassLocked, setIsCompassLocked] = useState(false);
   const [categoryConfigs, setCategoryConfigs] = useState<Record<keyof CategoryFilter, CategoryConfig>>({
     city: {
       color: '#1e40af', // Dark blue
@@ -441,8 +443,23 @@ export default function Home() {
         return (
           <div className="w-full h-screen">
 
-        {/* Admin hamburger-knapp oppe til høyre */}
-        <div className="fixed top-4 right-4 z-[2001]">
+        {/* Admin hamburger-knapp og Lock-knapp oppe til høyre */}
+        <div className="fixed top-4 right-4 z-[2001] flex gap-2">
+          {/* Lock-knapp - kun synlig når kompass er på */}
+          {compassMode === 'on' && (
+            <button
+              onClick={() => setIsCompassLocked(!isCompassLocked)}
+              className={`w-10 h-10 rounded-lg shadow-lg flex items-center justify-center transition-colors ${
+                isCompassLocked
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                  : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+              }`}
+              title={isCompassLocked ? 'Låst: Kart roterer' : 'Ulåst: Pil roterer'}
+            >
+              <span className="text-lg">⬆️</span>
+            </button>
+          )}
+          
           <button
             onClick={() => setIsAdminExpanded(!isAdminExpanded)}
             className="w-10 h-10 bg-gray-800 hover:bg-gray-700 text-white rounded-lg shadow-lg flex items-center justify-center transition-colors"
@@ -650,6 +667,10 @@ export default function Home() {
         onRegisterSync={(fn) => { syncCallbackRef.current = fn; }}
         activeTeam={authState.activeTeam?.id || null}
         compassSliceLength={compassSliceLength}
+        compassMode={compassMode}
+        isCompassLocked={isCompassLocked}
+        onCompassModeChange={setCompassMode}
+        onCompassLockedChange={setIsCompassLocked}
       />
 
       {/* Admin Menu */}

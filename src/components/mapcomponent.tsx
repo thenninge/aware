@@ -84,6 +84,10 @@ interface MapComponentProps {
   onRefreshHuntingAreas?: () => void;
   onRegisterSync?: (syncFn: () => void) => void;
   compassSliceLength?: number; // % of screen height
+  compassMode?: 'off' | 'on';
+  isCompassLocked?: boolean;
+  onCompassModeChange?: (mode: 'off' | 'on') => void;
+  onCompassLockedChange?: (locked: boolean) => void;
 }
 
 interface CategoryFilter {
@@ -421,14 +425,16 @@ function MapController({
 // Component to show compass direction as a red pie slice (fixed screen pixels)
 function CompassSlice({ 
   heading, 
-  mode,
+  isActive,
+  isLocked,
   centerLat,
   centerLng,
   lengthPercent = 30, // % of screen height
   angleRange = 1, // ± degrees (total 2 degree slice - narrow arrow)
 }: { 
   heading: number | null; 
-  mode: 'off' | 'arrow' | 'map';
+  isActive: boolean;
+  isLocked: boolean;
   centerLat: number;
   centerLng: number;
   lengthPercent?: number;
@@ -471,10 +477,10 @@ function CompassSlice({
     };
   }, [map, lengthPercent]);
 
-  if (mode === 'off' || heading === null) return null;
+  if (!isActive || heading === null) return null;
 
-  // In 'arrow' mode: slice points at heading, in 'map' mode: slice points up (north)
-  const direction = mode === 'arrow' ? heading : 0;
+  // If locked: slice points up (north), if unlocked: slice points at heading
+  const direction = isLocked ? 0 : heading;
 
   // Calculate arc points for the pie slice
   const toRad = (deg: number) => (deg * Math.PI) / 180;
@@ -830,6 +836,10 @@ export default function MapComponent({
   onRegisterSync,
   activeTeam = null,
   compassSliceLength = 30, // % of screen height
+  compassMode: externalCompassMode,
+  isCompassLocked: externalIsCompassLocked,
+  onCompassModeChange,
+  onCompassLockedChange,
 }: MapComponentProps) {
   const [showTargetDialog, setShowTargetDialog] = useState(false);
   const instanceId = useRef(Math.random());
@@ -854,8 +864,9 @@ export default function MapComponent({
   const [isScanning, setIsScanning] = useState(false);
   const [savedPairs, setSavedPairs] = useState<PointPair[]>([]);
   
-  // Compass mode: 'off' | 'arrow' | 'map'
-  const [compassMode, setCompassMode] = useState<'off' | 'arrow' | 'map'>('off');
+  // Use props or default to 'off'
+  const compassMode = externalCompassMode || 'off';
+  const isCompassLocked = externalIsCompassLocked || false;
   
   // Use compass hook with iOS-optimized settings
   const compass = useCompass({
@@ -2610,7 +2621,8 @@ export default function MapComponent({
         {currentPosition && (
           <CompassSlice 
             heading={currentPosition.heading || null}
-            mode={compassMode}
+            isActive={compassMode === 'on'}
+            isLocked={isCompassLocked}
             centerLat={currentPosition.lat}
             centerLng={currentPosition.lng}
             lengthPercent={compassSliceLength}
@@ -2618,10 +2630,10 @@ export default function MapComponent({
           />
         )}
 
-        {/* Map rotator - rotates map when compassMode is 'map' */}
+        {/* Map rotator - rotates map when compass is locked */}
         <MapRotator 
           heading={currentPosition?.heading || null}
-          isEnabled={compassMode === 'map'}
+          isEnabled={compassMode === 'on' && isCompassLocked}
         />
 
         {/* MSR-retikkel controller */}
@@ -2631,7 +2643,6 @@ export default function MapComponent({
           style={localMSRRetikkelStyle}
           verticalPosition={msrRetikkelVerticalPosition}
           currentPosition={currentPosition}
-          compassMode={compassMode}
         />
         
         {/* Jaktgrenser - render active hunting area boundary */}
@@ -3614,40 +3625,31 @@ export default function MapComponent({
             🛰️
           </button>
           
-          {/* Kompass-knapp - cycles through modes: off -> arrow -> map -> off */}
+          {/* Kompass-knapp - toggle on/off */}
           <button
             onClick={async () => {
               if (compassMode === 'off') {
-                // First click: start compass with arrow rotation
+                // Turn on compass
                 try {
                   await compass.startCompass();
-                  setCompassMode('arrow');
+                  onCompassModeChange?.('on');
+                  onCompassLockedChange?.(false); // Default: arrow rotates
                 } catch (error) {
                   alert((error as Error).message);
                 }
-              } else if (compassMode === 'arrow') {
-                // Second click: switch to map rotation
-                setCompassMode('map');
               } else {
-                // Third click: turn off
+                // Turn off compass
                 compass.stopCompass();
-                setCompassMode('off');
+                onCompassModeChange?.('off');
+                onCompassLockedChange?.(false);
               }
             }}
             className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
               compassMode === 'off'
                 ? 'bg-gray-600 hover:bg-gray-700 text-white'
-                : compassMode === 'arrow'
-                ? 'bg-green-600 hover:bg-green-700 text-white'
-                : 'bg-blue-600 hover:bg-blue-700 text-white'
+                : 'bg-green-600 hover:bg-green-700 text-white'
             }`}
-            title={
-              compassMode === 'off'
-                ? 'Start kompass'
-                : compassMode === 'arrow'
-                ? 'Kompass: Pil roterer'
-                : 'Kompass: Kart roterer'
-            }
+            title={compassMode === 'off' ? 'Start kompass' : 'Stopp kompass'}
           >
             🧭
           </button>
