@@ -11,6 +11,7 @@ import SettingsMenu, { HuntingArea } from './settingsmenu';
 // Database operations now go through Next.js API routes
 import { Dialog } from '@headlessui/react';
 import { createPortal } from 'react-dom';
+import { useCompass } from '@/hooks/useCompass';
 
 interface Position {
   lat: number;
@@ -112,7 +113,6 @@ function MapController({
   onLoadingChange,
   mode = 'aware', // <-- NY
   showOnlyLastShot = false,
-  compassStarted = false,
   onSearchPositionChange,
   onPlacesChange,
   clearPlaces,
@@ -131,7 +131,6 @@ function MapController({
   onLoadingChange?: (loading: boolean) => void;
   mode?: 'aware' | 'track' | 'søk'; // <-- NY
   showOnlyLastShot?: boolean;
-  compassStarted?: boolean;
   onSearchPositionChange?: (position: Position) => void;
   onPlacesChange?: (places: PlaceData[]) => void;
   clearPlaces?: boolean;
@@ -145,9 +144,6 @@ function MapController({
   const [places, setPlaces] = useState<PlaceData[]>([]);
   const [loading, setLoading] = useState(false);
   const [watchId, setWatchId] = useState<number | null>(null);
-  const [compassId, setCompassId] = useState<number | null>(null);
-  const [headingHistory, setHeadingHistory] = useState<number[]>([]);
-  const [lastUpdateTime, setLastUpdateTime] = useState(0);
 
   // Fix Leaflet icons when component mounts
   useEffect(() => {
@@ -207,86 +203,14 @@ function MapController({
     }
   }, [map, onError, onPositionChange, isMapLocked]);
 
-  // Improved compass handler with proper iOS and Android support
-  const handleCompass = useCallback((event: DeviceOrientationEvent) => {
-    console.log('Compass event received:', {
-      alpha: event.alpha,
-      beta: event.beta,
-      gamma: event.gamma,
-      webkitCompassHeading: (event as DeviceOrientationEvent & { webkitCompassHeading?: number }).webkitCompassHeading,
-      absolute: event.absolute
-    });
-    
-    let heading: number | null = null;
 
-    // iOS Safari har webkitCompassHeading (0 = nord, med klokka)
-    const webkitHeading = (event as DeviceOrientationEvent & { webkitCompassHeading?: number }).webkitCompassHeading;
-    if (webkitHeading !== undefined) {
-      heading = webkitHeading;
-      console.log('Using webkitCompassHeading:', heading);
-    } else if (event.alpha !== null) {
-      // Android / Chrome - inverter for å få med klokka
-      heading = 360 - event.alpha;
-      console.log('Using alpha:', event.alpha, '-> heading:', heading);
-    }
-
-    if (heading !== null && !isNaN(heading)) {
-      heading = (heading + 360) % 360;
-      
-      // Throttle oppdateringer til maks 10 per sekund
-      const now = Date.now();
-      if (now - lastUpdateTime < 100) { // 100ms = 10 oppdateringer per sekund
-        return;
-      }
-      setLastUpdateTime(now);
-      
-      // Lagre siste gyldige heading for debugging
-      (window as Window & { lastValidHeading?: number }).lastValidHeading = heading;
-      
-      // Beregn gjennomsnitt for stabilisering - bruk nåværende historikk + ny heading
-      const currentHistory = headingHistory;
-      const avgHeading = currentHistory.length > 0 
-        ? (currentHistory.reduce((sum: number, h: number) => sum + h, 0) + heading) / (currentHistory.length + 1)
-        : heading;
-      
-      // Legg til i historikk for stabilisering
-      setHeadingHistory((prev: number[]) => {
-        const newHistory = [...prev, heading as number];
-        // Behold kun siste 3 målinger (redusert fra 5)
-        return newHistory.slice(-3);
-      });
-      
-      setCurrentPosition((prev: Position) => {
-        const newPos = {
-          ...prev,
-          heading: avgHeading as number
-        };
-        onPositionChange?.(newPos);
-        return newPos;
-      });
-      
-      console.log('Heading updated successfully:', avgHeading);
-    } else {
-      console.log('Invalid compass data:', { webkitCompassHeading: webkitHeading, alpha: event.alpha });
-    }
-  }, [lastUpdateTime, headingHistory, onPositionChange]);
-
-  // GPS and Compass functionality
+  // GPS functionality
   useEffect(() => {
     if (!isLiveMode) {
       // Clean up watchers when live mode is disabled
       if (watchId) {
         navigator.geolocation.clearWatch(watchId);
         setWatchId(null);
-      }
-      if (compassStarted) {
-        // Clean up compass if available
-        if ('DeviceOrientationEvent' in window) {
-          window.removeEventListener('deviceorientation', handleCompass, true);
-          setCompassId(null);
-        }
-        setHeadingHistory([]);
-        setLastUpdateTime(0);
       }
       return;
     }
@@ -298,8 +222,8 @@ function MapController({
           const newGpsPosition: Position = {
           lat: position.coords.latitude,
           lng: position.coords.longitude,
-          heading: currentPosition.heading || undefined // Keep existing heading
-        };
+            heading: currentPosition.heading || undefined // Keep existing heading from compass
+          };
           
           // Update GPS position separately
           setGpsPosition(newGpsPosition);
@@ -327,32 +251,13 @@ function MapController({
       setWatchId(id);
     }
 
-
-
     // Cleanup function
     return () => {
       if (watchId) {
         navigator.geolocation.clearWatch(watchId);
       }
-      if ('DeviceOrientationEvent' in window) {
-        window.removeEventListener('deviceorientation', handleCompass, true);
-      }
     };
-  }, [isLiveMode, map, onPositionChange, onError, currentPosition, handleCompass, isMapLocked]);
-
-  // Separate useEffect for compass event listener management
-  useEffect(() => {
-    if (!compassStarted) return;
-
-    const listener = (e: DeviceOrientationEvent) => handleCompass(e);
-    window.addEventListener('deviceorientation', listener, true);
-    console.log('Compass event listener added successfully');
-
-    return () => {
-      window.removeEventListener('deviceorientation', listener, true);
-      console.log('Compass event listener removed');
-    };
-  }, [compassStarted, handleCompass]);
+  }, [isLiveMode, map, onPositionChange, onError, currentPosition, isMapLocked]);
 
   // Clear places when clearPlaces prop changes
   useEffect(() => {
@@ -823,7 +728,21 @@ export default function MapComponent({
 
   const [isScanning, setIsScanning] = useState(false);
   const [savedPairs, setSavedPairs] = useState<PointPair[]>([]);
-  const [compassStarted, setCompassStarted] = useState(false);
+  
+  // Use compass hook
+  const compass = useCompass({
+    isEnabled: isLiveMode,
+    onHeadingChange: (heading) => {
+      setCurrentPosition(prev => ({
+        ...prev,
+        lat: prev?.lat || 0,
+        lng: prev?.lng || 0,
+        heading,
+      }));
+    },
+    averagingSamples: 3,
+    throttleMs: 100,
+  });
   
   // Tracking state for søk-modus
   const [savedTracks, setSavedTracks] = useState<SavedTrack[]>([]);
@@ -1750,7 +1669,7 @@ export default function MapComponent({
         alert('Vennligst skriv inn et navn for funnet');
         return;
       }
-      
+
       saveFindToLocalStorage(newFindPosition, finalFindName, findColor);
       setShowFindDialog(false);
       setNewFindPosition(null);
@@ -1831,7 +1750,7 @@ export default function MapComponent({
         
         if (finalObservationName) {
           finalObservationName = `${finalObservationName} - ${dtg}`;
-        } else {
+          } else {
           finalObservationName = dtg;
         }
       }
@@ -1927,43 +1846,6 @@ export default function MapComponent({
     setShowObservationDialog(true);
   };
 
-  const startCompass = async () => {
-    try {
-      // Check if DeviceOrientationEvent is available
-      if (!('DeviceOrientationEvent' in window)) {
-        console.warn('DeviceOrientationEvent not available');
-        alert('Kompass ikke støttet på denne enheten');
-        return;
-      }
-
-      // Request permission on iOS 13+ - dette må trigges av brukerklikk
-      const requestPermission = (DeviceOrientationEvent as typeof DeviceOrientationEvent & { requestPermission?: () => Promise<string> }).requestPermission;
-      if (typeof requestPermission === 'function') {
-        try {
-          const response = await requestPermission();
-          if (response === 'granted') {
-            console.log('Compass permission granted');
-            setCompassStarted(true);
-            alert('Kompass startet!');
-          } else {
-            console.warn('Compass permission denied');
-            alert('Ingen tilgang til kompass');
-          }
-        } catch (err) {
-          console.error('Error requesting compass permission:', err);
-          alert('Kunne ikke be om kompass-tillatelse');
-        }
-      } else {
-        // Android eller gamle iOS – bare start kompass
-        console.log('No permission required, starting compass');
-        setCompassStarted(true);
-        alert('Kompass startet!');
-      }
-    } catch (error) {
-      console.error('Error starting compass:', error);
-      alert('Feil ved start av kompass');
-    }
-  };
   
   // --- For interaktiv target-pos modal ---
   const [showTargetRadiusModal, setShowTargetRadiusModal] = useState(false);
@@ -2559,7 +2441,6 @@ export default function MapComponent({
           onLoadingChange={setIsScanning}
           mode={mode}
           showOnlyLastShot={showOnlyLastShot}
-          compassStarted={compassStarted}
           onSearchPositionChange={(pos) => {
             setSearchPosition(pos);
           }}
@@ -3591,9 +3472,16 @@ export default function MapComponent({
             </button>
           )}
           {/* Kompass start-knapp */}
-          {isLiveMode && !compassStarted && (
+          {isLiveMode && !compass.isActive && (
             <button
-              onClick={startCompass}
+              onClick={async () => {
+                try {
+                  await compass.startCompass();
+                  alert('Kompass startet!');
+                } catch (error) {
+                  alert((error as Error).message);
+                }
+              }}
               className="w-12 h-12 rounded-full shadow-lg bg-green-600 hover:bg-green-700 text-white flex items-center justify-center"
               title="Start kompass"
             >
@@ -3601,11 +3489,10 @@ export default function MapComponent({
             </button>
           )}
           {/* Kompass status-knapp */}
-          {isLiveMode && compassStarted && (
+          {isLiveMode && compass.isActive && (
             <button
               onClick={() => {
-                const lastHeading = (window as Window & { lastValidHeading?: number }).lastValidHeading;
-                alert(`Kompass status:\nCurrent heading: ${currentPosition?.heading || 'N/A'}°\nLast valid heading: ${lastHeading || 'N/A'}°\nKompass aktiv: ${compassStarted}\nDeviceOrientation: ${'DeviceOrientationEvent' in window ? 'Tilgjengelig' : 'Ikke tilgjengelig'}`);
+                alert(`Kompass status:\nCurrent heading: ${compass.currentHeading?.toFixed(1) || 'N/A'}°\nLast valid heading: ${compass.lastValidHeading?.toFixed(1) || 'N/A'}°\nKompass aktiv: ${compass.isActive}\nPermission: ${compass.permissionState}\nSupported: ${compass.isSupported ? 'Ja' : 'Nei'}`);
               }}
               className="w-12 h-12 rounded-full shadow-lg bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center"
               title="Kompass status"
@@ -3694,7 +3581,7 @@ export default function MapComponent({
                 <span className="text-xs text-black">°</span>
                 <div className="flex-1 px-2 py-1">
               <input
-                    type="range"
+                type="range"
                 min={-180}
                 max={180}
                 value={targetDirection}
@@ -3789,9 +3676,9 @@ export default function MapComponent({
                     const internal = normalized > 180 ? normalized - 360 : normalized;
                     setObservationDirection(internal);
                   }}
-                  className="w-16 border rounded px-2 py-1 text-[16px] text-black"
-                />
-                <span className="text-xs text-black">°</span>
+                className="w-16 border rounded px-2 py-1 text-[16px] text-black"
+              />
+              <span className="text-xs text-black">°</span>
                 <div className="flex-1 px-2 py-1">
                   <input
                     type="range"
@@ -3805,18 +3692,18 @@ export default function MapComponent({
                       margin: '-12px 0'
                     }}
                   />
-                </div>
-              </div>
-            </label>
+            </div>
+            </div>
+          </label>
             <div className="flex justify-between items-center mt-2 gap-2 w-full">
-              <button
+          <button
                 onClick={handleCancelObservationDistance}
                 className="px-6 py-2 rounded bg-gray-200 hover:bg-gray-300 text-sm text-black"
               >Avbryt</button>
               <button
                 onClick={handleSaveObservationWithDistance}
                 className="px-6 py-2 rounded bg-green-600 hover:bg-green-700 text-white font-semibold text-sm"
-              >Lagre</button>
+          >Lagre</button>
             </div>
           </div>
         </div>
