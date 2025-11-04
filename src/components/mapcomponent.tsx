@@ -916,8 +916,8 @@ export default function MapComponent({
       }));
     },
     smoothingAlpha: 0.22,      // Tuned: smooth needle, not sluggish (default 0.22)
-    stallMs: 650,              // Faster stall detection (default 650)
-    watchdogPeriodMs: 220,     // Check frequently for recovery (default 220)
+    stallMs: 600,              // Faster stall detection (default 600)
+    watchdogPeriodMs: 200,     // Check frequently for recovery (default 200)
     minRenderIntervalMs: 50,   // Max ~20 fps UI update (default 50)
     minDeltaDeg: 0.8,          // Deadband: ignore tiny changes (default 0.8)
     enableTiltGuard: true,     // Drop readings at extreme tilt >75° (default true)
@@ -925,6 +925,16 @@ export default function MapComponent({
       console.warn('[MapComponent] Compass stall detected - auto-recovery in progress');
     },
   });
+  
+  // Auto-sync compassMode when compass stops (e.g., permissions lost)
+  useEffect(() => {
+    if (!compass.isActive && compassMode === 'on') {
+      // Compass stopped unexpectedly (permissions lost) - update UI
+      console.warn('[MapComponent] Compass stopped - resetting UI state');
+      onCompassModeChange?.('off');
+      onCompassLockedChange?.(false);
+    }
+  }, [compass.isActive, compassMode, onCompassModeChange, onCompassLockedChange]);
   
   // Tracking state for søk-modus
   const [savedTracks, setSavedTracks] = useState<SavedTrack[]>([]);

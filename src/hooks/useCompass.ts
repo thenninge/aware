@@ -318,21 +318,59 @@ export function useCompass({
       if (isActive) stopCompass();
       return;
     }
+    
+    let resumeTimeoutRef: NodeJS.Timeout | null = null;
+    
     const onVisibility = () => {
       if (!isActive) return;
       if (document.visibilityState === 'visible') {
+        // iOS kan ha resatt permissions når vi kommer tilbake
+        // Prøv å attachListener, men stopp kompasset hvis vi ikke får events
+        const lastEventBefore = lastEventTsRef.current;
         attachListener();
+        
+        // Hvis vi ikke får nye events innen 2 sekunder, permissions er tapt
+        resumeTimeoutRef = setTimeout(() => {
+          if (lastEventTsRef.current === lastEventBefore) {
+            console.warn('[useCompass] No events after resume - permissions likely lost. Stopping compass.');
+            stopCompass();
+            setError('Compass permissions lost - tap compass button to restart');
+          }
+        }, 2000);
       } else {
+        // App går i bakgrunnen
         detachListener();
+        if (resumeTimeoutRef) {
+          clearTimeout(resumeTimeoutRef);
+          resumeTimeoutRef = null;
+        }
       }
     };
-    const onPageShow = () => { if (isActive) attachListener(); };
+    
+    const onPageShow = () => { 
+      if (isActive) {
+        const lastEventBefore = lastEventTsRef.current;
+        attachListener();
+        
+        // Check if we get events after pageshow
+        resumeTimeoutRef = setTimeout(() => {
+          if (lastEventTsRef.current === lastEventBefore) {
+            console.warn('[useCompass] No events after pageshow - permissions likely lost. Stopping compass.');
+            stopCompass();
+            setError('Compass permissions lost - tap compass button to restart');
+          }
+        }, 2000);
+      }
+    };
 
     document.addEventListener('visibilitychange', onVisibility);
     window.addEventListener('pageshow', onPageShow);
     return () => {
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('pageshow', onPageShow);
+      if (resumeTimeoutRef) {
+        clearTimeout(resumeTimeoutRef);
+      }
     };
   }, [isEnabled, isActive, attachListener, detachListener, stopCompass]);
 
