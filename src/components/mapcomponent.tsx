@@ -477,7 +477,12 @@ function CompassSlice({
     };
   }, [map, lengthPercent]);
 
-  if (!isActive || heading === null) return null;
+  console.log('[CompassSlice] Render check:', { isActive, heading, isLocked, centerLat, centerLng });
+  
+  if (!isActive || heading === null) {
+    console.log('[CompassSlice] Not rendering - isActive:', isActive, 'heading:', heading);
+    return null;
+  }
 
   // If locked: slice points up (north), if unlocked: slice points at heading
   const direction = isLocked ? 0 : heading;
@@ -872,12 +877,17 @@ export default function MapComponent({
   const compass = useCompass({
     isEnabled: compassMode !== 'off',
     onHeadingChange: (heading) => {
-      setCurrentPosition(prev => ({
-        ...prev,
-        lat: prev?.lat || 0,
-        lng: prev?.lng || 0,
-        heading,
-      }));
+      console.log('[MapComponent] onHeadingChange called:', heading, 'currentPosition:', currentPosition);
+      setCurrentPosition(prev => {
+        const updated = {
+          ...prev,
+          lat: prev?.lat || 0,
+          lng: prev?.lng || 0,
+          heading,
+        };
+        console.log('[MapComponent] Updated position:', updated);
+        return updated;
+      });
     },
     smoothingAlpha: 0.22,      // Tuned: smooth needle, not sluggish (default 0.22)
     stallMs: 650,              // Faster stall detection (default 650)
