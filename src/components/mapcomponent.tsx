@@ -514,7 +514,7 @@ function CompassSlice({
   );
 }
 
-// Component to rotate map based on compass heading
+// Component to rotate map based on compass heading (optimized with RAF loop)
 function MapRotator({ 
   heading, 
   isEnabled 
@@ -523,24 +523,60 @@ function MapRotator({
   isEnabled: boolean; 
 }) {
   const map = useMap();
+  const rafRef = useRef<number | null>(null);
+  const currentHeadingRef = useRef<number | null>(null);
+  const lastAppliedRotationRef = useRef<number | null>(null);
+
+  // Update heading ref when it changes
+  useEffect(() => {
+    currentHeadingRef.current = heading;
+  }, [heading]);
 
   useEffect(() => {
-    if (!isEnabled || heading === null || !map) return;
+    if (!isEnabled || !map) {
+      // Reset rotation when disabled
+      const container = map.getContainer();
+      container.style.transform = '';
+      lastAppliedRotationRef.current = null;
+      
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+      return;
+    }
 
     const container = map.getContainer();
-    const rotation = -heading; // Negative because we rotate counter-clockwise
 
-    // Apply rotation to map container
-    container.style.transform = `rotate(${rotation}deg)`;
-    container.style.transformOrigin = 'center center';
-    container.style.transition = 'transform 0.1s linear';
-    
-    return () => {
-      // Reset rotation when disabled
-      container.style.transform = '';
-      container.style.transition = '';
+    // RAF loop that applies rotation independently of React renders
+    const applyRotation = () => {
+      const heading = currentHeadingRef.current;
+      
+      if (heading !== null) {
+        const rotation = -heading;
+        
+        // Only update DOM if rotation changed significantly (deadband)
+        if (lastAppliedRotationRef.current === null || 
+            Math.abs(rotation - lastAppliedRotationRef.current) >= 0.5) {
+          container.style.transform = `rotate(${rotation}deg)`;
+          container.style.transformOrigin = 'center center';
+          lastAppliedRotationRef.current = rotation;
+        }
+      }
+      
+      rafRef.current = requestAnimationFrame(applyRotation);
     };
-  }, [map, heading, isEnabled]);
+
+    // Start the RAF loop
+    rafRef.current = requestAnimationFrame(applyRotation);
+
+    return () => {
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+    };
+  }, [map, isEnabled]);
 
   return null;
 }
