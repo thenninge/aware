@@ -194,12 +194,16 @@ export function useCompass({
     rafRef.current = requestAnimationFrame(tick);
   }, [minRenderIntervalMs, minDeltaDeg, onHeadingChange]);
 
-  // Runtime watchdog (stall)
+  // Runtime watchdog (stall) - only runs AFTER first event
   const ensureWatchdog = useCallback(() => {
     if (watchdogRef.current != null) return;
 
     watchdogRef.current = window.setInterval(() => {
       if (document.visibilityState === 'hidden' || !isActive) return;
+      
+      // Don't check for stall until we've had at least one event
+      if (!firstEventSeenRef.current) return;
+      
       const idle = performance.now() - (lastEventTsRef.current || 0);
       if (idle > stallMs) {
         setPhase('stalled');
@@ -325,18 +329,23 @@ export function useCompass({
       if (!isActive) return;
       if (document.visibilityState === 'visible') {
         // iOS kan ha resatt permissions når vi kommer tilbake
-        // Prøv å attachListener, men stopp kompasset hvis vi ikke får events
         const lastEventBefore = lastEventTsRef.current;
+        
+        // Kun sjekk for tapte permissions hvis vi HAR hatt events før (lastEventBefore > 0)
+        const hadEventsBeforeResume = lastEventBefore > 0;
+        
         attachListener();
         
-        // Hvis vi ikke får nye events innen 2 sekunder, permissions er tapt
-        resumeTimeoutRef = setTimeout(() => {
-          if (lastEventTsRef.current === lastEventBefore) {
-            console.warn('[useCompass] No events after resume - permissions likely lost. Stopping compass.');
-            stopCompass();
-            setError('Compass permissions lost - tap compass button to restart');
-          }
-        }, 2000);
+        // Hvis vi ikke får nye events innen 2 sekunder OG vi hadde events før, permissions er tapt
+        if (hadEventsBeforeResume) {
+          resumeTimeoutRef = setTimeout(() => {
+            if (lastEventTsRef.current === lastEventBefore) {
+              console.warn('[useCompass] No events after resume - permissions likely lost. Stopping compass.');
+              stopCompass();
+              setError('Compass permissions lost - tap compass button to restart');
+            }
+          }, 2000);
+        }
       } else {
         // App går i bakgrunnen
         detachListener();
@@ -350,16 +359,20 @@ export function useCompass({
     const onPageShow = () => { 
       if (isActive) {
         const lastEventBefore = lastEventTsRef.current;
+        const hadEventsBeforePageShow = lastEventBefore > 0;
+        
         attachListener();
         
-        // Check if we get events after pageshow
-        resumeTimeoutRef = setTimeout(() => {
-          if (lastEventTsRef.current === lastEventBefore) {
-            console.warn('[useCompass] No events after pageshow - permissions likely lost. Stopping compass.');
-            stopCompass();
-            setError('Compass permissions lost - tap compass button to restart');
-          }
-        }, 2000);
+        // Check if we get events after pageshow (kun hvis vi hadde events før)
+        if (hadEventsBeforePageShow) {
+          resumeTimeoutRef = setTimeout(() => {
+            if (lastEventTsRef.current === lastEventBefore) {
+              console.warn('[useCompass] No events after pageshow - permissions likely lost. Stopping compass.');
+              stopCompass();
+              setError('Compass permissions lost - tap compass button to restart');
+            }
+          }, 2000);
+        }
       }
     };
 

@@ -927,12 +927,20 @@ export default function MapComponent({
   });
   
   // Auto-sync compassMode when compass stops (e.g., permissions lost)
+  // Use a small delay to avoid race conditions during startup
   useEffect(() => {
     if (!compass.isActive && compassMode === 'on') {
-      // Compass stopped unexpectedly (permissions lost) - update UI
-      console.warn('[MapComponent] Compass stopped - resetting UI state');
-      onCompassModeChange?.('off');
-      onCompassLockedChange?.(false);
+      // Give compass 500ms to start before we consider it failed
+      const timeoutId = setTimeout(() => {
+        if (!compass.isActive && compassMode === 'on') {
+          // Compass stopped unexpectedly (permissions lost) - update UI
+          console.warn('[MapComponent] Compass stopped - resetting UI state');
+          onCompassModeChange?.('off');
+          onCompassLockedChange?.(false);
+        }
+      }, 500);
+      
+      return () => clearTimeout(timeoutId);
     }
   }, [compass.isActive, compassMode, onCompassModeChange, onCompassLockedChange]);
   
