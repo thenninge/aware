@@ -272,20 +272,60 @@ export function useCompass({
     // bevar lastValidHeading
   }, [detachListener]);
 
-  // Lifecycle
+  // Lifecycle (with iOS permission loss detection)
   useEffect(() => {
     if (!isEnabled) {
       if (isActive) stopCompass();
       return;
     }
+
+    let permissionCheckTimeout: NodeJS.Timeout | null = null;
+
     const onVisibility = () => {
       if (document.visibilityState === 'visible' && isActive) {
+        // Note: iOS kan ha revoked permissions mens app var i bakgrunnen
+        const lastEventBeforeResume = lastEventTsRef.current;
+        
         attachListener();
+
+        // Sjekk om vi får nye events innen 2 sek (kun hvis vi hadde events før)
+        if (lastEventBeforeResume > 0) {
+          permissionCheckTimeout = setTimeout(() => {
+            if (lastEventTsRef.current === lastEventBeforeResume) {
+              // Ingen nye events → permissions tapt
+              console.warn('[useCompass] No events after resume - permissions lost');
+              stopCompass();
+              setError('Compass permissions lost - tap compass button to restart');
+            }
+          }, 2000);
+        }
       } else if (document.visibilityState === 'hidden') {
         detachListener();
+        if (permissionCheckTimeout) {
+          clearTimeout(permissionCheckTimeout);
+          permissionCheckTimeout = null;
+        }
       }
     };
-    const onPageShow = () => { if (isActive) attachListener(); };
+
+    const onPageShow = () => {
+      if (isActive) {
+        const lastEventBeforePageShow = lastEventTsRef.current;
+        
+        attachListener();
+
+        // Sjekk om vi får nye events etter pageshow
+        if (lastEventBeforePageShow > 0) {
+          permissionCheckTimeout = setTimeout(() => {
+            if (lastEventTsRef.current === lastEventBeforePageShow) {
+              console.warn('[useCompass] No events after pageshow - permissions lost');
+              stopCompass();
+              setError('Compass permissions lost - tap compass button to restart');
+            }
+          }, 2000);
+        }
+      }
+    };
 
     document.addEventListener('visibilitychange', onVisibility);
     window.addEventListener('pageshow', onPageShow);
@@ -293,6 +333,9 @@ export function useCompass({
     return () => {
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('pageshow', onPageShow);
+      if (permissionCheckTimeout) {
+        clearTimeout(permissionCheckTimeout);
+      }
     };
   }, [isEnabled, isActive, attachListener, detachListener, stopCompass]);
 
