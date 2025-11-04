@@ -145,7 +145,11 @@ export function useCompass({
 
     const onOrientation = (evt: DeviceOrientationEvent) => {
       const raw = computeHeading(evt);
-      if (raw == null || Number.isNaN(raw)) return;
+      console.log('[useCompass] Event received:', { raw, alpha: evt.alpha, webkitHeading: (evt as any).webkitCompassHeading });
+      if (raw == null || Number.isNaN(raw)) {
+        console.warn('[useCompass] Invalid heading:', raw);
+        return;
+      }
       lastRawRef.current = raw;
       lastEventTsRef.current = performance.now();
     };
@@ -193,11 +197,13 @@ export function useCompass({
       throw e;
     }
 
+    console.log('[useCompass] Starting compass...');
     setError(undefined);
     setIsActive(true);
 
     // Koble på sensoren
     attachListener();
+    console.log('[useCompass] Listener attached, starting RAF loop');
 
     // rAF-tegneloop med throttling + deadband
     if (rafRef.current == null) {
@@ -210,6 +216,7 @@ export function useCompass({
           const lastSent = lastSentHeadingRef.current;
 
           if (lastSent == null || angAbsDiff(smooth, lastSent) >= minDeltaDeg) {
+            console.log('[useCompass] RAF updating heading:', { raw, smooth });
             setRawHeading(raw);
             setCurrentHeading(smooth);
             setLastValidHeading(smooth);
