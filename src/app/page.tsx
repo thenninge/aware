@@ -56,6 +56,8 @@ export default function Home() {
   const [orientationMode, setOrientationMode] = useState<'north' | 'heading'>('north');
   const [showOnlyLastShot, setShowOnlyLastShot] = useState(true);
   const [showAllTracksAndFinds, setShowAllTracksAndFinds] = useState(false);
+  const [showSearchTracks, setShowSearchTracks] = useState(true);
+  const [showSearchFinds, setShowSearchFinds] = useState(true);
   const [showObservations, setShowObservations] = useState(true);
   const [showShots, setShowShots] = useState(true); // For Aware-mode
   const [showTracks, setShowTracks] = useState(true); // For Aware-mode
@@ -607,6 +609,10 @@ export default function Home() {
           mode={mode}
           showAllTracksAndFinds={showAllTracksAndFinds}
           onShowAllTracksAndFindsChange={setShowAllTracksAndFinds}
+          showSearchTracks={showSearchTracks}
+          onShowSearchTracksChange={setShowSearchTracks}
+          showSearchFinds={showSearchFinds}
+          onShowSearchFindsChange={setShowSearchFinds}
           showObservations={showObservations}
           onShowObservationsChange={setShowObservations}
           showShots={showShots}

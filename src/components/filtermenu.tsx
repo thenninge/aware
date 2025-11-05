@@ -30,6 +30,10 @@ interface FilterMenuProps {
   mode?: 'aware' | 'track' | 'søk';
   showAllTracksAndFinds?: boolean;
   onShowAllTracksAndFindsChange?: (v: boolean) => void;
+  showSearchTracks?: boolean;
+  onShowSearchTracksChange?: (v: boolean) => void;
+  showSearchFinds?: boolean;
+  onShowSearchFindsChange?: (v: boolean) => void;
   showObservations?: boolean;
   onShowObservationsChange?: (v: boolean) => void;
   showShots?: boolean;
@@ -298,18 +302,35 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
         </>
       )}
       
-      {/* Vis alle søk-spor og funn i søk-modus */}
-      {mode === 'søk' && onShowAllTracksAndFindsChange && (
+      {/* Vis søkespor i søk-modus */}
+      {mode === 'søk' && onShowSearchTracksChange && (
         <div className="mb-3">
           <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
             <input
               type="checkbox"
-              checked={!!showAllTracksAndFinds}
-              onChange={e => onShowAllTracksAndFindsChange(e.target.checked)}
+              checked={!!showSearchTracks}
+              onChange={e => onShowSearchTracksChange(e.target.checked)}
               className="w-3 h-3 text-blue-600 rounded focus:ring-blue-500"
             />
             <span className="font-medium text-gray-700">
-              Vis alle søk-spor og funn
+              Vis søkespor
+            </span>
+          </label>
+        </div>
+      )}
+
+      {/* Vis funn i søk-modus */}
+      {mode === 'søk' && onShowSearchFindsChange && (
+        <div className="mb-3">
+          <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+            <input
+              type="checkbox"
+              checked={!!showSearchFinds}
+              onChange={e => onShowSearchFindsChange(e.target.checked)}
+              className="w-3 h-3 text-blue-600 rounded focus:ring-blue-500"
+            />
+            <span className="font-medium text-gray-700">
+              Vis funn
             </span>
           </label>
         </div>

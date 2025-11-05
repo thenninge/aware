@@ -62,6 +62,8 @@ interface MapComponentProps {
   onNextTarget?: () => void;
   onSelectedTargetIndexChange?: (index: number) => void;
   showAllTracksAndFinds?: boolean;
+  showSearchTracks?: boolean;
+  showSearchFinds?: boolean;
   showObservations?: boolean;
   showShots?: boolean;
   showTracks?: boolean;
@@ -818,6 +820,8 @@ export default function MapComponent({
   onNextTarget,
   onSelectedTargetIndexChange,
   showAllTracksAndFinds = false,
+  showSearchTracks = false,
+  showSearchFinds = false,
   showObservations = true,
   showShots = true,
   showTracks = true,
@@ -1192,24 +1196,6 @@ export default function MapComponent({
     try {
       const savedTracks = JSON.parse(localStorage.getItem('searchTracks') || '{}');
       const allTracks = Object.values(savedTracks) as SavedTrack[] || [];
-      
-      // I søk-modus: vis kun spor for det valgte treffpunktet, eller alle hvis showAllTracksAndFinds er aktiv
-      if (mode === 'søk' && hasSavedPairs && safeSavedPairs.length > 0) {
-        // Hvis showAllTracksAndFinds er aktiv, vis alle spor
-        if (showAllTracksAndFinds) {
-          return allTracks;
-        }
-        
-        // Ellers vis kun spor for det valgte treffpunktet
-        const treffpunkter = safeSavedPairs.filter(p => p.category === 'Treffpunkt');
-        const reversedTreffpunkter = treffpunkter.length > 0 ? [...treffpunkter].reverse() : [];
-        const selectedTarget = reversedTreffpunkter[adjustedSelectedTargetIndex];
-        if (selectedTarget?.id) {
-          // Vis kun spor for det valgte treffpunktet
-          return allTracks.filter(track => track.shotPairId === selectedTarget.id.toString());
-        }
-      }
-      // Vis alle spor i andre moduser
       return allTracks;
     } catch (error) {
       console.error('Feil ved lasting av lagrede spor:', error);
@@ -1809,24 +1795,6 @@ export default function MapComponent({
     try {
       const savedFinds = JSON.parse(localStorage.getItem('searchFinds') || '{}');
       const allFinds = Object.values(savedFinds) as SavedFind[] || [];
-      
-      // I søk-modus: vis kun funn for det valgte treffpunktet, eller alle hvis showAllTracksAndFinds er aktiv
-      if (mode === 'søk' && hasSavedPairs && safeSavedPairs.length > 0) {
-        // Hvis showAllTracksAndFinds er aktiv, vis alle funn
-        if (showAllTracksAndFinds) {
-          return allFinds;
-        }
-        
-        // Ellers vis kun funn for det valgte treffpunktet
-        const treffpunkter = safeSavedPairs.filter(p => p.category === 'Treffpunkt');
-        const reversedTreffpunkter = treffpunkter.length > 0 ? [...treffpunkter].reverse() : [];
-        const selectedTarget = reversedTreffpunkter[adjustedSelectedTargetIndex];
-        if (selectedTarget?.id) {
-          // Vis kun funn for det valgte treffpunktet
-          return allFinds.filter(find => find.shotPairId === selectedTarget.id.toString());
-        }
-      }
-      // Vis alle funn i andre moduser
       return allFinds;
     } catch (error) {
       console.error('Feil ved lasting av lagrede funn:', error);
@@ -2933,7 +2901,7 @@ export default function MapComponent({
         ))}
 
         {/* Alle lagrede spor i søk-modus */}
-        {((mode === 'søk' && showAllTracksAndFinds) || (mode === 'aware' && showTracks) || (mode === 'track' && showTracks)) && savedTracks && savedTracks.length > 0 && (
+        {((mode === 'søk' && showSearchTracks) || (mode === 'aware' && showTracks) || (mode === 'track' && showTracks)) && savedTracks && savedTracks.length > 0 && (
           <>
             {savedTracks.map((track) => (
               <React.Fragment key={`saved-track-${track.id}`}>
@@ -3005,7 +2973,7 @@ export default function MapComponent({
         )}
 
         {/* Alle lagrede funn i søk-modus */}
-        {((mode === 'søk' && showAllTracksAndFinds) || (mode === 'aware' && showObservations) || (mode === 'track' && showObservations)) && savedFinds && savedFinds.length > 0 && (
+        {((mode === 'søk' && showSearchFinds) || (mode === 'aware' && showObservations) || (mode === 'track' && showObservations)) && savedFinds && savedFinds.length > 0 && (
           <>
             {savedFinds.map((find) => (
               <Marker

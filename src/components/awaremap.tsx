@@ -68,6 +68,8 @@ interface AwareMapProps {
   onNextTarget?: () => void;
   onSelectedTargetIndexChange?: (index: number) => void;
   showAllTracksAndFinds?: boolean;
+  showSearchTracks?: boolean;
+  showSearchFinds?: boolean;
   showObservations?: boolean;
   showShots?: boolean;
   showTracks?: boolean;
@@ -128,6 +130,8 @@ export default function AwareMap({
   onNextTarget,
   onSelectedTargetIndexChange,
   showAllTracksAndFinds,
+  showSearchTracks,
+  showSearchFinds,
   showObservations,
   showShots,
   showTracks,
@@ -221,6 +225,8 @@ export default function AwareMap({
         onNextTarget={onNextTarget}
         onSelectedTargetIndexChange={onSelectedTargetIndexChange}
         showAllTracksAndFinds={showAllTracksAndFinds}
+        showSearchTracks={showSearchTracks}
+        showSearchFinds={showSearchFinds}
         showObservations={showObservations}
         showShots={showShots}
         showTracks={showTracks}
