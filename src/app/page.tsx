@@ -657,6 +657,8 @@ export default function Home() {
         onNextTarget={handleNextTarget}
         onSelectedTargetIndexChange={setSelectedTargetIndex}
         showAllTracksAndFinds={showAllTracksAndFinds}
+        showSearchTracks={showSearchTracks}
+        showSearchFinds={showSearchFinds}
         showObservations={showObservations}
         showShots={showShots}
         showTracks={showTracks}
