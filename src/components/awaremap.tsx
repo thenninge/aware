@@ -92,6 +92,7 @@ interface AwareMapProps {
   onCancelHuntingAreaDefinition?: () => void;
   onRefreshHuntingAreas?: () => void;
   onRegisterSync?: (syncFn: () => void) => void;
+  onRegisterCalibration?: (openFn: () => void) => void;
   compassSliceLength?: number;
   compassMode?: 'off' | 'on';
   isCompassLocked?: boolean;
@@ -155,6 +156,7 @@ export default function AwareMap({
   onCancelHuntingAreaDefinition,
   onRefreshHuntingAreas,
   onRegisterSync,
+  onRegisterCalibration,
   compassSliceLength,
   compassMode,
   isCompassLocked,
@@ -251,6 +253,7 @@ export default function AwareMap({
         onCancelHuntingAreaDefinition={onCancelHuntingAreaDefinition}
         onRefreshHuntingAreas={onRefreshHuntingAreas}
         onRegisterSync={onRegisterSync}
+        onRegisterCalibration={onRegisterCalibration}
         compassSliceLength={compassSliceLength}
         compassMode={compassMode}
         isCompassLocked={isCompassLocked}

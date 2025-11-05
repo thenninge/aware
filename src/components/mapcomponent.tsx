@@ -86,6 +86,7 @@ interface MapComponentProps {
   onCancelHuntingAreaDefinition?: () => void;
   onRefreshHuntingAreas?: () => void;
   onRegisterSync?: (syncFn: () => void) => void;
+  onRegisterCalibration?: (openFn: () => void) => void;
   compassSliceLength?: number; // % of screen height
   compassMode?: 'off' | 'on';
   isCompassLocked?: boolean;
@@ -847,6 +848,7 @@ export default function MapComponent({
   onCancelHuntingAreaDefinition,
   onRefreshHuntingAreas,
   onRegisterSync,
+  onRegisterCalibration,
   activeTeam = null,
   compassSliceLength = 30, // % of screen height
   compassMode: externalCompassMode,
@@ -1712,6 +1714,13 @@ export default function MapComponent({
       onRegisterSync(handleSyncData);
     }
   }, [onRegisterSync]);
+
+  // Register calibration dialog opener with parent component
+  useEffect(() => {
+    if (onRegisterCalibration) {
+      onRegisterCalibration(() => setShowCalibrationDialog(true));
+    }
+  }, [onRegisterCalibration]);
 
   // Håndter lagring av spor fra dialog
   const handleSaveTrackFromDialog = () => {
@@ -4327,17 +4336,7 @@ export default function MapComponent({
             </button>
           
           
-          {/* Kalibreringsknapp – vises når kompass er aktivt */}
-          {compassMode !== 'off' && (
-            <button
-              onClick={() => setShowCalibrationDialog(true)}
-              className="w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center bg-white/90 border border-gray-300 hover:bg-gray-100"
-              title="Kalibrer kompass"
-              style={{ pointerEvents: 'auto' }}
-            >
-              🗜️
-            </button>
-          )}
+          {/* Kalibreringsknapp flyttet ut av denne gruppen */}
           
           {/* Layers button - moved above GPS to avoid confusion with compass */}
           <button
