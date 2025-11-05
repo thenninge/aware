@@ -900,6 +900,12 @@ export default function MapComponent({
     },
   });
   
+  // Kompass for skuddretning (engasjeres på knappetrykk i dialog)
+  const [isShotCompassEnabled, setIsShotCompassEnabled] = useState(false);
+  const shotDirectionCompass = useCompass({
+    isEnabled: isShotCompassEnabled,
+  });
+  
   // Tracking state for søk-modus
   const [savedTracks, setSavedTracks] = useState<SavedTrack[]>([]);
   const [savedFinds, setSavedFinds] = useState<SavedFind[]>([]);
@@ -3771,6 +3777,29 @@ export default function MapComponent({
                 }}
                 className="px-6 py-2 rounded bg-gray-200 hover:bg-gray-300 text-sm text-black"
               >Avbryt</button>
+              <button
+                onClick={async () => {
+                  try {
+                    setIsShotCompassEnabled(true);
+                    await shotDirectionCompass.startCompass();
+                    // Gi kompasset et kort øyeblikk til å levere en måling
+                    await new Promise(r => setTimeout(r, 150));
+                    const heading = shotDirectionCompass.currentHeading ?? shotDirectionCompass.lastValidHeading ?? shotDirectionCompass.rawHeading;
+                    if (heading != null) {
+                      const internal = heading > 180 ? heading - 360 : heading; // map 0-359 -> -180..180
+                      setTargetDirection(internal);
+                    } else {
+                      alert('Kompassretning ikke tilgjengelig. Prøv igjen.');
+                    }
+                  } catch (e) {
+                    alert('Kunne ikke starte kompass. Gi tillatelse og prøv igjen.');
+                  } finally {
+                    shotDirectionCompass.stopCompass();
+                    setIsShotCompassEnabled(false);
+                  }
+                }}
+                className="px-6 py-2 rounded bg-gray-600 hover:bg-gray-700 text-white font-semibold text-sm"
+              >Kompass</button>
           <button
             onClick={handleSaveTargetWithDirection}
                 className="px-6 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm"
