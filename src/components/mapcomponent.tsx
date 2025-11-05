@@ -4399,7 +4399,7 @@ export default function MapComponent({
 
       {/* Kalibreringsknapp oppe til høyre (under admin/lock-området) */}
       {compassMode === 'on' && (
-        <div className="fixed top-20 right-2 z-[2001]" style={{ pointerEvents: 'auto' }}>
+        <div className="fixed top-28 right-2 z-[2001]" style={{ pointerEvents: 'auto' }}>
           <button
             onClick={() => setShowCalibrationDialog(true)}
             className="w-10 h-10 rounded-full shadow-lg transition-colors flex items-center justify-center bg-white/90 border border-gray-300 hover:bg-gray-100"
