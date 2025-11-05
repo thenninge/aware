@@ -3547,6 +3547,41 @@ export default function MapComponent({
             </svg>
           </div>
         )}
+        {/* Retningskakestykke for kompass: vises når kompass er på. Låst = peker alltid opp (kart roterer), ellers følger heading */}
+        {compassMode === 'on' && currentPosition && (
+          <div 
+            className="absolute top-1/2 left-1/2 w-0 h-0"
+            style={{ 
+              transform: `translate(-50%, -50%) rotate(${isCompassLocked ? 0 : (currentPosition.heading ?? 0)}deg)`,
+            }}
+          >
+            {/* Kakestykke med 3 grader bredde og 100m lengde */}
+            <svg 
+              width="200" 
+              height="200" 
+              viewBox="0 0 200 200"
+              style={{
+                transform: 'translateX(-100px) translateY(-100px)'
+              }}
+            >
+              {/* Definer gradient for kakestykket */}
+              <defs>
+                <linearGradient id="sectorGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="rgba(220, 38, 38, 0.2)" />
+                  <stop offset="100%" stopColor="rgba(220, 38, 38, 0.2)" />
+                </linearGradient>
+              </defs>
+              
+              {/* Kakestykke: 3 grader bredde, 100m lengde */}
+              <path
+                d="M 100 100 L 100 0 A 100 100 0 0 1 102.6 0 L 100 100 Z"
+                fill="url(#sectorGradient)"
+                stroke="rgba(220, 38, 38, 0.8)"
+                strokeWidth="1"
+              />
+            </svg>
+          </div>
+        )}
       </div>
 
 
