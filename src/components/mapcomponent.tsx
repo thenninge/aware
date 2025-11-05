@@ -3450,7 +3450,7 @@ export default function MapComponent({
                   ];
                   return (
                     <Polyline
-                      key={`polyline-last-full-${pair.key}`}
+                      key={`polyline-last-full-${(pair as any).key ?? (pair as any).id ?? 'last'}`}
                       positions={positions}
                       pathOptions={{ color: targetLineColor, weight: targetLineWeight, dashArray: '8 12' }}
                     />
