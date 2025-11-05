@@ -187,9 +187,9 @@ export default function Home() {
       }
     } else if (mode === 'søk') {
       setShowMarkers(false);
-      setShowOnlyLastShot(false); // I søk-modus viser vi det valgte skuddparet
+      // Ikke overstyr brukerens valg av "vis kun siste skuddpar"
     }
-  }, [mode, isTracking]);
+  }, [mode]);
 
   // Close menus when clicking outside
   useEffect(() => {
