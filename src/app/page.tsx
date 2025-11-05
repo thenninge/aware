@@ -662,6 +662,7 @@ export default function Home() {
         showAllTracksAndFinds={showAllTracksAndFinds}
         showSearchTracks={showSearchTracks}
         showSearchFinds={showSearchFinds}
+        showFinds={showFinds}
         showObservations={showObservations}
         showShots={showShots}
         showTracks={showTracks}
