@@ -956,6 +956,7 @@ export default function MapComponent({
   const [newFindPosition, setNewFindPosition] = useState<Position | null>(null);
   const [findName, setFindName] = useState('');
   const [findColor, setFindColor] = useState('#EF4444');
+  const [findIncludeDTG, setFindIncludeDTG] = useState(true);
   
   // Observasjon state
   const [showObservationDialog, setShowObservationDialog] = useState(false);
@@ -1759,14 +1760,13 @@ export default function MapComponent({
   const toggleFindingMode = () => {
     console.log('toggleFindingMode called, using current position');
     if (currentPosition) {
-      const shouldSave = window.confirm('Lagre funn her?');
-      if (shouldSave) {
+      // Åpne direkte "Lagre funn"-dialog uten mellomdialog
         console.log('Opening find dialog for current position...');
         setNewFindPosition(currentPosition);
-        // Sett default navn med dato og tid
-        setFindName(generateDefaultName('find'));
+      // Tomt navn som ønsket, DTG av/på styres av avkryssing (default på)
+      setFindName('');
+      setFindIncludeDTG(true);
         setShowFindDialog(true);
-      }
     } else {
       alert('Kunne ikke finne din nåværende posisjon');
     }
@@ -2019,10 +2019,17 @@ export default function MapComponent({
   // Håndter lagring av funn fra dialog
   const handleSaveFindFromDialog = () => {
     if (newFindPosition) {
-      // Hvis brukeren ikke har skrevet noe, bruk default navnet
-      const finalFindName = findName.trim() || findName;
+      let finalFindName = findName.trim();
+      // Legg til DTG hvis checkbox er på
+      if (findIncludeDTG) {
+        const now = new Date();
+        const date = now.toLocaleDateString('nb-NO', { day: '2-digit', month: '2-digit' });
+        const time = now.toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit', hour12: false });
+        const dtg = `${date} ${time}`;
+        finalFindName = finalFindName ? `${finalFindName} - ${dtg}` : dtg;
+      }
       if (!finalFindName) {
-        alert('Vennligst skriv inn et navn for funnet');
+        alert('Vennligst skriv inn et navn eller aktiver "Legg til DTG"');
         return;
       }
 
@@ -2031,6 +2038,7 @@ export default function MapComponent({
       setNewFindPosition(null);
       setFindName('');
       setFindColor('#EF4444');
+      setFindIncludeDTG(true);
     }
   };
 
@@ -2040,6 +2048,7 @@ export default function MapComponent({
     setNewFindPosition(null);
       setFindName('');
       setFindColor('#EF4444');
+      setFindIncludeDTG(true);
   };
   
   // Aktiver observasjon-modus - bruk nåværende posisjon (rød prikk i midten)
@@ -4839,10 +4848,21 @@ export default function MapComponent({
                 type="text"
                 value={findName}
                 onChange={e => setFindName(e.target.value)}
-                placeholder={findName || "f.eks. Tiur"}
+                placeholder="f.eks. Tiur"
                 className="w-full border rounded px-2 py-1 mt-1 mb-2 text-lg text-[16px] text-gray-900"
                 autoFocus
               />
+            </label>
+
+            {/* DTG checkbox */}
+            <label className="flex items-center gap-2 cursor-pointer text-sm">
+              <input
+                type="checkbox"
+                checked={findIncludeDTG}
+                onChange={e => setFindIncludeDTG(e.target.checked)}
+                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+              />
+              <span className="font-medium text-gray-700">Legg til DTG (dato/tid)</span>
             </label>
 
             <label className="text-base font-semibold text-gray-700">
