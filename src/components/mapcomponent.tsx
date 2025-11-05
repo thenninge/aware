@@ -5022,7 +5022,8 @@ export default function MapComponent({
                   if (current == null) { alert('Ingen kompassmåling tilgjengelig. Start kompass først.'); return; }
                   const diff = ((target - current) % 360 + 360) % 360; // normalize 0..360
                   const signed = diff > 180 ? diff - 360 : diff; // shortest path -180..180
-                  const newOffset = normalizeDeg(calibrationOffsetDeg + signed);
+                  // Overwrite existing offset with the new calibration (do not accumulate)
+                  const newOffset = normalizeDeg(signed);
                   setCalibrationOffsetDeg(newOffset);
                   try { localStorage.setItem('compassCalibrationOffset', String(newOffset)); } catch {}
                   setShowCalibrationDialog(false);
