@@ -2013,6 +2013,11 @@ export default function MapComponent({
   const [showNewPostDialog, setShowNewPostDialog] = useState(false);
   const [newPostPosition, setNewPostPosition] = useState<Position | null>(null);
   const [newPostName, setNewPostName] = useState('');
+  // Shot pair naming dialog state
+  const [showShotPairNameDialog, setShowShotPairNameDialog] = useState(false);
+  const [shotPairName, setShotPairName] = useState('');
+  const [shotPairIncludeDTG, setShotPairIncludeDTG] = useState(true);
+  const [pendingTargetPosition, setPendingTargetPosition] = useState<Position | null>(null);
   // State for Target-dialog
   const [targetDistance, setTargetDistance] = useState(250);
   // Legg til state for "vis kun siste skudd"
@@ -2218,7 +2223,6 @@ export default function MapComponent({
   };
   const handleTargetModalSave = async () => {
     if (!lockedShotPosition) return;
-    
     // Beregn treffpunkt basert på skyteplass, avstand og retning
     const targetPosition = destinationPoint(
       lockedShotPosition.lat,
@@ -2226,60 +2230,78 @@ export default function MapComponent({
       targetRange,
       ((targetDirection + 360) % 360)
     );
-    
     if (!targetPosition) return;
-    
+    // Åpne navn/DTG-dialog for skuddpar før lagring
+    setPendingTargetPosition(targetPosition);
+    setShowTargetDirectionUI(false);
+    setShowShotPairNameDialog(true);
+  };
+
+  const handleCancelShotPairName = () => {
+    setShowShotPairNameDialog(false);
+    setShotPairName('');
+    setShotPairIncludeDTG(true);
+    setPendingTargetPosition(null);
+    setLockedShotPosition(null);
+  };
+
+  const handleSaveShotPairWithName = async () => {
+    if (!lockedShotPosition || !pendingTargetPosition) return;
+    let finalName = shotPairName.trim();
+    if (shotPairIncludeDTG) {
+      const now = new Date();
+      const date = now.toLocaleDateString('nb-NO', { day: '2-digit', month: '2-digit' });
+      const time = now.toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit', hour12: false });
+      const dtg = `${date} ${time}`;
+      finalName = finalName ? `${finalName} - ${dtg}` : dtg;
+    }
+    if (!finalName) {
+      alert('Vennligst skriv inn et navn eller aktiver "Legg til DTG"');
+      return;
+    }
     try {
-      // Lagre skyteplass
+      // Lagre skyteplass med navn i content
       const shotResponse = await fetch('/api/posts', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: 'Skyteplass',
-          content: `Lat: ${lockedShotPosition.lat}, Lng: ${lockedShotPosition.lng}, Category: Skyteplass`,
+          content: `Lat: ${lockedShotPosition.lat}, Lng: ${lockedShotPosition.lng}, Category: Skyteplass, Name: ${finalName}`,
           teamId: activeTeam
         }),
       });
-
-      if (!shotResponse.ok) {
-        throw new Error('Failed to save shot position');
-      }
-
+      if (!shotResponse.ok) throw new Error('Failed to save shot position');
       const shotData = await shotResponse.json();
-      
-      // Lagre treffpunkt
+
+      // Lagre treffpunkt med navn i content
       const targetResponse = await fetch('/api/posts', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: 'Treffpunkt',
-          content: `Target: ${targetPosition.lat}, ${targetPosition.lng}, Category: Treffpunkt`,
+          content: `Target: ${pendingTargetPosition.lat}, ${pendingTargetPosition.lng}, Category: Treffpunkt, Name: ${finalName}`,
           teamId: activeTeam
         }),
       });
-
-      if (!targetResponse.ok) {
-        throw new Error('Failed to save target position');
-      }
-
+      if (!targetResponse.ok) throw new Error('Failed to save target position');
       const targetData = await targetResponse.json();
-      
-      // Oppdater lokal state med begge posisjoner
+
+      // Oppdater lokal state
       setSavedPairs(prev => [
-        ...prev, 
+        ...prev,
         { current: { ...lockedShotPosition }, category: 'Skyteplass', id: shotData.id },
-        { target: { ...targetPosition }, category: 'Treffpunkt', id: targetData.id }
+        { target: { ...pendingTargetPosition }, category: 'Treffpunkt', id: targetData.id }
       ]);
-      
       fetchPosts();
-    setShowTargetDirectionUI(false);
-      
+
+      // Rydd opp
+      setShowShotPairNameDialog(false);
+      setShotPairName('');
+      setShotPairIncludeDTG(true);
+      setPendingTargetPosition(null);
+      setLockedShotPosition(null);
     } catch (error) {
-      console.error('Failed to save shot pair:', error);
+      console.error('Failed to save named shot pair:', error);
       alert('Feil ved lagring av skuddpar: ' + (error as Error).message);
     }
   };
@@ -3953,6 +3975,52 @@ export default function MapComponent({
                 onClick={() => { handleSaveTargetWithDirection(); shotDirectionCompass.stopCompass(); setIsShotCompassEnabled(false); }}
                 className="px-6 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm"
           >Lagre</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Dialog for navn på skuddpar */}
+      {showShotPairNameDialog && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[2000]">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-80 flex flex-col gap-4">
+            <div className="text-xl font-bold mb-2 text-gray-800">Navn på skuddpar</div>
+
+            <label className="text-base font-semibold text-gray-700">
+              Navn:
+              <input
+                type="text"
+                value={shotPairName}
+                onChange={e => setShotPairName(e.target.value)}
+                placeholder="f.eks. Skudd mot nord" 
+                className="w-full border rounded px-2 py-1 mt-1 mb-2 text-lg text-[16px] text-gray-900"
+                autoFocus
+              />
+            </label>
+
+            <label className="flex items-center gap-2 cursor-pointer text-sm">
+              <input
+                type="checkbox"
+                checked={shotPairIncludeDTG}
+                onChange={e => setShotPairIncludeDTG(e.target.checked)}
+                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+              />
+              <span className="font-medium text-gray-700">Legg til DTG (dato/tid)</span>
+            </label>
+
+            <div className="flex gap-2 justify-between mt-2">
+              <button
+                onClick={handleCancelShotPairName}
+                className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold"
+              >
+                Avbryt
+              </button>
+              <button
+                onClick={handleSaveShotPairWithName}
+                className="px-3 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white font-bold"
+              >
+                Lagre
+              </button>
             </div>
           </div>
         </div>
