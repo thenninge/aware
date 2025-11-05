@@ -2696,8 +2696,8 @@ export default function MapComponent({
         {currentPosition && (
           <CompassSlice 
             heading={currentPosition.heading || null}
-            isActive={compassMode === 'on'}
-            isLocked={isCompassLocked}
+            isActive={compassMode === 'on' && !isCompassLocked}
+            isLocked={false}
             centerLat={currentPosition.lat}
             centerLng={currentPosition.lng}
             lengthPercent={compassSliceLength}
