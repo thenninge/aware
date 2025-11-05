@@ -1846,6 +1846,88 @@ export default function MapComponent({
     }
   };
 
+  // --- Delete helpers ---
+  const handleDeleteFind = (findId: string) => {
+    try {
+      const existingFinds = JSON.parse(localStorage.getItem('searchFinds') || '{}');
+      if (existingFinds[findId]) {
+        delete existingFinds[findId];
+        localStorage.setItem('searchFinds', JSON.stringify(existingFinds));
+      }
+      setSavedFinds(prev => prev.filter(f => f.id !== findId));
+    } catch (e) {
+      console.error('Sletting av funn feilet:', e);
+    }
+  };
+
+  const handleDeleteObservation = (observationId: string) => {
+    try {
+      const existing = JSON.parse(localStorage.getItem('searchObservations') || '{}');
+      if (existing[observationId]) {
+        delete existing[observationId];
+        localStorage.setItem('searchObservations', JSON.stringify(existing));
+      }
+      setSavedObservations(prev => prev.filter(o => o.id !== observationId));
+    } catch (e) {
+      console.error('Sletting av observasjon feilet:', e);
+    }
+  };
+
+  const handleDeleteTrack = (trackId: string) => {
+    try {
+      const existing = JSON.parse(localStorage.getItem('searchTracks') || '{}');
+      if (existing[trackId]) {
+        delete existing[trackId];
+        localStorage.setItem('searchTracks', JSON.stringify(existing));
+      }
+      setSavedTracks(prev => prev.filter(t => t.id !== trackId));
+    } catch (e) {
+      console.error('Sletting av spor feilet:', e);
+    }
+  };
+
+  const handleDeleteShotPairByIndex = async (idx: number) => {
+    try {
+      const item = safeSavedPairs[idx];
+      if (!item) return;
+      let shotId: string | number | undefined;
+      let targetId: string | number | undefined;
+      if (item.category === 'Skyteplass') {
+        shotId = item.id;
+        // Finn første treffpunkt etter denne
+        for (let j = idx + 1; j < safeSavedPairs.length; j++) {
+          const cand = safeSavedPairs[j];
+          if (cand && cand.category === 'Treffpunkt') { targetId = cand.id; break; }
+        }
+      } else if (item.category === 'Treffpunkt') {
+        targetId = item.id;
+        // Finn siste skyteplass før denne
+        for (let j = idx - 1; j >= 0; j--) {
+          const cand = safeSavedPairs[j];
+          if (cand && cand.category === 'Skyteplass') { shotId = cand.id; break; }
+        }
+      }
+      const ids: string[] = [];
+      if (shotId !== undefined) ids.push(String(shotId));
+      if (targetId !== undefined) ids.push(String(targetId));
+      if (ids.length === 0) return;
+
+      // Slett i databasen (best-effort)
+      try {
+        await fetch(`/api/posts?ids=${ids.join(',')}`, { method: 'DELETE' });
+      } catch (e) {
+        console.error('Sletting av skuddpar i DB feilet:', e);
+      }
+
+      // Oppdater lokal state
+      setSavedPairs(prev => prev.filter(p => !ids.includes(String(p.id))));
+      // Hent på nytt fra server for konsistens
+      fetchPosts();
+    } catch (e) {
+      console.error('Sletting av skuddpar feilet:', e);
+    }
+  };
+
   // --- Server sync helpers ---
   const syncObservationToServer = async (position: Position, name: string, color: string) => {
     try {
@@ -3036,6 +3118,10 @@ export default function MapComponent({
                         <div className="text-xs text-gray-600 mt-1">
                           {new Date(track.createdAt).toLocaleDateString('nb-NO')}
                         </div>
+                        <button
+                          onClick={() => handleDeleteTrack(track.id)}
+                          className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
+                        >Slett spor</button>
                       </div>
                     </Popup>
                   </Circle>
@@ -3066,6 +3152,10 @@ export default function MapComponent({
                         <div className="text-xs text-gray-600 mt-1">
                           {new Date(track.createdAt).toLocaleDateString('nb-NO')}
                         </div>
+                        <button
+                          onClick={() => handleDeleteTrack(track.id)}
+                          className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
+                        >Slett spor</button>
                       </div>
                     </Popup>
                   </Polyline>
@@ -3107,6 +3197,10 @@ export default function MapComponent({
                     <div className="text-xs text-gray-600 mt-1">
                       {new Date(find.createdAt).toLocaleDateString('nb-NO')}
                     </div>
+                    <button
+                      onClick={() => handleDeleteFind(find.id)}
+                      className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
+                    >Slett funn</button>
                   </div>
                 </Popup>
               </Marker>
@@ -3144,6 +3238,10 @@ export default function MapComponent({
                     <div className="text-xs text-gray-600 mt-1">
                       {new Date(observation.createdAt).toLocaleDateString('nb-NO')}
                     </div>
+                    <button
+                      onClick={() => handleDeleteObservation(observation.id)}
+                      className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
+                    >Slett observasjon</button>
                   </div>
                 </Popup>
               </Circle>
@@ -3376,7 +3474,23 @@ export default function MapComponent({
                             key={`track-all-poly-${pair.id ?? idx}`}
                             positions={[[pair.current.lat, pair.current.lng], [pair.target.lat, pair.target.lng]]}
                             pathOptions={{ color: targetLineColor, weight: targetLineWeight, dashArray: '8 12' }}
-                          />
+                            eventHandlers={{
+                              click: (e) => {
+                                const popup = e.target.getPopup();
+                                if (popup) popup.openPopup();
+                              }
+                            }}
+                          >
+                            <Popup>
+                              <div className="text-center">
+                                <div className="font-semibold text-sm">Skuddpar</div>
+                                <button
+                                  onClick={() => handleDeleteShotPairByIndex(idx)}
+                                  className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
+                                >Slett skuddpar</button>
+                              </div>
+                            </Popup>
+                          </Polyline>
                         ) : null
                       ))}
                     </>
@@ -3450,7 +3564,23 @@ export default function MapComponent({
                               key={`sok-all-poly-${pair.id ?? idx}`}
                               positions={[[pair.current.lat, pair.current.lng], [pair.target.lat, pair.target.lng]]}
                               pathOptions={{ color: targetLineColor, weight: targetLineWeight, dashArray: '8 12' }}
-                            />
+                              eventHandlers={{
+                                click: (e) => {
+                                  const popup = e.target.getPopup();
+                                  if (popup) popup.openPopup();
+                                }
+                              }}
+                            >
+                              <Popup>
+                                <div className="text-center">
+                                  <div className="font-semibold text-sm">Skuddpar</div>
+                                  <button
+                                    onClick={() => handleDeleteShotPairByIndex(idx)}
+                                    className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
+                                  >Slett skuddpar</button>
+                                </div>
+                              </Popup>
+                            </Polyline>
                           ) : null
                         ))}
                       </>
@@ -3524,7 +3654,23 @@ export default function MapComponent({
                               key={polyKey}
                               positions={positions}
                               pathOptions={{ color: targetLineColor, weight: targetLineWeight, dashArray: '8 12' }}
-                            />
+                              eventHandlers={{
+                                click: (e) => {
+                                  const popup = e.target.getPopup();
+                                  if (popup) popup.openPopup();
+                                }
+                              }}
+                            >
+                              <Popup>
+                                <div className="text-center">
+                                  <div className="font-semibold text-sm">Skuddpar</div>
+                                  <button
+                                    onClick={() => handleDeleteShotPairByIndex(idx)}
+                                    className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
+                                  >Slett skuddpar</button>
+                                </div>
+                              </Popup>
+                            </Polyline>
                           );
                         })()
                       )}
