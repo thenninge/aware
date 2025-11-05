@@ -3476,7 +3476,23 @@ export default function MapComponent({
                                 fillColor: shotColor,
                                 fillOpacity: 0.5,
                               }}
-                            />
+                              eventHandlers={{
+                                click: (e) => {
+                                  const popup = e.target.getPopup();
+                                  if (popup) popup.openPopup();
+                                }
+                              }}
+                            >
+                              <Popup>
+                                <div className="text-center">
+                                  <div className="font-semibold text-sm">Skuddpar – skyteplass</div>
+                                  <button
+                                    onClick={() => handleDeleteShotPairByIndex(idx)}
+                                    className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
+                                  >Slett skuddpar</button>
+                                </div>
+                              </Popup>
+                            </Circle>
                           )}
                           {pair && pair.target && (
                             <Circle
@@ -3488,7 +3504,23 @@ export default function MapComponent({
                                 fillColor: targetColor,
                                 fillOpacity: 0.4,
                               }}
-                            />
+                              eventHandlers={{
+                                click: (e) => {
+                                  const popup = e.target.getPopup();
+                                  if (popup) popup.openPopup();
+                                }
+                              }}
+                            >
+                              <Popup>
+                                <div className="text-center">
+                                  <div className="font-semibold text-sm">Skuddpar – treffpunkt</div>
+                                  <button
+                                    onClick={() => handleDeleteShotPairByIndex(idx)}
+                                    className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
+                                  >Slett skuddpar</button>
+                                </div>
+                              </Popup>
+                            </Circle>
                           )}
                         </React.Fragment>
                       ))}
@@ -3567,7 +3599,23 @@ export default function MapComponent({
                                   fillColor: shotColor,
                                   fillOpacity: 0.5,
                                 }}
-                              />
+                                eventHandlers={{
+                                  click: (e) => {
+                                    const popup = e.target.getPopup();
+                                    if (popup) popup.openPopup();
+                                  }
+                                }}
+                              >
+                                <Popup>
+                                  <div className="text-center">
+                                    <div className="font-semibold text-sm">Skuddpar – skyteplass</div>
+                                    <button
+                                      onClick={() => handleDeleteShotPairByIndex(idx)}
+                                      className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
+                                    >Slett skuddpar</button>
+                                  </div>
+                                </Popup>
+                              </Circle>
                             )}
                             {pair && pair.target && (
                               <Circle
@@ -3579,7 +3627,23 @@ export default function MapComponent({
                                   fillColor: targetColor,
                                   fillOpacity: 0.4,
                                 }}
-                              />
+                                eventHandlers={{
+                                  click: (e) => {
+                                    const popup = e.target.getPopup();
+                                    if (popup) popup.openPopup();
+                                  }
+                                }}
+                              >
+                                <Popup>
+                                  <div className="text-center">
+                                    <div className="font-semibold text-sm">Skuddpar – treffpunkt</div>
+                                    <button
+                                      onClick={() => handleDeleteShotPairByIndex(idx)}
+                                      className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
+                                    >Slett skuddpar</button>
+                                  </div>
+                                </Popup>
+                              </Circle>
                             )}
                           </React.Fragment>
                         ))}
@@ -3653,7 +3717,23 @@ export default function MapComponent({
                             fillColor: shotColor,
                             fillOpacity: 0.5,
                           }}
-                        />
+                          eventHandlers={{
+                            click: (e) => {
+                              const popup = e.target.getPopup();
+                              if (popup) popup.openPopup();
+                            }
+                          }}
+                        >
+                          <Popup>
+                            <div className="text-center">
+                              <div className="font-semibold text-sm">Skuddpar – skyteplass</div>
+                              <button
+                                onClick={() => handleDeleteShotPairByIndex(idx)}
+                                className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
+                              >Slett skuddpar</button>
+                            </div>
+                          </Popup>
+                        </Circle>
                       )}
                       {pair && pair.target && (
                         <Circle
@@ -3665,7 +3745,23 @@ export default function MapComponent({
                             fillColor: targetColor,
                             fillOpacity: 0.4,
                           }}
-                        />
+                          eventHandlers={{
+                            click: (e) => {
+                              const popup = e.target.getPopup();
+                              if (popup) popup.openPopup();
+                            }
+                          }}
+                        >
+                          <Popup>
+                            <div className="text-center">
+                              <div className="font-semibold text-sm">Skuddpar – treffpunkt</div>
+                              <button
+                                onClick={() => handleDeleteShotPairByIndex(idx)}
+                                className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
+                              >Slett skuddpar</button>
+                            </div>
+                          </Popup>
+                        </Circle>
                       )}
                       {pair && pair.current && pair.target && (pair.current.lat !== pair.target.lat || pair.current.lng !== pair.target.lng) && (
                         (() => {
