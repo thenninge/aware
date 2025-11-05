@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 
+const isDev = process.env.NODE_ENV !== 'production';
+
 const nextConfig: NextConfig = {
   // Configure images and assets
   images: {
@@ -13,21 +15,32 @@ const nextConfig: NextConfig = {
   
   // Handle external domains for Leaflet tiles
   async headers() {
-    return [
+    const base = [
       {
         source: '/(.*)',
         headers: [
-          {
-            key: 'X-Frame-Options',
-            value: 'DENY',
-          },
-          {
-            key: 'X-Content-Type-Options',
-            value: 'nosniff',
-          },
+          { key: 'X-Frame-Options', value: 'DENY' },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
         ],
       },
     ];
+    const devNoCache = isDev
+      ? [
+          {
+            source: '/_next/static/:path*',
+            headers: [
+              { key: 'Cache-Control', value: 'no-store, must-revalidate' },
+            ],
+          },
+          {
+            source: '/:path*',
+            headers: [
+              { key: 'Cache-Control', value: 'no-store, must-revalidate' },
+            ],
+          },
+        ]
+      : [];
+    return [...base, ...devNoCache];
   },
   
   // Configure webpack for Leaflet
