@@ -154,36 +154,38 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
       {/* Shoot-mode (track) specific filters */}
       {mode === 'track' && (
         <>
-          {/* Radio buttons for skuddpar visning */}
-          {onShowOnlyLastShotChange && (
+          {/* Vis skuddpar */}
+          {showShots !== undefined && onShowShotsChange && (
             <div className="mb-3">
-              <div className="text-xs font-medium text-gray-700 mb-2">Skuddpar:</div>
-              <div className="space-y-1">
-                <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
-                  <input
-                    type="radio"
-                    name="shotDisplay"
-                    checked={!showOnlyLastShot}
-                    onChange={() => onShowOnlyLastShotChange(false)}
-                    className="w-3 h-3 text-blue-600"
-                  />
-                  <span className="font-medium text-gray-700">
-                    Vis alle skuddpar
-                  </span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
-                  <input
-                    type="radio"
-                    name="shotDisplay"
-                    checked={!!showOnlyLastShot}
-                    onChange={() => onShowOnlyLastShotChange(true)}
-                    className="w-3 h-3 text-blue-600"
-                  />
-                  <span className="font-medium text-gray-700">
-                    Vis kun siste skuddpar
-                  </span>
-                </label>
-              </div>
+              <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={showShots}
+                  onChange={e => onShowShotsChange(e.target.checked)}
+                  className="w-3 h-3 text-blue-600 rounded focus:ring-blue-500"
+                />
+                <span className="font-medium text-gray-700">
+                  Vis skuddpar
+                </span>
+              </label>
+            </div>
+          )}
+
+          {/* Vis kun siste skuddpar (under Vis skuddpar) */}
+          {onShowOnlyLastShotChange && (
+            <div className="mb-3 ml-5">
+              <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={!!showOnlyLastShot}
+                  onChange={e => onShowOnlyLastShotChange(e.target.checked)}
+                  className="w-3 h-3 text-blue-600 rounded focus:ring-blue-500"
+                  disabled={showShots === false}
+                />
+                <span className={`font-medium text-gray-700 ${showShots === false ? 'opacity-50' : ''}`}>
+                  Vis kun siste skuddpar
+                </span>
+              </label>
             </div>
           )}
           
