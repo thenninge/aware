@@ -2636,6 +2636,8 @@ export default function MapComponent({
         style={{ height: '100%', width: '100%' }}
         zoomControl={true}
         attributionControl={true}
+        doubleClickZoom={true}
+        zoomDelta={1}
       >
         <TileLayer
           url={LAYER_CONFIGS[layerIdx].url}
