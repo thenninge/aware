@@ -3263,21 +3263,35 @@ export default function MapComponent({
                       </>
                     );
                   }
-                  // Vis alle skuddpar (punkter)
+                  // Vis alle skuddpar (punkter) – samme logikk som i Aware
                   return (
                     <>
-                      {fullShotPairs.map(p => (
-                        <React.Fragment key={`pair-points-${p.key}`}>
-                          <Circle
-                            center={[p.current.lat, p.current.lng]}
-                            radius={shotSize}
-                            pathOptions={{ color: shotColor, weight: 1.5, fillColor: shotColor, fillOpacity: 0.5 }}
-                          />
-                          <Circle
-                            center={[p.target.lat, p.target.lng]}
-                            radius={targetSize}
-                            pathOptions={{ color: targetColor, weight: 2, fillColor: targetColor, fillOpacity: 0.4 }}
-                          />
+                      {safeSavedPairs.filter(Boolean).map((pair, idx) => (
+                        <React.Fragment key={pair.id ?? idx}>
+                          {pair && pair.current && (
+                            <Circle
+                              center={[pair.current.lat, pair.current.lng]}
+                              radius={shotSize}
+                              pathOptions={{
+                                color: shotColor,
+                                weight: 1.5,
+                                fillColor: shotColor,
+                                fillOpacity: 0.5,
+                              }}
+                            />
+                          )}
+                          {pair && pair.target && (
+                            <Circle
+                              center={[pair.target.lat, pair.target.lng]}
+                              radius={targetSize}
+                              pathOptions={{
+                                color: targetColor,
+                                weight: 2,
+                                fillColor: targetColor,
+                                fillOpacity: 0.4,
+                              }}
+                            />
+                          )}
                         </React.Fragment>
                       ))}
                     </>
