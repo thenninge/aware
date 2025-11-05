@@ -2439,6 +2439,25 @@ export default function MapComponent({
         return undefined;
       })()
     : undefined;
+  // Avled alle komplette par (skyteplass + treffpunkt) i rekkefølge
+  const fullShotPairs = hasSavedPairs
+    ? (() => {
+        const withIdx = safeSavedPairs.map((p, idx) => ({ ...p, _idx: idx } as any));
+        const skyteplasser = withIdx.filter((p: any) => p.category === 'Skyteplass' && p.current);
+        const treffpunkter = withIdx.filter((p: any) => p.category === 'Treffpunkt' && p.target);
+        const getTime = (p: any) => (p.created_at ? new Date(p.created_at).getTime() : p._idx);
+        skyteplasser.sort((a: any, b: any) => getTime(a) - getTime(b));
+        treffpunkter.sort((a: any, b: any) => getTime(a) - getTime(b));
+        const result: { current: Position; target: Position; key: string }[] = [];
+        for (const s of skyteplasser) {
+          const t = treffpunkter.find((tp: any) => getTime(tp) > getTime(s));
+          if (t) {
+            result.push({ current: s.current as Position, target: t.target as Position, key: `${s.id}-${t.id}` });
+          }
+        }
+        return result;
+      })()
+    : [];
   
   // I track-mode: bruk siste skyteplass. I søk-modus: bruk valgt index
   const lastPair = hasSavedPairs 
@@ -3224,36 +3243,43 @@ export default function MapComponent({
           <>
 
             
-            {showOnlyLastShot && mode === 'track'
+            {mode === 'track'
               ? (() => {
-                  const pair = lastFullPair || lastDerivedPair;
-                  if (!pair) return null;
+                  if (showOnlyLastShot) {
+                    const last = fullShotPairs[fullShotPairs.length - 1];
+                    if (!last) return null;
+                    return (
+                      <>
+                        <Circle
+                          center={[last.current.lat, last.current.lng]}
+                          radius={shotSize}
+                          pathOptions={{ color: shotColor, weight: 1.5, fillColor: shotColor, fillOpacity: 0.5 }}
+                        />
+                        <Circle
+                          center={[last.target.lat, last.target.lng]}
+                          radius={targetSize}
+                          pathOptions={{ color: targetColor, weight: 2, fillColor: targetColor, fillOpacity: 0.4 }}
+                        />
+                      </>
+                    );
+                  }
+                  // Vis alle skuddpar (punkter)
                   return (
                     <>
-                      {pair.current && (
-                        <Circle
-                          center={[pair.current.lat, pair.current.lng]}
-                          radius={shotSize}
-                          pathOptions={{
-                            color: shotColor,
-                            weight: 1.5,
-                            fillColor: shotColor,
-                            fillOpacity: 0.5,
-                          }}
-                        />
-                      )}
-                      {pair.target && (
-                        <Circle
-                          center={[pair.target.lat, pair.target.lng]}
-                          radius={targetSize}
-                          pathOptions={{
-                            color: targetColor,
-                            weight: 2,
-                            fillColor: targetColor,
-                            fillOpacity: 0.4,
-                          }}
-                        />
-                      )}
+                      {fullShotPairs.map(p => (
+                        <React.Fragment key={`pair-points-${p.key}`}>
+                          <Circle
+                            center={[p.current.lat, p.current.lng]}
+                            radius={shotSize}
+                            pathOptions={{ color: shotColor, weight: 1.5, fillColor: shotColor, fillOpacity: 0.5 }}
+                          />
+                          <Circle
+                            center={[p.target.lat, p.target.lng]}
+                            radius={targetSize}
+                            pathOptions={{ color: targetColor, weight: 2, fillColor: targetColor, fillOpacity: 0.4 }}
+                          />
+                        </React.Fragment>
+                      ))}
                     </>
                   );
                 })()
@@ -3384,10 +3410,10 @@ export default function MapComponent({
           </>
         )}
         {/* Tegn stiplede linjer mellom alle gyldige par */}
-        {(mode === 'track' || mode === 'søk') && (
+        {(mode === 'track' || mode === 'søk') && showShots && (
           showOnlyLastShot
             ? (() => {
-                const pair = lastFullPair || lastDerivedPair;
+                const pair = fullShotPairs[fullShotPairs.length - 1];
                 if (pair && pair.current && pair.target) {
                   const positions: [number, number][] = [
                     [pair.current.lat, pair.current.lng],
@@ -3395,7 +3421,7 @@ export default function MapComponent({
                   ];
                   return (
                     <Polyline
-                      key={`polyline-last-full-${pair.id ?? 'derived'}`}
+                      key={`polyline-last-full-${pair.key}`}
                       positions={positions}
                       pathOptions={{ color: targetLineColor, weight: targetLineWeight, dashArray: '8 12' }}
                     />
@@ -3404,26 +3430,13 @@ export default function MapComponent({
                 return null;
               })()
             : (() => {
-                const skyteplasser = safeSavedPairs.filter(p => p.category === 'Skyteplass' && p.current && p.created_at !== undefined);
-                const treffpunkter = safeSavedPairs.filter(p => p.category === 'Treffpunkt' && p.target && p.created_at !== undefined);
-                return skyteplasser.map((skyteplass, idx) => {
-                  const treff = treffpunkter.find(t => t.created_at !== undefined && t.created_at > skyteplass.created_at!);
-                  if (skyteplass.current && treff && treff.target) {
-                    const end = pointTowards(skyteplass.current, treff.target, 15);
-                    const positions: [number, number][] = [
-                      [skyteplass.current.lat, skyteplass.current.lng],
-                      [end.lat, end.lng],
-                    ];
-                    return (
-                      <Polyline
-                        key={`polyline-${skyteplass.id}-${treff.id}`}
-                        positions={positions}
-                        pathOptions={{ color: '#888', weight: 2, dashArray: '4 8' }}
-                      />
-                    );
-                  }
-                  return null;
-                });
+                return fullShotPairs.map(p => (
+                  <Polyline
+                    key={`polyline-${p.key}`}
+                    positions={[[p.current.lat, p.current.lng], [p.target.lat, p.target.lng]]}
+                    pathOptions={{ color: targetLineColor, weight: targetLineWeight, dashArray: '8 12' }}
+                  />
+                ));
               })()
         )}
         {/* TODO: Tegn linje og target-pos senere */}
