@@ -3321,13 +3321,6 @@ export default function MapComponent({
                           fillColor: shotColor,
                           fillOpacity: 0.5,
                         }}
-                        eventHandlers={{
-                          click: () => {
-                            if (mode === 'track') {
-                              handleDeleteShotPair(pair.id);
-                            }
-                          }
-                        }}
                       />
                     )}
                     {pair && pair.target && (
@@ -3339,13 +3332,6 @@ export default function MapComponent({
                           weight: 2,
                           fillColor: targetColor,
                           fillOpacity: 0.4,
-                        }}
-                        eventHandlers={{
-                          click: () => {
-                            if (mode === 'track') {
-                              handleDeleteShotPair(pair.id);
-                            }
-                          }
                         }}
                       />
                     )}
