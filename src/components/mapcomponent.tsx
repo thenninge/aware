@@ -957,6 +957,25 @@ export default function MapComponent({
   const [findName, setFindName] = useState('');
   const [findColor, setFindColor] = useState('#EF4444');
   const [findIncludeDTG, setFindIncludeDTG] = useState(true);
+
+  // Kompass-kalibrering
+  const [showCalibrationDialog, setShowCalibrationDialog] = useState(false);
+  const [calibrationDirection, setCalibrationDirection] = useState<'N' | 'E' | 'S' | 'W'>('N');
+  const [calibrationOffsetDeg, setCalibrationOffsetDeg] = useState<number>(() => {
+    if (typeof window === 'undefined') return 0;
+    const v = localStorage.getItem('compassCalibrationOffset');
+    return v ? Number(v) || 0 : 0;
+  });
+
+  const normalizeDeg = (d: number) => {
+    let x = d % 360;
+    if (x < 0) x += 360;
+    return x;
+  };
+  const applyCalibration = (heading: number | null | undefined): number | null => {
+    if (heading == null) return null;
+    return normalizeDeg(heading + calibrationOffsetDeg);
+  };
   
   // Observasjon state
   const [showObservationDialog, setShowObservationDialog] = useState(false);
@@ -2915,7 +2934,7 @@ export default function MapComponent({
         {/* Compass slice - shows direction as red pie slice */}
         {currentPosition && (
           <CompassSlice 
-            heading={currentPosition.heading || null}
+            heading={applyCalibration(currentPosition.heading) || null}
             isActive={compassMode === 'on' && !isCompassLocked}
             isLocked={false}
             centerLat={currentPosition.lat}
@@ -2927,7 +2946,7 @@ export default function MapComponent({
 
         {/* Map rotator - rotates map when compass is locked */}
         <MapRotator 
-          heading={currentPosition?.heading || null}
+          heading={applyCalibration(currentPosition?.heading) || null}
           isEnabled={compassMode === 'on' && isCompassLocked}
         />
 
@@ -4001,7 +4020,7 @@ export default function MapComponent({
           <div 
             className="absolute top-1/2 left-1/2 w-0 h-0"
             style={{ 
-              transform: `translate(-50%, -50%) rotate(${currentPosition.heading}deg)`,
+              transform: `translate(-50%, -50%) rotate(${applyCalibration(currentPosition.heading) ?? 0}deg)`,
             }}
           >
             {/* Kakestykke med 3 grader bredde og 100m lengde */}
@@ -4036,7 +4055,7 @@ export default function MapComponent({
           <div 
             className="absolute top-1/2 left-1/2 w-0 h-0"
             style={{ 
-              transform: `translate(-50%, -50%) rotate(${isCompassLocked ? 0 : (currentPosition.heading ?? 0)}deg)`,
+              transform: `translate(-50%, -50%) rotate(${isCompassLocked ? 0 : (applyCalibration(currentPosition.heading) ?? 0)}deg)`,
             }}
           >
             {/* Kakestykke med 3 grader bredde og 100m lengde */}
@@ -4305,6 +4324,18 @@ export default function MapComponent({
             >
               🧭
             </button>
+
+            {/* Kalibreringsknapp (skrustikke) – vises når kompass er aktivt */}
+            {compassMode === 'on' && (
+              <button
+                onClick={() => setShowCalibrationDialog(true)}
+                className="w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center bg-white/90 border border-gray-300 hover:bg-gray-100"
+                title="Kalibrer kompass"
+                style={{ pointerEvents: 'auto' }}
+              >
+                🗜️
+              </button>
+            )}
           
           {/* Layers button - moved above GPS to avoid confusion with compass */}
           <button
@@ -4941,6 +4972,49 @@ export default function MapComponent({
               >
                 Lagre jaktfelt
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Kalibrer kompass */}
+      {showCalibrationDialog && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[3000]">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-80 flex flex-col gap-4">
+            <div className="text-xl font-bold mb-2 text-gray-800">Kalibrer kompass</div>
+            <div className="grid grid-cols-4 gap-2">
+              {([
+                ['N', 'Nord'],
+                ['E', 'Øst'],
+                ['S', 'Sør'],
+                ['W', 'Vest'],
+              ] as [ 'N' | 'E' | 'S' | 'W', string ][]).map(([val, label]) => (
+                <button
+                  key={val}
+                  onClick={() => setCalibrationDirection(val)}
+                  className={`px-2 py-2 rounded border text-sm ${calibrationDirection === val ? 'bg-blue-600 text-white border-blue-700' : 'bg-white border-gray-300 hover:bg-gray-100'}`}
+                >{label}</button>
+              ))}
+            </div>
+            <div className="flex gap-2 justify-end mt-2">
+              <button
+                onClick={() => setShowCalibrationDialog(false)}
+                className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold"
+              >Avbryt</button>
+              <button
+                onClick={() => {
+                  const target = calibrationDirection === 'N' ? 0 : calibrationDirection === 'E' ? 90 : calibrationDirection === 'S' ? 180 : 270;
+                  const current = currentPosition?.heading ?? null;
+                  if (current == null) { alert('Ingen kompassmåling tilgjengelig. Start kompass først.'); return; }
+                  const diff = ((target - current) % 360 + 360) % 360; // normalize 0..360
+                  const signed = diff > 180 ? diff - 360 : diff; // shortest path -180..180
+                  const newOffset = normalizeDeg(calibrationOffsetDeg + signed);
+                  setCalibrationOffsetDeg(newOffset);
+                  try { localStorage.setItem('compassCalibrationOffset', String(newOffset)); } catch {}
+                  setShowCalibrationDialog(false);
+                }}
+                className="px-3 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white font-bold"
+              >Kalibrer</button>
             </div>
           </div>
         </div>
