@@ -4324,17 +4324,17 @@ export default function MapComponent({
             >
               🧭
             </button>
-
+          
             {/* Kalibreringsknapp (skrustikke) – vises når kompass er aktivt */}
             {compassMode === 'on' && (
-              <button
+            <button
                 onClick={() => setShowCalibrationDialog(true)}
                 className="w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center bg-white/90 border border-gray-300 hover:bg-gray-100"
                 title="Kalibrer kompass"
                 style={{ pointerEvents: 'auto' }}
               >
                 🗜️
-              </button>
+            </button>
             )}
           
           {/* Layers button - moved above GPS to avoid confusion with compass */}
@@ -4996,11 +4996,20 @@ export default function MapComponent({
                 >{label}</button>
               ))}
             </div>
+            <div className="rounded bg-gray-50 border p-3 text-sm text-gray-800">
+              <div className="flex justify-between"><span>Vinkel</span><span>{Math.round((currentPosition?.heading ?? 0) * 10) / 10}°</span></div>
+              <div className="flex justify-between"><span>Aktivt offset</span><span>{Math.round(calibrationOffsetDeg * 10) / 10}°</span></div>
+              <div className="flex justify-between"><span>Kalibrert</span><span>{(() => { const v = applyCalibration(currentPosition?.heading) ?? 0; return Math.round(v * 10) / 10; })()}°</span></div>
+            </div>
             <div className="flex gap-2 justify-end mt-2">
               <button
                 onClick={() => setShowCalibrationDialog(false)}
                 className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold"
               >Avbryt</button>
+              <button
+                onClick={() => { setCalibrationOffsetDeg(0); try { localStorage.setItem('compassCalibrationOffset', '0'); } catch {} }}
+                className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold"
+              >Reset</button>
               <button
                 onClick={() => {
                   const target = calibrationDirection === 'N' ? 0 : calibrationDirection === 'E' ? 90 : calibrationDirection === 'S' ? 180 : 270;
