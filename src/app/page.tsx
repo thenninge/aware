@@ -466,31 +466,26 @@ export default function Home() {
         
         {/* Lock-knapp - under admin-knappen, kun synlig når kompass er på */}
         {compassMode === 'on' && (
-          <>
-            <div className="fixed top-16 right-4 z-[2001]">
-              <button
-                onClick={() => setIsCompassLocked(!isCompassLocked)}
-                className={`w-10 h-10 rounded-lg shadow-lg flex items-center justify-center transition-colors ${
-                  isCompassLocked
-                    ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                    : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
-                }`}
-                title={isCompassLocked ? 'Låst: Kart roterer' : 'Ulåst: Pil roterer'}
-              >
-                <span className="text-lg">⬆️</span>
-              </button>
-            </div>
-            {/* Kalibreringsknapp under pil-opp-knappen */}
-            <div className="fixed top-28 right-4 z-[2001]">
-              <button
-                onClick={() => calibrationOpenRef.current && calibrationOpenRef.current()}
-                className="w-10 h-10 rounded-lg shadow-lg flex items-center justify-center transition-colors bg-white/90 border border-gray-300 hover:bg-gray-100 text-gray-800"
-                title="Kalibrer kompass"
-              >
-                <span className="text-lg">🗜️</span>
-              </button>
-            </div>
-          </>
+          <div className="fixed top-16 right-4 z-[2001] flex flex-col items-end gap-2">
+            <button
+              onClick={() => setIsCompassLocked(!isCompassLocked)}
+              className={`w-10 h-10 rounded-lg shadow-lg flex items-center justify-center transition-colors ${
+                isCompassLocked
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                  : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+              }`}
+              title={isCompassLocked ? 'Låst: Kart roterer' : 'Ulåst: Pil roterer'}
+            >
+              <span className="text-lg">⬆️</span>
+            </button>
+            <button
+              onClick={() => calibrationOpenRef.current && calibrationOpenRef.current()}
+              className="w-10 h-10 rounded-lg shadow-lg flex items-center justify-center transition-colors bg-white/90 border border-gray-300 hover:bg-gray-100 text-gray-800"
+              title="Kalibrer kompass"
+            >
+              <span className="text-lg">🗜️</span>
+            </button>
+          </div>
         )}
         
         {/* Mode-toggle og menyknapper alltid synlig, fixed og midtjustert, også på mobil */}
