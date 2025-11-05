@@ -3298,13 +3298,15 @@ export default function MapComponent({
                           )}
                         </React.Fragment>
                       ))}
-                      {/* Sørg for at stiplede linjer også vises i Shoot når alle vises */}
-                      {fullShotPairs.map(p => (
-                        <Polyline
-                          key={`track-all-poly-${p.key}`}
-                          positions={[[p.current.lat, p.current.lng], [p.target.lat, p.target.lng]]}
-                          pathOptions={{ color: targetLineColor, weight: targetLineWeight, dashArray: '8 12' }}
-                        />
+                      {/* Stiplede linjer for alle par (samme som Aware) */}
+                      {safeSavedPairs.filter(Boolean).map((pair, idx) => (
+                        pair && pair.current && pair.target ? (
+                          <Polyline
+                            key={`track-all-poly-${pair.id ?? idx}`}
+                            positions={[[pair.current.lat, pair.current.lng], [pair.target.lat, pair.target.lng]]}
+                            pathOptions={{ color: targetLineColor, weight: targetLineWeight, dashArray: '8 12' }}
+                          />
+                        ) : null
                       ))}
                     </>
                   );
