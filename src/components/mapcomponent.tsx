@@ -905,6 +905,16 @@ export default function MapComponent({
   const shotDirectionCompass = useCompass({
     isEnabled: isShotCompassEnabled,
   });
+
+  // Oppdater skuddretning kontinuerlig fra kompasset når aktivert
+  useEffect(() => {
+    if (!isShotCompassEnabled) return;
+    const heading = shotDirectionCompass.currentHeading ?? shotDirectionCompass.lastValidHeading ?? shotDirectionCompass.rawHeading;
+    if (heading != null && !Number.isNaN(heading)) {
+      const internal = heading > 180 ? heading - 360 : heading; // map 0-359 -> -180..180
+      setTargetDirection(internal);
+    }
+  }, [isShotCompassEnabled, shotDirectionCompass.currentHeading, shotDirectionCompass.lastValidHeading, shotDirectionCompass.rawHeading]);
   
   // Tracking state for søk-modus
   const [savedTracks, setSavedTracks] = useState<SavedTrack[]>([]);
@@ -3780,28 +3790,22 @@ export default function MapComponent({
               <button
                 onClick={async () => {
                   try {
-                    setIsShotCompassEnabled(true);
-                    await shotDirectionCompass.startCompass();
-                    // Gi kompasset et kort øyeblikk til å levere en måling
-                    await new Promise(r => setTimeout(r, 150));
-                    const heading = shotDirectionCompass.currentHeading ?? shotDirectionCompass.lastValidHeading ?? shotDirectionCompass.rawHeading;
-                    if (heading != null) {
-                      const internal = heading > 180 ? heading - 360 : heading; // map 0-359 -> -180..180
-                      setTargetDirection(internal);
+                    if (!isShotCompassEnabled) {
+                      setIsShotCompassEnabled(true);
+                      await shotDirectionCompass.startCompass();
                     } else {
-                      alert('Kompassretning ikke tilgjengelig. Prøv igjen.');
+                      shotDirectionCompass.stopCompass();
+                      setIsShotCompassEnabled(false);
                     }
                   } catch (e) {
-                    alert('Kunne ikke starte kompass. Gi tillatelse og prøv igjen.');
-                  } finally {
-                    shotDirectionCompass.stopCompass();
                     setIsShotCompassEnabled(false);
+                    alert('Kunne ikke starte kompass. Gi tillatelse og prøv igjen.');
                   }
                 }}
-                className="px-6 py-2 rounded bg-gray-600 hover:bg-gray-700 text-white font-semibold text-sm"
+                className={`px-6 py-2 rounded text-white font-semibold text-sm ${isShotCompassEnabled ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600 hover:bg-gray-700'}`}
               >Kompass</button>
           <button
-            onClick={handleSaveTargetWithDirection}
+                onClick={() => { handleSaveTargetWithDirection(); shotDirectionCompass.stopCompass(); setIsShotCompassEnabled(false); }}
                 className="px-6 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm"
           >Lagre</button>
             </div>
