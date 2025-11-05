@@ -4401,8 +4401,8 @@ export default function MapComponent({
       </div>
 
       {/* Kalibreringsknapp øverst til høyre (90px fra toppen) */}
-      {compassMode === 'on' && (
-        <div className="fixed top-[90px] right-4 z-[10000]" style={{ pointerEvents: 'auto' }}>
+      {compassMode !== 'off' && (
+        <div className="fixed right-4" style={{ top: 'calc(env(safe-area-inset-top, 0px) + 90px)', zIndex: 10000, pointerEvents: 'auto' }}>
           <button
             onClick={() => setShowCalibrationDialog(true)}
             className="w-10 h-10 rounded-full shadow-lg transition-colors flex items-center justify-center bg-white/90 border border-gray-300 hover:bg-gray-100"
