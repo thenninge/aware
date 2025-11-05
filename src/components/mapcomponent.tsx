@@ -3333,6 +3333,13 @@ export default function MapComponent({
                               pathOptions={{ color: targetColor, weight: 2, fillColor: targetColor, fillOpacity: 0.4 }}
                             />
                           )}
+                          {last.current && last.target && (
+                            <Polyline
+                              key={`sok-last-poly`}
+                              positions={[[last.current.lat, last.current.lng], [last.target.lat, last.target.lng]]}
+                              pathOptions={{ color: targetLineColor, weight: targetLineWeight, dashArray: '8 12' }}
+                            />
+                          )}
                         </>
                       );
                     }
@@ -3365,6 +3372,15 @@ export default function MapComponent({
                               />
                             )}
                           </React.Fragment>
+                        ))}
+                        {safeSavedPairs.filter(Boolean).map((pair, idx) => (
+                          pair && pair.current && pair.target ? (
+                            <Polyline
+                              key={`sok-all-poly-${pair.id ?? idx}`}
+                              positions={[[pair.current.lat, pair.current.lng], [pair.target.lat, pair.target.lng]]}
+                              pathOptions={{ color: targetLineColor, weight: targetLineWeight, dashArray: '8 12' }}
+                            />
+                          ) : null
                         ))}
                       </>
                     );
