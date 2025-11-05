@@ -921,7 +921,9 @@ export default function MapComponent({
     if (!isShotCompassEnabled) return;
     const heading = shotDirectionCompass.currentHeading ?? shotDirectionCompass.lastValidHeading ?? shotDirectionCompass.rawHeading;
     if (heading != null && !Number.isNaN(heading)) {
-      const internal = heading > 180 ? heading - 360 : heading; // map 0-359 -> -180..180
+      const rawOffset = (typeof window !== 'undefined' ? Number(localStorage.getItem('compassCalibrationOffset') || '0') : 0) || 0;
+      const adjusted = ((heading + rawOffset) % 360 + 360) % 360;
+      const internal = adjusted > 180 ? adjusted - 360 : adjusted; // map 0-359 -> -180..180
       setTargetDirection(internal);
     }
   }, [isShotCompassEnabled, shotDirectionCompass.currentHeading, shotDirectionCompass.lastValidHeading, shotDirectionCompass.rawHeading]);
@@ -936,7 +938,9 @@ export default function MapComponent({
     if (!isObservationCompassEnabled) return;
     const heading = observationDirectionCompass.currentHeading ?? observationDirectionCompass.lastValidHeading ?? observationDirectionCompass.rawHeading;
     if (heading != null && !Number.isNaN(heading)) {
-      const internal = heading > 180 ? heading - 360 : heading; // map 0-359 -> -180..180
+      const rawOffset = (typeof window !== 'undefined' ? Number(localStorage.getItem('compassCalibrationOffset') || '0') : 0) || 0;
+      const adjusted = ((heading + rawOffset) % 360 + 360) % 360;
+      const internal = adjusted > 180 ? adjusted - 360 : adjusted; // map 0-359 -> -180..180
       setObservationDirection(internal);
     }
   }, [isObservationCompassEnabled, observationDirectionCompass.currentHeading, observationDirectionCompass.lastValidHeading, observationDirectionCompass.rawHeading]);
