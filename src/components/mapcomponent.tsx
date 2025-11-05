@@ -1188,6 +1188,9 @@ export default function MapComponent({
         
         // Oppdater state for å vise det nye sporet umiddelbart
         setSavedTracks(prev => [...prev, newTrack]);
+
+        // Sync til server i bakgrunnen (best-effort)
+        syncTrackToServer(newTrack);
       }
     } catch (error) {
       console.error('Feil ved lagring av spor:', error);
@@ -1788,6 +1791,9 @@ export default function MapComponent({
       setSavedFinds(prev => [...prev, newFind]);
       
       console.log('Funn lagret:', newFind);
+
+      // Sync til server i bakgrunnen (best-effort)
+      syncFindToServer(newFind);
     } catch (error) {
       console.error('Feil ved lagring av funn:', error);
     }
@@ -1816,6 +1822,62 @@ export default function MapComponent({
     } catch (error) {
       console.error('Feil ved lasting av lagrede observasjoner:', error);
       return [];
+    }
+  };
+
+  // --- Server sync helpers ---
+  const syncObservationToServer = async (position: Position, name: string, color: string) => {
+    try {
+      await fetch('/api/team-data/observations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          teamId: activeTeam,
+          name,
+          lat: position.lat,
+          lng: position.lng,
+          color,
+          category: 'observation'
+        })
+      });
+    } catch (e) {
+      console.error('Observasjon sync feilet:', e);
+    }
+  };
+
+  const syncFindToServer = async (find: SavedFind) => {
+    try {
+      await fetch('/api/team-data/finds', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          teamId: activeTeam,
+          name: find.name,
+          localId: find.id
+        })
+      });
+    } catch (e) {
+      console.error('Funn sync feilet:', e);
+    }
+  };
+
+  const syncTrackToServer = async (track: SavedTrack) => {
+    try {
+      await fetch('/api/team-data/tracks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          teamId: activeTeam,
+          name: track.name,
+          color: track.color,
+          points: track.points,
+          shotPairId: track.shotPairId,
+          mode: track.mode,
+          localId: track.id
+        })
+      });
+    } catch (e) {
+      console.error('Spor sync feilet:', e);
     }
   };
 
@@ -1897,6 +1959,9 @@ export default function MapComponent({
       setSavedObservations(prev => [...prev, newObservation]);
       
       console.log('Observasjon lagret:', newObservation);
+
+      // Sync til server i bakgrunnen (best-effort)
+      syncObservationToServer(position, name, color);
     } catch (error) {
       console.error('Feil ved lagring av observasjon:', error);
     }
@@ -1928,6 +1993,8 @@ export default function MapComponent({
       }
       
       saveObservationToLocalStorage(positionToSave, finalObservationName, observationColor);
+      // Sync til server i bakgrunnen (best-effort)
+      syncObservationToServer(positionToSave, finalObservationName, observationColor);
       setShowObservationDialog(false);
       setObservationName('');
       setObservationColor('#FF6B35');
