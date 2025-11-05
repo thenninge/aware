@@ -2409,6 +2409,36 @@ export default function MapComponent({
         return undefined;
       })()
     : undefined;
+  // Fallback: avled siste par fra rekkefølgen i savedPairs når created_at mangler
+  const lastDerivedPair = hasSavedPairs
+    ? (() => {
+        // 1) Finn siste Treffpunkt og en Skyteplass før den
+        for (let i = safeSavedPairs.length - 1; i >= 0; i--) {
+          const t = safeSavedPairs[i];
+          if (t && t.category === 'Treffpunkt' && t.target) {
+            for (let j = i - 1; j >= 0; j--) {
+              const s = safeSavedPairs[j];
+              if (s && s.category === 'Skyteplass' && s.current) {
+                return { current: s.current, target: t.target, id: t.id };
+              }
+            }
+          }
+        }
+        // 2) Finn siste Skyteplass og første Treffpunkt etter den
+        for (let i = safeSavedPairs.length - 1; i >= 0; i--) {
+          const s = safeSavedPairs[i];
+          if (s && s.category === 'Skyteplass' && s.current) {
+            for (let j = i + 1; j < safeSavedPairs.length; j++) {
+              const t = safeSavedPairs[j];
+              if (t && t.category === 'Treffpunkt' && t.target) {
+                return { current: s.current, target: t.target, id: t.id };
+              }
+            }
+          }
+        }
+        return undefined;
+      })()
+    : undefined;
   
   // I track-mode: bruk siste skyteplass. I søk-modus: bruk valgt index
   const lastPair = hasSavedPairs 
@@ -3196,7 +3226,7 @@ export default function MapComponent({
             
             {showOnlyLastShot && mode === 'track'
               ? (() => {
-                  const pair = lastFullPair;
+                  const pair = lastFullPair || lastDerivedPair;
                   if (!pair) return null;
                   return (
                     <>
@@ -3357,7 +3387,7 @@ export default function MapComponent({
         {(mode === 'track' || mode === 'søk') && (
           showOnlyLastShot
             ? (() => {
-                const pair = lastFullPair;
+                const pair = lastFullPair || lastDerivedPair;
                 if (pair && pair.current && pair.target) {
                   const positions: [number, number][] = [
                     [pair.current.lat, pair.current.lng],
@@ -3365,7 +3395,7 @@ export default function MapComponent({
                   ];
                   return (
                     <Polyline
-                      key={`polyline-last-full-${pair.id}`}
+                      key={`polyline-last-full-${pair.id ?? 'derived'}`}
                       positions={positions}
                       pathOptions={{ color: targetLineColor, weight: targetLineWeight, dashArray: '8 12' }}
                     />
