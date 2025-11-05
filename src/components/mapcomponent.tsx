@@ -3508,7 +3508,7 @@ export default function MapComponent({
       </MapContainer>
 
       {/* Center marker overlay - always visible in center */}
-      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none z-[1000]">
+      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none z-[3002]">
         {/* Vanlig prikk alltid synlig */}
         <div className="w-4 h-4 bg-red-600 border-2 border-white rounded-full shadow-lg"></div>
         
