@@ -4291,20 +4291,12 @@ export default function MapComponent({
               >
                 Avbryt
               </button>
-              <div className="flex gap-2">
-                <button
-                  onClick={handleSaveObservationFromDialog}
-                  className="px-3 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white font-bold"
-                >
-                  Lagre her
-                </button>
-                <button
-                  onClick={handleObservationWithDistance}
-                  className="px-3 py-1 rounded bg-green-600 hover:bg-green-700 text-white font-bold"
-                >
-                  Avstand + retning
-                </button>
-              </div>
+              <button
+                onClick={handleSaveObservationFromDialog}
+                className="px-3 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white font-bold"
+              >
+                Lagre
+              </button>
             </div>
           </div>
         </div>
