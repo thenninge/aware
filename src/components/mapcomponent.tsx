@@ -1852,13 +1852,14 @@ export default function MapComponent({
   
   // Aktiver observasjon-modus - bruk nåværende posisjon (rød prikk i midten)
   const toggleObservationMode = () => {
-    console.log('toggleObservationMode called, using current position');
+    console.log('toggleObservationMode called, jump directly to range modal');
     if (currentPosition) {
-      console.log('Opening observation dialog for current position...');
-      // La navn-feltet være tomt
+      // Reset any prior state and open distance step directly
+      setShowObservationDialog(false);
+      setShowObservationRangeModal(true);
+      setShowObservationDirectionUI(false);
       setObservationName('');
-      setObservationIncludeDTG(true); // Default ON
-      setShowObservationDialog(true);
+      setObservationIncludeDTG(true);
     } else {
       alert('Kunne ikke finne din nåværende posisjon');
     }
