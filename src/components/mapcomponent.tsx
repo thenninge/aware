@@ -3246,20 +3246,24 @@ export default function MapComponent({
             {mode === 'track'
               ? (() => {
                   if (showOnlyLastShot) {
-                    const last = fullShotPairs[fullShotPairs.length - 1];
+                    const last = lastFullPair || lastDerivedPair || fullShotPairs[fullShotPairs.length - 1];
                     if (!last) return null;
                     return (
                       <>
-                        <Circle
-                          center={[last.current.lat, last.current.lng]}
-                          radius={shotSize}
-                          pathOptions={{ color: shotColor, weight: 1.5, fillColor: shotColor, fillOpacity: 0.5 }}
-                        />
-                        <Circle
-                          center={[last.target.lat, last.target.lng]}
-                          radius={targetSize}
-                          pathOptions={{ color: targetColor, weight: 2, fillColor: targetColor, fillOpacity: 0.4 }}
-                        />
+                        {last.current && (
+                          <Circle
+                            center={[last.current.lat, last.current.lng]}
+                            radius={shotSize}
+                            pathOptions={{ color: shotColor, weight: 1.5, fillColor: shotColor, fillOpacity: 0.5 }}
+                          />
+                        )}
+                        {last.target && (
+                          <Circle
+                            center={[last.target.lat, last.target.lng]}
+                            radius={targetSize}
+                            pathOptions={{ color: targetColor, weight: 2, fillColor: targetColor, fillOpacity: 0.4 }}
+                          />
+                        )}
                       </>
                     );
                   }
@@ -3271,7 +3275,7 @@ export default function MapComponent({
                           {pair && pair.current && (
                             <Circle
                               center={[pair.current.lat, pair.current.lng]}
-                              radius={shotSize}
+                          radius={shotSize}
                               pathOptions={{
                                 color: shotColor,
                                 weight: 1.5,
@@ -3438,7 +3442,7 @@ export default function MapComponent({
         {(mode === 'track' || mode === 'søk') && showShots && (
           showOnlyLastShot
             ? (() => {
-                const pair = fullShotPairs[fullShotPairs.length - 1];
+                const pair = lastFullPair || lastDerivedPair || fullShotPairs[fullShotPairs.length - 1];
                 if (pair && pair.current && pair.target) {
                   const positions: [number, number][] = [
                     [pair.current.lat, pair.current.lng],
