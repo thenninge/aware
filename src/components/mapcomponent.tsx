@@ -344,7 +344,7 @@ function MapController({
         })}
       />
       
-
+      
       {/* Radius circle */}
       {/* <Circle
         key={`radius-${radius}-${currentPosition.lat}-${currentPosition.lng}`}
@@ -4399,6 +4399,19 @@ export default function MapComponent({
                 }}
               />
       </div>
+
+      {/* Kalibreringsknapp øverst til høyre (90px fra toppen) */}
+      {compassMode === 'on' && (
+        <div className="fixed top-[90px] right-4 z-[3003]" style={{ pointerEvents: 'auto' }}>
+          <button
+            onClick={() => setShowCalibrationDialog(true)}
+            className="w-10 h-10 rounded-full shadow-lg transition-colors flex items-center justify-center bg-white/90 border border-gray-300 hover:bg-gray-100"
+            title="Kalibrer kompass"
+          >
+            🗜️
+          </button>
+        </div>
+      )}
 
       
             <div className="flex justify-between items-center mt-2 gap-2">
