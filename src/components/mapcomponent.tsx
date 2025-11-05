@@ -4326,6 +4326,18 @@ export default function MapComponent({
             </button>
           
           
+            {/* Kalibreringsknapp (skrustikke) – vises når kompass er aktivt */}
+            {compassMode === 'on' && (
+            <button
+                onClick={() => setShowCalibrationDialog(true)}
+                className="w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center bg-white/90 border border-gray-300 hover:bg-gray-100"
+                title="Kalibrer kompass"
+                style={{ pointerEvents: 'auto' }}
+              >
+                🗜️
+            </button>
+            )}
+          
           {/* Layers button - moved above GPS to avoid confusion with compass */}
           <button
             className="w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center bg-white/90 border border-gray-300 hover:bg-gray-100"
@@ -4397,18 +4409,7 @@ export default function MapComponent({
               />
       </div>
 
-      {/* Kalibreringsknapp oppe til høyre (under admin/lock-området) */}
-      {compassMode === 'on' && (
-        <div className="fixed top-[88px] right-4 z-[3003]" style={{ pointerEvents: 'auto' }}>
-          <button
-            onClick={() => setShowCalibrationDialog(true)}
-            className="w-10 h-10 rounded-full shadow-lg transition-colors flex items-center justify-center bg-white/90 border border-gray-300 hover:bg-gray-100"
-            title="Kalibrer kompass"
-          >
-            🗜️
-          </button>
-        </div>
-      )}
+      
             <div className="flex justify-between items-center mt-2 gap-2">
               <button
                 onClick={() => {
