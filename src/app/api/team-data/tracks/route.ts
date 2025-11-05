@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    // Create new track
+    // Create new track (store geometry and pairing if available)
     const { data: newTrack, error: createError } = await supabaseAdmin
       .from('tracks')
       .insert({
@@ -126,7 +126,11 @@ export async function POST(request: NextRequest) {
         createdby: userId,
         name: name || 'Unnamed Track',
         color: color || '#3b82f6',
-        local_id: localId
+        local_id: localId,
+        // Persist points JSON if the column exists in DB schema
+        points: points ? JSON.stringify(points) : null,
+        // Persist linkage to shot pair if supplied
+        shot_pair_id: shotPairId || null
       })
       .select()
       .single();
