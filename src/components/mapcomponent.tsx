@@ -3712,8 +3712,8 @@ export default function MapComponent({
               {isScanning ? '⏳' : '🔍'}
             </button>
           )}
-          {/* Skuddpar-valgknapper - kun i søk-modus */}
-          {mode === 'søk' && (
+          {/* Skuddpar-valgknapper - kun i søk-modus (deaktivert) */}
+          {false && mode === 'søk' && (
             <>
               {/* Indikator for valgt treffpunkt */}
               {savedPairs.filter(p => p.category === 'Treffpunkt').length > 0 && (
