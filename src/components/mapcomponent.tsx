@@ -2399,6 +2399,16 @@ export default function MapComponent({
   const hasSavedPairs = safeSavedPairs.length > 0;
   // Reverser rekkefølgen slik at index 0 = nyeste, index 1 = nest nyeste, etc.
   const reversedPairs = hasSavedPairs ? [...safeSavedPairs].reverse() : [];
+  // Siste komplette skuddpar (med både skyteplass og treffpunkt)
+  const lastFullPair = hasSavedPairs
+    ? (() => {
+        for (let i = safeSavedPairs.length - 1; i >= 0; i--) {
+          const p = safeSavedPairs[i];
+          if (p && p.current && p.target) return p;
+        }
+        return undefined;
+      })()
+    : undefined;
   
   // I track-mode: bruk siste skyteplass. I søk-modus: bruk valgt index
   const lastPair = hasSavedPairs 
@@ -3186,22 +3196,13 @@ export default function MapComponent({
             
             {showOnlyLastShot && mode === 'track'
               ? (() => {
-                  // Finn nyeste skyteplass
-                  const skyteplasser = [...safeSavedPairs]
-                    .filter(p => p.category === 'Skyteplass' && p.created_at)
-                    .sort((a, b) => (a.created_at! < b.created_at! ? 1 : -1)); // nyest først
-                  const sisteSkyteplass = skyteplasser[0];
-                  if (!sisteSkyteplass) return null;
-                  // Finn nyeste treffpunkt etter denne skyteplass
-                  const treffpunkter = [...safeSavedPairs]
-                    .filter(p => p.category === 'Treffpunkt' && p.created_at && p.created_at > sisteSkyteplass.created_at!)
-                    .sort((a, b) => (a.created_at! < b.created_at! ? 1 : -1)); // nyest først
-                  const sisteTreffpunkt = treffpunkter[0];
+                  const pair = lastFullPair;
+                  if (!pair) return null;
                   return (
                     <>
-                      {sisteSkyteplass.current && (
+                      {pair.current && (
                         <Circle
-                          center={[sisteSkyteplass.current.lat, sisteSkyteplass.current.lng]}
+                          center={[pair.current.lat, pair.current.lng]}
                           radius={shotSize}
                           pathOptions={{
                             color: shotColor,
@@ -3211,9 +3212,9 @@ export default function MapComponent({
                           }}
                         />
                       )}
-                      {sisteTreffpunkt?.target && (
+                      {pair.target && (
                         <Circle
-                          center={[sisteTreffpunkt.target.lat, sisteTreffpunkt.target.lng]}
+                          center={[pair.target.lat, pair.target.lng]}
                           radius={targetSize}
                           pathOptions={{
                             color: targetColor,
@@ -3356,23 +3357,17 @@ export default function MapComponent({
         {(mode === 'track' || mode === 'søk') && (
           showOnlyLastShot
             ? (() => {
-                const skyteplasser = safeSavedPairs.filter(p => p.category === 'Skyteplass' && p.current && p.created_at !== undefined)
-                  .sort((a, b) => (a.created_at! < b.created_at! ? 1 : -1));
-                const sisteSkyteplass = skyteplasser[0];
-                const treffpunkter = safeSavedPairs.filter(p => p.category === 'Treffpunkt' && p.target && p.created_at !== undefined)
-                  .sort((a, b) => (a.created_at! < b.created_at! ? 1 : -1));
-                const førsteTreffpunkt = treffpunkter.find(t => sisteSkyteplass && t.created_at !== undefined && t.created_at > sisteSkyteplass.created_at!);
-                if (sisteSkyteplass && førsteTreffpunkt && sisteSkyteplass.current && førsteTreffpunkt.target) {
-                  const end = pointTowards(sisteSkyteplass.current, førsteTreffpunkt.target, 15);
+                const pair = lastFullPair;
+                if (pair && pair.current && pair.target) {
                   const positions: [number, number][] = [
-                    [sisteSkyteplass.current.lat, sisteSkyteplass.current.lng],
-                    [end.lat, end.lng],
+                    [pair.current.lat, pair.current.lng],
+                    [pair.target.lat, pair.target.lng],
                   ];
                   return (
                     <Polyline
-                      key={`polyline-${sisteSkyteplass.id}-${førsteTreffpunkt.id}`}
+                      key={`polyline-last-full-${pair.id}`}
                       positions={positions}
-                      pathOptions={{ color: '#888', weight: 2, dashArray: '4 8' }}
+                      pathOptions={{ color: targetLineColor, weight: targetLineWeight, dashArray: '8 12' }}
                     />
                   );
                 }
