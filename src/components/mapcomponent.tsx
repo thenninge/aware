@@ -3313,30 +3313,62 @@ export default function MapComponent({
                 })()
               : mode === 'søk' 
                 ? (() => {
-                    // I søk-modus: vis kun det valgte treffpunktet
-                    const treffpunkter = safeSavedPairs.filter(p => p.category === 'Treffpunkt');
-                    // Reverser rekkefølgen slik at index 0 = nyeste, index 1 = nest nyeste, etc.
-                    const reversedTreffpunkter = treffpunkter.length > 0 ? [...treffpunkter].reverse() : [];
-                    const selectedTarget = reversedTreffpunkter[adjustedSelectedTargetIndex];
-                    if (!selectedTarget) return null;
-                    
+                    // Track-mode (søk): align with Shoot logic
+                    if (showOnlyLastShot) {
+                      const last = (lastFullPair || lastDerivedPair || fullShotPairs[fullShotPairs.length - 1]) as any;
+                      if (!last) return null;
+                      return (
+                        <>
+                          {last.current && (
+                            <Circle
+                              center={[last.current.lat, last.current.lng]}
+                              radius={shotSize}
+                              pathOptions={{ color: shotColor, weight: 1.5, fillColor: shotColor, fillOpacity: 0.5 }}
+                            />
+                          )}
+                          {last.target && (
+                            <Circle
+                              center={[last.target.lat, last.target.lng]}
+                              radius={targetSize}
+                              pathOptions={{ color: targetColor, weight: 2, fillColor: targetColor, fillOpacity: 0.4 }}
+                            />
+                          )}
+                        </>
+                      );
+                    }
                     return (
-                      <React.Fragment key={`selected-target-${selectedTarget.id ?? selectedTargetIndex}`}>
-                        {selectedTarget.target && (
-                          <Circle
-                            center={[selectedTarget.target.lat, selectedTarget.target.lng]}
-                            radius={targetSize}
-                            pathOptions={{
-                              color: targetColor,
-                              weight: 2,
-                              fillColor: targetColor,
-                              fillOpacity: 0.4,
-                            }}
-                          />
-                        )}
-                      </React.Fragment>
-                  );
-                })()
+                      <>
+                        {safeSavedPairs.filter(Boolean).map((pair, idx) => (
+                          <React.Fragment key={pair.id ?? idx}>
+                            {pair && pair.current && (
+                              <Circle
+                                center={[pair.current.lat, pair.current.lng]}
+                                radius={shotSize}
+                                pathOptions={{
+                                  color: shotColor,
+                                  weight: 1.5,
+                                  fillColor: shotColor,
+                                  fillOpacity: 0.5,
+                                }}
+                              />
+                            )}
+                            {pair && pair.target && (
+                              <Circle
+                                center={[pair.target.lat, pair.target.lng]}
+                                radius={targetSize}
+                                pathOptions={{
+                                  color: targetColor,
+                                  weight: 2,
+                                  fillColor: targetColor,
+                                  fillOpacity: 0.4,
+                                }}
+                              />
+                            )}
+                          </React.Fragment>
+                        ))}
+                      </>
+                    );
+                  })()
               : (() => {
                   if (showOnlyLastShot) {
                     const last = (lastFullPair || lastDerivedPair || fullShotPairs[fullShotPairs.length - 1]) as any;
