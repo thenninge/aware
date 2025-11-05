@@ -966,6 +966,7 @@ export default function MapComponent({
   const [observationRange, setObservationRange] = useState(250);
   const [observationDirection, setObservationDirection] = useState(0);
   const [previewObservation, setPreviewObservation] = useState<Position | null>(null);
+  const [pendingObservationPosition, setPendingObservationPosition] = useState<Position | null>(null);
 
   // Avstandsmåling state
   const [isMeasuring, setIsMeasuring] = useState(false);
@@ -1903,7 +1904,8 @@ export default function MapComponent({
   
   // Håndter lagring av observasjon fra dialog
   const handleSaveObservationFromDialog = () => {
-    if (currentPosition) {
+    const positionToSave = pendingObservationPosition ?? currentPosition;
+    if (positionToSave) {
       let finalObservationName = observationName.trim();
       
       // Legg til DTG hvis checkbox er på
@@ -1925,11 +1927,13 @@ export default function MapComponent({
         return;
       }
       
-      saveObservationToLocalStorage(currentPosition, finalObservationName, observationColor);
+      saveObservationToLocalStorage(positionToSave, finalObservationName, observationColor);
       setShowObservationDialog(false);
       setObservationName('');
       setObservationColor('#FF6B35');
       setObservationIncludeDTG(true);
+      setPendingObservationPosition(null);
+      setPreviewObservation(null);
     }
   };
   
@@ -1939,6 +1943,7 @@ export default function MapComponent({
     setObservationName('');
     setObservationColor('#FF6B35');
     setObservationIncludeDTG(true);
+    setPendingObservationPosition(null);
   };
 
   // Håndter observasjon med avstand + retning
@@ -1957,7 +1962,6 @@ export default function MapComponent({
   // Lagre observasjon med beregnet posisjon
   const handleSaveObservationWithDistance = () => {
     if (!currentPosition) return;
-    
     // Beregn observasjon posisjon basert på nåværende posisjon, avstand og retning
     const observationPosition = destinationPoint(
       currentPosition.lat,
@@ -1965,38 +1969,12 @@ export default function MapComponent({
       observationRange,
       ((observationDirection + 360) % 360)
     );
-    
-    // Forbered navn med DTG hvis aktivert
-    let finalObservationName = observationName.trim();
-    if (observationIncludeDTG) {
-      const now = new Date();
-      const date = now.toLocaleDateString('nb-NO', { day: '2-digit', month: '2-digit' });
-      const time = now.toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit', hour12: false });
-      const dtg = `${date} ${time}`;
-      
-      if (finalObservationName) {
-        finalObservationName = `${finalObservationName} - ${dtg}`;
-      } else {
-        finalObservationName = dtg;
-      }
-    }
-    
-    if (!finalObservationName) {
-      alert('Vennligst skriv inn et navn eller aktiver "Legg til DTG"');
-      return;
-    }
-    
-    // Lagre observasjon på beregnet posisjon
-    saveObservationToLocalStorage(observationPosition, finalObservationName, observationColor);
-    
-    // Reset states
+    // Lukk avstand/retning og åpne navn/farge-dialog for endelig lagring
+    setPendingObservationPosition(observationPosition);
     setShowObservationDirectionUI(false);
     setShowObservationRangeModal(false);
-    setObservationName('');
-    setObservationColor('#FF6B35');
-    setObservationIncludeDTG(true);
-    setObservationRange(250);
-    setObservationDirection(0);
+    setShowObservationDialog(true);
+    // Nullstill forhåndsvisning
     setPreviewObservation(null);
   };
 
@@ -2006,6 +1984,7 @@ export default function MapComponent({
     if (!currentPosition) return;
     setShowObservationRangeModal(false);
     setShowObservationDirectionUI(false);
+    setPendingObservationPosition(currentPosition);
     setShowObservationDialog(true);
   };
 
