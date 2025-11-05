@@ -1511,7 +1511,23 @@ export default function MapComponent({
           tracks: (savedTracks || []).map(track => ({ ...track, id: track.id, points: track.points, shotPairId: track.shotPairId })),
           finds: (savedFinds || []).map(find => ({ ...find, id: find.id, shotPairId: find.shotPairId, position: find.position, color: find.color })),
           observations: (savedObservations || []).map(obs => ({ ...obs, id: obs.id, position: obs.position, color: obs.color })),
-          posts: (safeSavedPairs || []).map((post: any) => ({ ...post, id: post.id }))
+          posts: (safeSavedPairs || []).map((p: any) => {
+            // Bygg tittel/innhold slik /api/sync kan lagre i posts-tabellen
+            let title = 'Post';
+            let content = '';
+            if (p?.category === 'Skyteplass' && p?.current) {
+              title = 'Skyteplass';
+              content = `Lat: ${p.current.lat}, Lng: ${p.current.lng}, Category: Skyteplass`;
+            } else if (p?.category === 'Treffpunkt' && p?.target) {
+              title = 'Treffpunkt';
+              content = `Target: ${p.target.lat}, ${p.target.lng}, Category: Treffpunkt`;
+            } else if (p?.current) {
+              content = `Lat: ${p.current.lat}, Lng: ${p.current.lng}`;
+            } else if (p?.target) {
+              content = `Target: ${p.target.lat}, ${p.target.lng}`;
+            }
+            return { id: p.id, title, content };
+          })
         };
 
         const response = await fetch('/api/sync', {
