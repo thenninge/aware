@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { MapContainer, TileLayer, Marker, useMap, Circle, Polyline, Polygon, Tooltip, Popup, LayersControl } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMap, Circle, CircleMarker, Polyline, Polygon, Tooltip, Popup, LayersControl } from 'react-leaflet';
 import L from 'leaflet';
 import MSRRetikkel from './msr-retikkel';
 import 'leaflet/dist/leaflet.css';
@@ -723,6 +723,7 @@ interface PointPair {
   category: string;
   id: number;
   created_at?: string;
+  name?: string;
 }
 
 // Type for lagrede søk-spor
@@ -2296,13 +2297,14 @@ export default function MapComponent({
       console.log('Fetched posts:', data.length, 'posts');
       
     if (Array.isArray(data)) {
-        // Parse content field to extract coordinates and category
+        // Parse content field to extract coordinates, category og navn
         const parsedPosts = data.map(post => {
           const content = post.content || '';
           const latMatch = content.match(/Lat: ([\d.-]+)/);
           const lngMatch = content.match(/Lng: ([\d.-]+)/);
           const targetLatMatch = content.match(/Target: ([\d.-]+), ([\d.-]+)/);
           const categoryMatch = content.match(/Category: (\w+)/);
+          const nameMatch = content.match(/Name:\s*([^,]+)(?:,|$)/);
           
           return {
             current: latMatch && lngMatch ? { lat: parseFloat(latMatch[1]), lng: parseFloat(lngMatch[1]) } : undefined,
@@ -2310,6 +2312,7 @@ export default function MapComponent({
             category: categoryMatch ? categoryMatch[1] : 'general',
         id: post.id,
         created_at: post.created_at,
+            name: nameMatch ? nameMatch[1].trim() : undefined,
           };
         });
 
@@ -2337,6 +2340,7 @@ export default function MapComponent({
               category: skyteplass?.category || treffpunkt?.category || 'general',
               id: skyteplass?.id || treffpunkt?.id || 0,
               created_at: skyteplass?.created_at || treffpunkt?.created_at,
+              name: skyteplass?.name || treffpunkt?.name,
             });
             
             // Fjern brukt treffpunkt fra listen
@@ -2355,6 +2359,7 @@ export default function MapComponent({
             category: treffpunkt.category,
             id: treffpunkt.id,
             created_at: treffpunkt.created_at,
+            name: treffpunkt.name,
           });
         });
         
@@ -2467,7 +2472,7 @@ export default function MapComponent({
       });
       if (!shotResponse.ok) throw new Error('Failed to save shot position');
       const shotData = await shotResponse.json();
-
+      
       // Lagre treffpunkt med navn i content
       const targetResponse = await fetch('/api/posts', {
         method: 'POST',
@@ -2480,10 +2485,10 @@ export default function MapComponent({
       });
       if (!targetResponse.ok) throw new Error('Failed to save target position');
       const targetData = await targetResponse.json();
-
+      
       // Oppdater lokal state
       setSavedPairs(prev => [
-        ...prev,
+        ...prev, 
         { current: { ...lockedShotPosition }, category: 'Skyteplass', id: shotData.id },
         { target: { ...pendingTargetPosition }, category: 'Treffpunkt', id: targetData.id }
       ]);
@@ -3442,10 +3447,10 @@ export default function MapComponent({
                   if (showOnlyLastShot) {
                     const last = lastFullPair || lastDerivedPair || fullShotPairs[fullShotPairs.length - 1];
                     if (!last) return null;
-                    return (
-                      <>
+                  return (
+                    <>
                         {last.current && (
-                          <Circle
+                        <Circle
                             center={[last.current.lat, last.current.lng]}
                             radius={shotSize}
                             pathOptions={{ color: shotColor, weight: 1.5, fillColor: shotColor, fillOpacity: 0.5 }}
@@ -3467,15 +3472,16 @@ export default function MapComponent({
                       {safeSavedPairs.filter(Boolean).map((pair, idx) => (
                         <React.Fragment key={pair.id ?? idx}>
                           {pair && pair.current && (
+                            <>
                             <Circle
                               center={[pair.current.lat, pair.current.lng]}
                           radius={shotSize}
-                              pathOptions={{
-                                color: shotColor,
-                                weight: 1.5,
-                                fillColor: shotColor,
-                                fillOpacity: 0.5,
-                              }}
+                          pathOptions={{
+                            color: shotColor,
+                            weight: 1.5,
+                            fillColor: shotColor,
+                            fillOpacity: 0.5,
+                          }}
                               eventHandlers={{
                                 click: (e) => {
                                   const popup = e.target.getPopup();
@@ -3485,7 +3491,7 @@ export default function MapComponent({
                             >
                               <Popup>
                                 <div className="text-center">
-                                  <div className="font-semibold text-sm">Skuddpar – skyteplass</div>
+                                  <div className="font-semibold text-sm">{pair?.name || 'Skuddpar – skyteplass'}</div>
                                   <button
                                     onClick={() => handleDeleteShotPairByIndex(idx)}
                                     className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
@@ -3493,17 +3499,35 @@ export default function MapComponent({
                                 </div>
                               </Popup>
                             </Circle>
+                            {/* Stor, usynlig klikksone for enklere treff */}
+                            <CircleMarker
+                              center={[pair.current.lat, pair.current.lng]}
+                              radius={16}
+                              pathOptions={{ color: 'transparent', opacity: 0, fillOpacity: 0 }}
+                            >
+                              <Popup>
+                                <div className="text-center">
+                                  <div className="font-semibold text-sm">{pair?.name || 'Skuddpar – skyteplass'}</div>
+                                  <button
+                                    onClick={() => handleDeleteShotPairByIndex(idx)}
+                                    className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
+                                  >Slett skuddpar</button>
+                                </div>
+                              </Popup>
+                            </CircleMarker>
+                            </>
                           )}
                           {pair && pair.target && (
-                            <Circle
+                            <>
+                        <Circle
                               center={[pair.target.lat, pair.target.lng]}
-                              radius={targetSize}
-                              pathOptions={{
-                                color: targetColor,
-                                weight: 2,
-                                fillColor: targetColor,
-                                fillOpacity: 0.4,
-                              }}
+                          radius={targetSize}
+                          pathOptions={{
+                            color: targetColor,
+                            weight: 2,
+                            fillColor: targetColor,
+                            fillOpacity: 0.4,
+                          }}
                               eventHandlers={{
                                 click: (e) => {
                                   const popup = e.target.getPopup();
@@ -3513,7 +3537,7 @@ export default function MapComponent({
                             >
                               <Popup>
                                 <div className="text-center">
-                                  <div className="font-semibold text-sm">Skuddpar – treffpunkt</div>
+                                  <div className="font-semibold text-sm">{pair?.name || 'Skuddpar – treffpunkt'}</div>
                                   <button
                                     onClick={() => handleDeleteShotPairByIndex(idx)}
                                     className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
@@ -3521,6 +3545,23 @@ export default function MapComponent({
                                 </div>
                               </Popup>
                             </Circle>
+                            {/* Stor, usynlig klikksone for enklere treff */}
+                            <CircleMarker
+                              center={[pair.target.lat, pair.target.lng]}
+                              radius={16}
+                              pathOptions={{ color: 'transparent', opacity: 0, fillOpacity: 0 }}
+                            >
+                              <Popup>
+                                <div className="text-center">
+                                  <div className="font-semibold text-sm">{pair?.name || 'Skuddpar – treffpunkt'}</div>
+                                  <button
+                                    onClick={() => handleDeleteShotPairByIndex(idx)}
+                                    className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
+                                  >Slett skuddpar</button>
+                                </div>
+                              </Popup>
+                            </CircleMarker>
+                            </>
                           )}
                         </React.Fragment>
                       ))}
@@ -3559,10 +3600,10 @@ export default function MapComponent({
                     if (showOnlyLastShot) {
                       const last = (lastFullPair || lastDerivedPair || fullShotPairs[fullShotPairs.length - 1]) as any;
                       if (!last) return null;
-                      return (
+                    return (
                         <>
                           {last.current && (
-                            <Circle
+                          <Circle
                               center={[last.current.lat, last.current.lng]}
                               radius={shotSize}
                               pathOptions={{ color: shotColor, weight: 1.5, fillColor: shotColor, fillOpacity: 0.5 }}
@@ -3590,6 +3631,7 @@ export default function MapComponent({
                         {safeSavedPairs.filter(Boolean).map((pair, idx) => (
                           <React.Fragment key={pair.id ?? idx}>
                             {pair && pair.current && (
+                              <>
                               <Circle
                                 center={[pair.current.lat, pair.current.lng]}
                                 radius={shotSize}
@@ -3608,7 +3650,7 @@ export default function MapComponent({
                               >
                                 <Popup>
                                   <div className="text-center">
-                                    <div className="font-semibold text-sm">Skuddpar – skyteplass</div>
+                                  <div className="font-semibold text-sm">{pair?.name || 'Skuddpar – skyteplass'}</div>
                                     <button
                                       onClick={() => handleDeleteShotPairByIndex(idx)}
                                       className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
@@ -3616,17 +3658,34 @@ export default function MapComponent({
                                   </div>
                                 </Popup>
                               </Circle>
+                            <CircleMarker
+                              center={[pair.current.lat, pair.current.lng]}
+                              radius={16}
+                              pathOptions={{ color: 'transparent', opacity: 0, fillOpacity: 0 }}
+                            >
+                              <Popup>
+                                <div className="text-center">
+                                  <div className="font-semibold text-sm">{pair?.name || 'Skuddpar – skyteplass'}</div>
+                                  <button
+                                    onClick={() => handleDeleteShotPairByIndex(idx)}
+                                    className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
+                                  >Slett skuddpar</button>
+                                </div>
+                              </Popup>
+                            </CircleMarker>
+                            </>
                             )}
                             {pair && pair.target && (
+                              <>
                               <Circle
                                 center={[pair.target.lat, pair.target.lng]}
-                                radius={targetSize}
-                                pathOptions={{
-                                  color: targetColor,
-                                  weight: 2,
-                                  fillColor: targetColor,
-                                  fillOpacity: 0.4,
-                                }}
+                            radius={targetSize}
+                            pathOptions={{
+                              color: targetColor,
+                              weight: 2,
+                              fillColor: targetColor,
+                              fillOpacity: 0.4,
+                            }}
                                 eventHandlers={{
                                   click: (e) => {
                                     const popup = e.target.getPopup();
@@ -3636,7 +3695,7 @@ export default function MapComponent({
                               >
                                 <Popup>
                                   <div className="text-center">
-                                    <div className="font-semibold text-sm">Skuddpar – treffpunkt</div>
+                                  <div className="font-semibold text-sm">{pair?.name || 'Skuddpar – treffpunkt'}</div>
                                     <button
                                       onClick={() => handleDeleteShotPairByIndex(idx)}
                                       className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
@@ -3644,8 +3703,24 @@ export default function MapComponent({
                                   </div>
                                 </Popup>
                               </Circle>
-                            )}
-                          </React.Fragment>
+                            <CircleMarker
+                              center={[pair.target.lat, pair.target.lng]}
+                              radius={16}
+                              pathOptions={{ color: 'transparent', opacity: 0, fillOpacity: 0 }}
+                            >
+                              <Popup>
+                                <div className="text-center">
+                                  <div className="font-semibold text-sm">{pair?.name || 'Skuddpar – treffpunkt'}</div>
+                                  <button
+                                    onClick={() => handleDeleteShotPairByIndex(idx)}
+                                    className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
+                                  >Slett skuddpar</button>
+                                </div>
+                              </Popup>
+                            </CircleMarker>
+                            </>
+                        )}
+                      </React.Fragment>
                         ))}
                         {safeSavedPairs.filter(Boolean).map((pair, idx) => (
                           pair && pair.current && pair.target ? (
@@ -3673,8 +3748,8 @@ export default function MapComponent({
                           ) : null
                         ))}
                       </>
-                    );
-                  })()
+                  );
+                })()
               : (() => {
                   if (showOnlyLastShot) {
                     const last = (lastFullPair || lastDerivedPair || fullShotPairs[fullShotPairs.length - 1]) as any;
@@ -3706,18 +3781,64 @@ export default function MapComponent({
                     );
                   }
                   return safeSavedPairs.filter(Boolean).map((pair, idx) => (
-                    <React.Fragment key={pair.id ?? idx}>
-                      {pair && pair.current && (
-                        <Circle
+                  <React.Fragment key={pair.id ?? idx}>
+                    {pair && pair.current && (
+                      <>
+                      <Circle
+                        center={[pair.current.lat, pair.current.lng]}
+                        radius={shotSize}
+                        pathOptions={{
+                          color: shotColor,
+                          weight: 1.5,
+                          fillColor: shotColor,
+                          fillOpacity: 0.5,
+                        }}
+                        eventHandlers={{
+                            click: (e) => {
+                              const popup = e.target.getPopup();
+                              if (popup) popup.openPopup();
+                            }
+                          }}
+                        >
+                          <Popup>
+                            <div className="text-center">
+                              <div className="font-semibold text-sm">{pair?.name || 'Skuddpar – skyteplass'}</div>
+                              <button
+                                onClick={() => handleDeleteShotPairByIndex(idx)}
+                                className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
+                              >Slett skuddpar</button>
+                            </div>
+                          </Popup>
+                      </Circle>
+                      <CircleMarker
                           center={[pair.current.lat, pair.current.lng]}
-                          radius={shotSize}
-                          pathOptions={{
-                            color: shotColor,
-                            weight: 1.5,
-                            fillColor: shotColor,
-                            fillOpacity: 0.5,
-                          }}
-                          eventHandlers={{
+                          radius={16}
+                          pathOptions={{ color: 'transparent', opacity: 0, fillOpacity: 0 }}
+                        >
+                          <Popup>
+                            <div className="text-center">
+                              <div className="font-semibold text-sm">{pair?.name || 'Skuddpar – skyteplass'}</div>
+                              <button
+                                onClick={() => handleDeleteShotPairByIndex(idx)}
+                                className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
+                              >Slett skuddpar</button>
+                            </div>
+                          </Popup>
+                      </CircleMarker>
+                      </>
+                    )}
+                    {pair && pair.target && (
+                      <>
+                      <Circle
+                        center={[pair.target.lat, pair.target.lng]}
+                        radius={targetSize}
+                        pathOptions={{
+                          color: targetColor,
+                          weight: 2,
+                          fillColor: targetColor,
+                          fillOpacity: 0.4,
+                        }}
+                        eventHandlers={{
                             click: (e) => {
                               const popup = e.target.getPopup();
                               if (popup) popup.openPopup();
@@ -3726,55 +3847,43 @@ export default function MapComponent({
                         >
                           <Popup>
                             <div className="text-center">
-                              <div className="font-semibold text-sm">Skuddpar – skyteplass</div>
+                              <div className="font-semibold text-sm">{pair?.name || 'Skuddpar – treffpunkt'}</div>
                               <button
                                 onClick={() => handleDeleteShotPairByIndex(idx)}
                                 className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
                               >Slett skuddpar</button>
                             </div>
                           </Popup>
-                        </Circle>
-                      )}
-                      {pair && pair.target && (
-                        <Circle
+                      </Circle>
+                      <CircleMarker
                           center={[pair.target.lat, pair.target.lng]}
-                          radius={targetSize}
-                          pathOptions={{
-                            color: targetColor,
-                            weight: 2,
-                            fillColor: targetColor,
-                            fillOpacity: 0.4,
-                          }}
-                          eventHandlers={{
-                            click: (e) => {
-                              const popup = e.target.getPopup();
-                              if (popup) popup.openPopup();
-                            }
-                          }}
+                          radius={16}
+                          pathOptions={{ color: 'transparent', opacity: 0, fillOpacity: 0 }}
                         >
                           <Popup>
                             <div className="text-center">
-                              <div className="font-semibold text-sm">Skuddpar – treffpunkt</div>
+                              <div className="font-semibold text-sm">{pair?.name || 'Skuddpar – treffpunkt'}</div>
                               <button
                                 onClick={() => handleDeleteShotPairByIndex(idx)}
                                 className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
                               >Slett skuddpar</button>
                             </div>
                           </Popup>
-                        </Circle>
-                      )}
-                      {pair && pair.current && pair.target && (pair.current.lat !== pair.target.lat || pair.current.lng !== pair.target.lng) && (
-                        (() => {
-                          const positions: [number, number][] = [
-                            [pair.current.lat, pair.current.lng],
-                            [pair.target.lat, pair.target.lng],
-                          ];
-                          const polyKey = `polyline-${pair.id ?? idx}`;
-                          return (
-                            <Polyline
-                              key={polyKey}
-                              positions={positions}
-                              pathOptions={{ color: targetLineColor, weight: targetLineWeight, dashArray: '8 12' }}
+                      </CircleMarker>
+                      </>
+                    )}
+                    {pair && pair.current && pair.target && (pair.current.lat !== pair.target.lat || pair.current.lng !== pair.target.lng) && (
+                      (() => {
+                        const positions: [number, number][] = [
+                          [pair.current.lat, pair.current.lng],
+                          [pair.target.lat, pair.target.lng],
+                        ];
+                        const polyKey = `polyline-${pair.id ?? idx}`;
+                        return (
+                          <Polyline
+                            key={polyKey}
+                            positions={positions}
+                            pathOptions={{ color: targetLineColor, weight: targetLineWeight, dashArray: '8 12' }}
                               eventHandlers={{
                                 click: (e) => {
                                   const popup = e.target.getPopup();
@@ -3792,10 +3901,10 @@ export default function MapComponent({
                                 </div>
                               </Popup>
                             </Polyline>
-                          );
-                        })()
-                      )}
-                    </React.Fragment>
+                        );
+                      })()
+                    )}
+                  </React.Fragment>
                   ));
                 })()}
           </>
@@ -3862,7 +3971,7 @@ export default function MapComponent({
               })()
             : (() => {
                 return fullShotPairs.map(p => (
-                  <Polyline
+                      <Polyline
                     key={`polyline-${p.key}`}
                     positions={[[p.current.lat, p.current.lng], [p.target.lat, p.target.lng]]}
                     pathOptions={{ color: targetLineColor, weight: targetLineWeight, dashArray: '8 12' }}
@@ -4199,8 +4308,8 @@ export default function MapComponent({
           </button>
 
           {/* GPS (Live mode) button - now below layers */}
-          <button
-            onClick={() => {
+            <button
+              onClick={() => {
               const next = !isLiveMode;
               onLiveModeChange?.(next);
               // Auto-lock map when GPS is enabled, unlock when disabled
@@ -4323,7 +4432,7 @@ export default function MapComponent({
                 }}
                 className="px-6 py-2 rounded bg-gray-200 hover:bg-gray-300 text-sm text-black"
               >Avbryt</button>
-              <button
+          <button
                 onClick={async () => {
                   try {
                     if (!isShotCompassEnabled) {
@@ -4707,12 +4816,12 @@ export default function MapComponent({
               >
                 Avbryt
               </button>
-              <button
-                onClick={handleSaveObservationFromDialog}
-                className="px-3 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white font-bold"
-              >
+                <button
+                  onClick={handleSaveObservationFromDialog}
+                  className="px-3 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white font-bold"
+                >
                 Lagre
-              </button>
+                </button>
             </div>
           </div>
         </div>
