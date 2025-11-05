@@ -1653,7 +1653,12 @@ export default function MapComponent({
         let message = 'Synkronisering fullført!';
         if (pushMessage.length > 0) message += `\nPushet: ${pushMessage.join(', ')}`;
         if (pullMessage.length > 0) message += `\nHentet: ${pullMessage.join(', ')}`;
-        if (syncResults.errors.length > 0) message += `\nFeil: ${syncResults.errors.length}`;
+        if (syncResults.errors.length > 0) {
+          message += `\nFeil: ${syncResults.errors.length}`;
+          // Vis de faktiske feilmeldingene for feilsøking
+          const details = syncResults.errors.slice(0, 10).join('\n');
+          if (details) message += `\n\nFeilmeldinger:\n${details}`;
+        }
 
         alert(message);
       } catch (error) {
