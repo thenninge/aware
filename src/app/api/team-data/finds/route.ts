@@ -141,3 +141,52 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+
+// DELETE - Slett find for aktivt team via local_id eller id
+export async function DELETE(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    const userId = session?.user?.googleId || session?.user?.email;
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await request.json().catch(() => ({}));
+    const { teamId, localId, id } = body || {};
+
+    if (!teamId || (!localId && !id)) {
+      return NextResponse.json({ error: 'teamId and (localId or id) required' }, { status: 400 });
+    }
+
+    const supabaseAdmin = getSupabaseAdmin();
+
+    // Authz: ensure user belongs to team or owns it
+    const { data: teamAccess } = await supabaseAdmin
+      .from('team_members')
+      .select('id')
+      .eq('teamid', teamId)
+      .eq('userid', userId)
+      .maybeSingle();
+    const { data: ownedTeam } = await supabaseAdmin
+      .from('teams')
+      .select('id')
+      .eq('id', teamId)
+      .eq('ownerid', userId)
+      .maybeSingle();
+    if (!teamAccess && !ownedTeam) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
+
+    let query = supabaseAdmin.from('finds').delete().eq('teamid', teamId);
+    if (localId) {
+      query = query.eq('local_id', localId);
+    } else if (id) {
+      query = query.eq('id', id);
+    }
+    const { error } = await query;
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message || 'Internal error' }, { status: 500 });
+  }
+}

@@ -1849,6 +1849,14 @@ export default function MapComponent({
   // --- Delete helpers ---
   const handleDeleteFind = (findId: string) => {
     try {
+      // DB delete (best-effort)
+      if (activeTeam) {
+        fetch('/api/team-data/finds', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ teamId: activeTeam, localId: findId })
+        }).catch(() => {});
+      }
       const existingFinds = JSON.parse(localStorage.getItem('searchFinds') || '{}');
       if (existingFinds[findId]) {
         delete existingFinds[findId];
@@ -1862,6 +1870,14 @@ export default function MapComponent({
 
   const handleDeleteObservation = (observationId: string) => {
     try {
+      // DB delete (best-effort)
+      if (activeTeam) {
+        fetch('/api/team-data/observations', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ teamId: activeTeam, localId: observationId })
+        }).catch(() => {});
+      }
       const existing = JSON.parse(localStorage.getItem('searchObservations') || '{}');
       if (existing[observationId]) {
         delete existing[observationId];
@@ -1875,6 +1891,14 @@ export default function MapComponent({
 
   const handleDeleteTrack = (trackId: string) => {
     try {
+      // DB delete (best-effort)
+      if (activeTeam) {
+        fetch('/api/team-data/tracks', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ teamId: activeTeam, localId: trackId })
+        }).catch(() => {});
+      }
       const existing = JSON.parse(localStorage.getItem('searchTracks') || '{}');
       if (existing[trackId]) {
         delete existing[trackId];
@@ -1929,7 +1953,7 @@ export default function MapComponent({
   };
 
   // --- Server sync helpers ---
-  const syncObservationToServer = async (position: Position, name: string, color: string) => {
+  const syncObservationToServer = async (position: Position, name: string, color: string, localId?: string) => {
     try {
       await fetch('/api/team-data/observations', {
         method: 'POST',
@@ -1940,7 +1964,8 @@ export default function MapComponent({
           lat: position.lat,
           lng: position.lng,
           color,
-          category: 'observation'
+          category: 'observation',
+          localId
         })
       });
     } catch (e) {
@@ -2064,7 +2089,7 @@ export default function MapComponent({
       console.log('Observasjon lagret:', newObservation);
 
       // Sync til server i bakgrunnen (best-effort)
-      syncObservationToServer(position, name, color);
+      syncObservationToServer(position, name, color, observationId);
     } catch (error) {
       console.error('Feil ved lagring av observasjon:', error);
     }
