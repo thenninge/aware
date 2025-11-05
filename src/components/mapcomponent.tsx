@@ -3773,24 +3773,6 @@ export default function MapComponent({
               🧭
             </button>
           
-          {/* Live-posisjon-knapp */}
-            <button
-              onClick={() => {
-              const newLiveMode = !isLiveMode;
-              onLiveModeChange?.(newLiveMode);
-              // Auto-lock map when GPS is enabled, unlock when disabled
-              setIsMapLocked(newLiveMode);
-            }}
-            className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
-              isLiveMode 
-                ? 'bg-green-600 hover:bg-green-700 text-white' 
-                : 'bg-gray-600 hover:bg-gray-700 text-white'
-            }`}
-            title={isLiveMode ? 'Live GPS ON (locked)' : 'Live GPS'}
-          >
-            🛰️
-            </button>
-          
           {/* Layers button - moved above GPS to avoid confusion with compass */}
           <button
             className="w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center bg-white/90 border border-gray-300 hover:bg-gray-100"
