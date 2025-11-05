@@ -97,6 +97,23 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
               </label>
             </div>
           )}
+          {/* Vis kun siste skuddpar (tilvalg under Vis skuddpar) */}
+          {onShowOnlyLastShotChange && (
+            <div className="mb-3 ml-5">
+              <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={!!showOnlyLastShot}
+                  onChange={e => onShowOnlyLastShotChange(e.target.checked)}
+                  className="w-3 h-3 text-blue-600 rounded focus:ring-blue-500"
+                  disabled={showShots === false}
+                />
+                <span className={`font-medium text-gray-700 ${showShots === false ? 'opacity-50' : ''}`}>
+                  Vis kun siste skuddpar
+                </span>
+              </label>
+            </div>
+          )}
           
           {/* Vis søkespor */}
           {showTracks !== undefined && onShowTracksChange && (

@@ -3323,50 +3323,75 @@ export default function MapComponent({
                       </React.Fragment>
                   );
                 })()
-              : safeSavedPairs.filter(Boolean).map((pair, idx) => (
-                  <React.Fragment key={pair.id ?? idx}>
-                    {pair && pair.current && (
-                      <Circle
-                        center={[pair.current.lat, pair.current.lng]}
-                        radius={shotSize}
-                        pathOptions={{
-                          color: shotColor,
-                          weight: 1.5,
-                          fillColor: shotColor,
-                          fillOpacity: 0.5,
-                        }}
-                      />
-                    )}
-                    {pair && pair.target && (
-                      <Circle
-                        center={[pair.target.lat, pair.target.lng]}
-                        radius={targetSize}
-                        pathOptions={{
-                          color: targetColor,
-                          weight: 2,
-                          fillColor: targetColor,
-                          fillOpacity: 0.4,
-                        }}
-                      />
-                    )}
-                    {pair && pair.current && pair.target && (pair.current.lat !== pair.target.lat || pair.current.lng !== pair.target.lng) && (
-                      (() => {
-                        const positions: [number, number][] = [
-                          [pair.current.lat, pair.current.lng],
-                          [pair.target.lat, pair.target.lng],
-                        ];
-                        const polyKey = `polyline-${pair.id ?? idx}`;
-                        return (
-                          <Polyline
-                            key={polyKey}
-                            positions={positions}
-                            pathOptions={{ color: targetLineColor, weight: targetLineWeight, dashArray: '8 12' }}
-                          />
-                        );
-                      })()
-                    )}
-                  </React.Fragment>
-                ))}
+              : (() => {
+                  if (showOnlyLastShot) {
+                    const last = fullShotPairs[fullShotPairs.length - 1];
+                    if (!last) return null;
+                    return (
+                      <>
+                        <Circle
+                          center={[last.current.lat, last.current.lng]}
+                          radius={shotSize}
+                          pathOptions={{ color: shotColor, weight: 1.5, fillColor: shotColor, fillOpacity: 0.5 }}
+                        />
+                        <Circle
+                          center={[last.target.lat, last.target.lng]}
+                          radius={targetSize}
+                          pathOptions={{ color: targetColor, weight: 2, fillColor: targetColor, fillOpacity: 0.4 }}
+                        />
+                        <Polyline
+                          key={`aware-last-poly`}
+                          positions={[[last.current.lat, last.current.lng], [last.target.lat, last.target.lng]]}
+                          pathOptions={{ color: targetLineColor, weight: targetLineWeight, dashArray: '8 12' }}
+                        />
+                      </>
+                    );
+                  }
+                  return safeSavedPairs.filter(Boolean).map((pair, idx) => (
+                    <React.Fragment key={pair.id ?? idx}>
+                      {pair && pair.current && (
+                        <Circle
+                          center={[pair.current.lat, pair.current.lng]}
+                          radius={shotSize}
+                          pathOptions={{
+                            color: shotColor,
+                            weight: 1.5,
+                            fillColor: shotColor,
+                            fillOpacity: 0.5,
+                          }}
+                        />
+                      )}
+                      {pair && pair.target && (
+                        <Circle
+                          center={[pair.target.lat, pair.target.lng]}
+                          radius={targetSize}
+                          pathOptions={{
+                            color: targetColor,
+                            weight: 2,
+                            fillColor: targetColor,
+                            fillOpacity: 0.4,
+                          }}
+                        />
+                      )}
+                      {pair && pair.current && pair.target && (pair.current.lat !== pair.target.lat || pair.current.lng !== pair.target.lng) && (
+                        (() => {
+                          const positions: [number, number][] = [
+                            [pair.current.lat, pair.current.lng],
+                            [pair.target.lat, pair.target.lng],
+                          ];
+                          const polyKey = `polyline-${pair.id ?? idx}`;
+                          return (
+                            <Polyline
+                              key={polyKey}
+                              positions={positions}
+                              pathOptions={{ color: targetLineColor, weight: targetLineWeight, dashArray: '8 12' }}
+                            />
+                          );
+                        })()
+                      )}
+                    </React.Fragment>
+                  ));
+                })()}
           </>
         )}
         {/* Interaktiv preview for target-posisjon i retning-UI */}
