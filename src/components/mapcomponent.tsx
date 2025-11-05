@@ -915,6 +915,21 @@ export default function MapComponent({
       setTargetDirection(internal);
     }
   }, [isShotCompassEnabled, shotDirectionCompass.currentHeading, shotDirectionCompass.lastValidHeading, shotDirectionCompass.rawHeading]);
+
+  // Kompass for observasjonsretning (togglet i observasjonsdialog)
+  const [isObservationCompassEnabled, setIsObservationCompassEnabled] = useState(false);
+  const observationDirectionCompass = useCompass({
+    isEnabled: isObservationCompassEnabled,
+  });
+
+  useEffect(() => {
+    if (!isObservationCompassEnabled) return;
+    const heading = observationDirectionCompass.currentHeading ?? observationDirectionCompass.lastValidHeading ?? observationDirectionCompass.rawHeading;
+    if (heading != null && !Number.isNaN(heading)) {
+      const internal = heading > 180 ? heading - 360 : heading; // map 0-359 -> -180..180
+      setObservationDirection(internal);
+    }
+  }, [isObservationCompassEnabled, observationDirectionCompass.currentHeading, observationDirectionCompass.lastValidHeading, observationDirectionCompass.rawHeading]);
   
   // Tracking state for søk-modus
   const [savedTracks, setSavedTracks] = useState<SavedTrack[]>([]);
@@ -3896,11 +3911,28 @@ export default function MapComponent({
           </label>
             <div className="flex justify-between items-center mt-2 gap-2 w-full">
           <button
-                onClick={handleCancelObservationDistance}
+                onClick={() => { handleCancelObservationDistance(); observationDirectionCompass.stopCompass(); setIsObservationCompassEnabled(false); }}
                 className="px-6 py-2 rounded bg-gray-200 hover:bg-gray-300 text-sm text-black"
               >Avbryt</button>
               <button
-                onClick={handleSaveObservationWithDistance}
+                onClick={async () => {
+                  try {
+                    if (!isObservationCompassEnabled) {
+                      setIsObservationCompassEnabled(true);
+                      await observationDirectionCompass.startCompass();
+                    } else {
+                      observationDirectionCompass.stopCompass();
+                      setIsObservationCompassEnabled(false);
+                    }
+                  } catch (e) {
+                    setIsObservationCompassEnabled(false);
+                    alert('Kunne ikke starte kompass. Gi tillatelse og prøv igjen.');
+                  }
+                }}
+                className={`px-6 py-2 rounded text-white font-semibold text-sm ${isObservationCompassEnabled ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600 hover:bg-gray-700'}`}
+              >Kompass</button>
+              <button
+                onClick={() => { handleSaveObservationWithDistance(); observationDirectionCompass.stopCompass(); setIsObservationCompassEnabled(false); }}
                 className="px-6 py-2 rounded bg-green-600 hover:bg-green-700 text-white font-semibold text-sm"
           >Lagre</button>
             </div>
