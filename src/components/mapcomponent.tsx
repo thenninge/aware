@@ -2002,25 +2002,11 @@ export default function MapComponent({
 
   // Rask lagring på nåværende posisjon fra avstands-steget
   const handleQuickSaveObservationHere = () => {
+    // Gå til navne/farge-dialog for lagring på nåværende posisjon
     if (!currentPosition) return;
-    let finalObservationName = observationName.trim();
-    if (observationIncludeDTG) {
-      const now = new Date();
-      const date = now.toLocaleDateString('nb-NO', { day: '2-digit', month: '2-digit' });
-      const time = now.toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit', hour12: false });
-      const dtg = `${date} ${time}`;
-      finalObservationName = finalObservationName ? `${finalObservationName} - ${dtg}` : dtg;
-    }
-    if (!finalObservationName) {
-      alert('Vennligst skriv inn et navn eller aktiver "Legg til DTG"');
-      return;
-    }
-    saveObservationToLocalStorage(currentPosition, finalObservationName, observationColor);
     setShowObservationRangeModal(false);
     setShowObservationDirectionUI(false);
-    setObservationName('');
-    setObservationColor('#FF6B35');
-    setObservationIncludeDTG(true);
+    setShowObservationDialog(true);
   };
 
   // Avbryt observasjon avstand/retning
