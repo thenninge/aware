@@ -4149,11 +4149,25 @@ export default function MapComponent({
             <button
             onClick={async () => {
               if (compassMode === 'off') {
-                // Turn on compass
+                // Robust restart sequence (fix sporadic stalls after first run)
                 try {
+                  // Ensure clean state before (re)start
+                  compass.stopCompass();
+                  await Promise.resolve();
                   await compass.startCompass();
                   onCompassModeChange?.('on');
                   onCompassLockedChange?.(false); // Default: arrow rotates
+
+                  // Fallback: if no heading arrives shortly, soft-restart once
+                  setTimeout(() => {
+                    try {
+                      if (compass.currentHeading == null && compass.rawHeading == null) {
+                        compass.stopCompass();
+                        // fire-and-forget; permission already granted
+                        void compass.startCompass();
+                      }
+                    } catch {}
+                  }, 1200);
                 } catch (error) {
                   alert((error as Error).message);
                 }
