@@ -2233,8 +2233,9 @@ export default function MapComponent({
     setObservationRange(250);
     setObservationDirection(0);
     setPreviewObservation(null);
-    // Gå tilbake til observasjonsdialogen
-    setShowObservationDialog(true);
+    // Full kansellering – ikke åpne navnedialog
+    setShowObservationDialog(false);
+    setPendingObservationPosition(null);
   };
 
   
