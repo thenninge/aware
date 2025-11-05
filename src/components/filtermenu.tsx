@@ -137,6 +137,22 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
               </label>
             </div>
           )}
+          {/* Vis funn */}
+          {showFinds !== undefined && onShowFindsChange && (
+            <div className="mb-3">
+              <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={!!showFinds}
+                  onChange={e => onShowFindsChange(e.target.checked)}
+                  className="w-3 h-3 text-blue-600 rounded focus:ring-blue-500"
+                />
+                <span className="font-medium text-gray-700">
+                  Vis funn
+                </span>
+              </label>
+            </div>
+          )}
           
           {/* Vis observasjoner */}
           {showObservations !== undefined && onShowObservationsChange && (
@@ -224,6 +240,22 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
                 />
                 <span className="font-medium text-gray-700">
                   Vis søkespor
+                </span>
+              </label>
+            </div>
+          )}
+          {/* Vis funn */}
+          {showFinds !== undefined && onShowFindsChange && (
+            <div className="mb-3">
+              <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={!!showFinds}
+                  onChange={e => onShowFindsChange(e.target.checked)}
+                  className="w-3 h-3 text-blue-600 rounded focus:ring-blue-500"
+                />
+                <span className="font-medium text-gray-700">
+                  Vis funn
                 </span>
               </label>
             </div>
