@@ -3339,25 +3339,31 @@ export default function MapComponent({
                 })()
               : (() => {
                   if (showOnlyLastShot) {
-                    const last = fullShotPairs[fullShotPairs.length - 1];
+                    const last = (lastFullPair || lastDerivedPair || fullShotPairs[fullShotPairs.length - 1]) as any;
                     if (!last) return null;
                     return (
                       <>
-                        <Circle
-                          center={[last.current.lat, last.current.lng]}
-                          radius={shotSize}
-                          pathOptions={{ color: shotColor, weight: 1.5, fillColor: shotColor, fillOpacity: 0.5 }}
-                        />
-                        <Circle
-                          center={[last.target.lat, last.target.lng]}
-                          radius={targetSize}
-                          pathOptions={{ color: targetColor, weight: 2, fillColor: targetColor, fillOpacity: 0.4 }}
-                        />
-                        <Polyline
-                          key={`aware-last-poly`}
-                          positions={[[last.current.lat, last.current.lng], [last.target.lat, last.target.lng]]}
-                          pathOptions={{ color: targetLineColor, weight: targetLineWeight, dashArray: '8 12' }}
-                        />
+                        {last.current && (
+                          <Circle
+                            center={[last.current.lat, last.current.lng]}
+                            radius={shotSize}
+                            pathOptions={{ color: shotColor, weight: 1.5, fillColor: shotColor, fillOpacity: 0.5 }}
+                          />
+                        )}
+                        {last.target && (
+                          <Circle
+                            center={[last.target.lat, last.target.lng]}
+                            radius={targetSize}
+                            pathOptions={{ color: targetColor, weight: 2, fillColor: targetColor, fillOpacity: 0.4 }}
+                          />
+                        )}
+                        {last.current && last.target && (
+                          <Polyline
+                            key={`aware-last-poly`}
+                            positions={[[last.current.lat, last.current.lng], [last.target.lat, last.target.lng]]}
+                            pathOptions={{ color: targetLineColor, weight: targetLineWeight, dashArray: '8 12' }}
+                          />
+                        )}
                       </>
                     );
                   }
