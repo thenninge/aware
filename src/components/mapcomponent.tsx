@@ -3298,6 +3298,14 @@ export default function MapComponent({
                           )}
                         </React.Fragment>
                       ))}
+                      {/* Sørg for at stiplede linjer også vises i Shoot når alle vises */}
+                      {fullShotPairs.map(p => (
+                        <Polyline
+                          key={`track-all-poly-${p.key}`}
+                          positions={[[p.current.lat, p.current.lng], [p.target.lat, p.target.lng]]}
+                          pathOptions={{ color: targetLineColor, weight: targetLineWeight, dashArray: '8 12' }}
+                        />
+                      ))}
                     </>
                   );
                 })()
