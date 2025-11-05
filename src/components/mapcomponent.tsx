@@ -3996,7 +3996,7 @@ export default function MapComponent({
               <button
                 onClick={handleQuickSaveObservationHere}
                 className="px-6 py-2 rounded bg-green-600 text-white hover:bg-green-700 text-sm"
-              >Lagre her</button>
+              >Her</button>
               <button
                 onClick={handleObservationRangeOk}
                 className="px-6 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 text-sm"
