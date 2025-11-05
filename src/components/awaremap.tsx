@@ -71,6 +71,7 @@ interface AwareMapProps {
   showSearchTracks?: boolean;
   showSearchFinds?: boolean;
   showObservations?: boolean;
+  showFinds?: boolean;
   showShots?: boolean;
   showTracks?: boolean;
   targetSize?: number;
@@ -133,6 +134,7 @@ export default function AwareMap({
   showSearchTracks,
   showSearchFinds,
   showObservations,
+  showFinds,
   showShots,
   showTracks,
   targetSize,
@@ -228,6 +230,7 @@ export default function AwareMap({
         showSearchTracks={showSearchTracks}
         showSearchFinds={showSearchFinds}
         showObservations={showObservations}
+        showFinds={showFinds}
         showShots={showShots}
         showTracks={showTracks}
         targetSize={targetSize}

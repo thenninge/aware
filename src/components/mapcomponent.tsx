@@ -64,6 +64,7 @@ interface MapComponentProps {
   showAllTracksAndFinds?: boolean;
   showSearchTracks?: boolean;
   showSearchFinds?: boolean;
+  showFinds?: boolean;
   showObservations?: boolean;
   showShots?: boolean;
   showTracks?: boolean;
@@ -822,6 +823,7 @@ export default function MapComponent({
   showAllTracksAndFinds = false,
   showSearchTracks = false,
   showSearchFinds = false,
+  showFinds = true,
   showObservations = true,
   showShots = true,
   showTracks = true,
@@ -2973,7 +2975,7 @@ export default function MapComponent({
         )}
 
         {/* Alle lagrede funn i søk-modus */}
-        {((mode === 'søk' && showSearchFinds) || (mode === 'aware' && showObservations) || (mode === 'track' && showObservations)) && savedFinds && savedFinds.length > 0 && (
+        {((mode === 'søk' && showSearchFinds) || (mode === 'aware' && showFinds) || (mode === 'track' && showFinds)) && savedFinds && savedFinds.length > 0 && (
           <>
             {savedFinds.map((find) => (
               <Marker

@@ -59,6 +59,7 @@ export default function Home() {
   const [showSearchTracks, setShowSearchTracks] = useState(true);
   const [showSearchFinds, setShowSearchFinds] = useState(true);
   const [showObservations, setShowObservations] = useState(true);
+  const [showFinds, setShowFinds] = useState(true);
   const [showShots, setShowShots] = useState(true); // For Aware-mode
   const [showTracks, setShowTracks] = useState(true); // For Aware-mode
   const [showHuntingBoundaryByMode, setShowHuntingBoundaryByMode] = useState<Record<'aware' | 'track' | 'søk', boolean>>({ aware: false, track: false, søk: false });
@@ -615,6 +616,8 @@ export default function Home() {
           onShowSearchFindsChange={setShowSearchFinds}
           showObservations={showObservations}
           onShowObservationsChange={setShowObservations}
+          showFinds={showFinds}
+          onShowFindsChange={setShowFinds}
           showShots={showShots}
           onShowShotsChange={setShowShots}
           showTracks={showTracks}
