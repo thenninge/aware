@@ -59,7 +59,8 @@ export default function Home() {
   const [showObservations, setShowObservations] = useState(true);
   const [showShots, setShowShots] = useState(true); // For Aware-mode
   const [showTracks, setShowTracks] = useState(true); // For Aware-mode
-  const [showHuntingBoundary, setShowHuntingBoundary] = useState(false); // Default off
+  const [showHuntingBoundaryByMode, setShowHuntingBoundaryByMode] = useState<Record<'aware' | 'track' | 'søk', boolean>>({ aware: false, track: false, søk: false });
+  const showHuntingBoundary = showHuntingBoundaryByMode[mode]; // mode-specific
   const [isTracking, setIsTracking] = useState(false);
   const [trackingPoints, setTrackingPoints] = useState<Position[]>([]);
   
@@ -156,7 +157,7 @@ export default function Home() {
         if (defaults.shotColor !== undefined) setShotColor(defaults.shotColor);
         if (defaults.targetColor !== undefined) setTargetColor(defaults.targetColor);
         if (defaults.targetLineWeight !== undefined) setTargetLineWeight(defaults.targetLineWeight);
-        if (defaults.showHuntingBoundary !== undefined) setShowHuntingBoundary(defaults.showHuntingBoundary);
+        if (defaults.showHuntingBoundary !== undefined) setShowHuntingBoundaryByMode({ aware: defaults.showHuntingBoundary, track: defaults.showHuntingBoundary, søk: defaults.showHuntingBoundary });
         if (defaults.huntingBoundaryColor !== undefined) setHuntingBoundaryColor(defaults.huntingBoundaryColor);
         if (defaults.huntingBoundaryWeight !== undefined) setHuntingBoundaryWeight(defaults.huntingBoundaryWeight);
         if (defaults.huntingBoundaryOpacity !== undefined) setHuntingBoundaryOpacity(defaults.huntingBoundaryOpacity);
@@ -257,6 +258,10 @@ export default function Home() {
 
   const handleLiveModeChange = (isLive: boolean) => {
     setIsLiveMode(isLive);
+  };
+  
+  const handleShowHuntingBoundaryChange = (value: boolean) => {
+    setShowHuntingBoundaryByMode(prev => ({ ...prev, [mode]: value }));
   };
   
   const handleDefineNewHuntingArea = () => {
@@ -609,7 +614,7 @@ export default function Home() {
           showTracks={showTracks}
           onShowTracksChange={setShowTracks}
           showHuntingBoundary={showHuntingBoundary}
-          onShowHuntingBoundaryChange={setShowHuntingBoundary}
+          onShowHuntingBoundaryChange={handleShowHuntingBoundaryChange}
           onSync={handleSyncFromFilter}
         />
         </div>
