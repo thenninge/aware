@@ -559,7 +559,7 @@ function CompassSlice({
       positions={points}
       pathOptions={{
         fillColor: '#ef4444',
-        fillOpacity: 0.4,
+        fillOpacity: 0.5,
         color: '#ef4444',
         weight: 2,
         opacity: 0.8,
@@ -3674,7 +3674,7 @@ export default function MapComponent({
                           <Circle
                             center={[last.target.lat, last.target.lng]}
                             radius={targetSize}
-                            pathOptions={{ color: targetColor, weight: 2, fillColor: targetColor, fillOpacity: 0.4 }}
+                            pathOptions={{ color: targetColor, weight: 2, fillColor: targetColor, fillOpacity: 0.5 }}
                           />
                         )}
                       </>
@@ -3740,7 +3740,7 @@ export default function MapComponent({
                             color: targetColor,
                             weight: 2,
                             fillColor: targetColor,
-                            fillOpacity: 0.4,
+                            fillOpacity: 0.5,
                           }}
                               eventHandlers={{
                                 click: (e) => {
@@ -3785,7 +3785,7 @@ export default function MapComponent({
                           <Polyline
                             key={`track-all-poly-${pair.id ?? idx}`}
                             positions={[[pair.current.lat, pair.current.lng], [pair.target.lat, pair.target.lng]]}
-                            pathOptions={{ color: targetLineColor, weight: targetLineWeight, dashArray: '8 12' }}
+                            pathOptions={{ color: targetLineColor, weight: targetLineWeight, dashArray: '8 12', opacity: 0.9 }}
                             eventHandlers={{
                               click: (e) => {
                                 const popup = e.target.getPopup();
@@ -3827,14 +3827,14 @@ export default function MapComponent({
                             <Circle
                               center={[last.target.lat, last.target.lng]}
                               radius={targetSize}
-                              pathOptions={{ color: targetColor, weight: 2, fillColor: targetColor, fillOpacity: 0.4 }}
+                              pathOptions={{ color: targetColor, weight: 2, fillColor: targetColor, fillOpacity: 0.5 }}
                             />
                           )}
                           {last.current && last.target && (
                             <Polyline
                               key={`sok-last-poly`}
                               positions={[[last.current.lat, last.current.lng], [last.target.lat, last.target.lng]]}
-                              pathOptions={{ color: targetLineColor, weight: targetLineWeight, dashArray: '8 12' }}
+                              pathOptions={{ color: targetLineColor, weight: targetLineWeight, dashArray: '8 12', opacity: 0.9 }}
                             />
                           )}
                         </>
@@ -3898,7 +3898,7 @@ export default function MapComponent({
                               color: targetColor,
                               weight: 2,
                               fillColor: targetColor,
-                              fillOpacity: 0.4,
+                              fillOpacity: 0.5,
                             }}
                                 eventHandlers={{
                                   click: (e) => {
@@ -3981,14 +3981,14 @@ export default function MapComponent({
                           <Circle
                             center={[last.target.lat, last.target.lng]}
                             radius={targetSize}
-                            pathOptions={{ color: targetColor, weight: 2, fillColor: targetColor, fillOpacity: 0.4 }}
+                            pathOptions={{ color: targetColor, weight: 2, fillColor: targetColor, fillOpacity: 0.5 }}
                           />
                         )}
                         {last.current && last.target && (
                           <Polyline
                             key={`aware-last-poly`}
                             positions={[[last.current.lat, last.current.lng], [last.target.lat, last.target.lng]]}
-                            pathOptions={{ color: targetLineColor, weight: targetLineWeight, dashArray: '8 12' }}
+                            pathOptions={{ color: targetLineColor, weight: targetLineWeight, dashArray: '8 12', opacity: 0.9 }}
                           />
                         )}
                       </>
@@ -4050,7 +4050,7 @@ export default function MapComponent({
                           color: targetColor,
                           weight: 2,
                           fillColor: targetColor,
-                          fillOpacity: 0.4,
+                          fillOpacity: 0.5,
                         }}
                         eventHandlers={{
                             click: (e) => {
@@ -4097,7 +4097,7 @@ export default function MapComponent({
                           <Polyline
                             key={polyKey}
                             positions={positions}
-                            pathOptions={{ color: targetLineColor, weight: targetLineWeight, dashArray: '8 12' }}
+                              pathOptions={{ color: targetLineColor, weight: targetLineWeight, dashArray: '8 12', opacity: 0.9 }}
                               eventHandlers={{
                                 click: (e) => {
                                   const popup = e.target.getPopup();
