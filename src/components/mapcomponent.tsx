@@ -210,19 +210,25 @@ function MapController({
         // Don't auto-zoom - let user control zoom level
       };
 
+      // Update center continuously while panning for smooth Google sync
+      map.on('move', handleMapMove);
       map.on('moveend', handleMapMove);
       map.on('click', handleMapClick);
-      const handleZoomEnd = () => {
+      const handleZoom = () => {
         onZoomChange?.(map.getZoom());
       };
-      map.on('zoomend', handleZoomEnd);
+      // Update zoom continuously during zoom animation
+      map.on('zoom', handleZoom);
+      map.on('zoomend', handleZoom);
       // initial zoom notify
       onZoomChange?.(map.getZoom());
 
       return () => {
+        map.off('move', handleMapMove);
         map.off('moveend', handleMapMove);
         map.off('click', handleMapClick);
-        map.off('zoomend', handleZoomEnd);
+        map.off('zoom', handleZoom);
+        map.off('zoomend', handleZoom);
       };
     } catch (error) {
       console.error('Map controller error:', error);
