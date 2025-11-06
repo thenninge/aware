@@ -908,6 +908,7 @@ export default function MapComponent({
   const instanceId = useRef(Math.random());
   const [isLeafletLoaded, setIsLeafletLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
+  const [isClientReady, setIsClientReady] = useState(false);
   const [places, setPlaces] = useState<PlaceData[]>([]);
   const [currentPosition, setCurrentPosition] = useState<Position | undefined>(undefined);
   const [gpsPosition, setGpsPosition] = useState<Position | null>(null);
@@ -921,6 +922,10 @@ export default function MapComponent({
       setClearPlaces(false);
     }
   }, [clearPlaces]);
+
+  useEffect(() => {
+    setIsClientReady(true);
+  }, []);
 
   const [rotateMap, setRotateMap] = useState(false); // Ny state
 
@@ -3019,7 +3024,7 @@ export default function MapComponent({
   return (
     <div className="w-full h-screen relative">
       {/* Google Maps background layer when selected */}
-      {selectedLayer?.key === 'google_sat' && currentPosition && (
+      {selectedLayer?.key === 'google_sat' && isClientReady && currentPosition && (
         <div className="absolute inset-0 z-[0] pointer-events-none">
           <GoogleMapSmart className="w-full h-full" center={{ lat: currentPosition.lat, lng: currentPosition.lng }} zoom={leafletZoom} mapTypeId="satellite" />
         </div>
