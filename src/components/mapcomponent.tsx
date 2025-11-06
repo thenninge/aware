@@ -821,7 +821,7 @@ const LAYER_CONFIGS = [
 ];
 
 // Only rotate among these keys (order: Flyfoto ESRI, Kartverket, OSM)
-const LAYER_ROTATION_KEYS = ['esri', 'google_sat', 'kartverket_topo', 'osm'] as const;
+const LAYER_ROTATION_KEYS = ['google_sat', 'kartverket_topo', 'osm'] as const;
 
 // Legg til en SVG-komponent for layers-ikonet
 function LayersIcon() {
@@ -2943,9 +2943,9 @@ export default function MapComponent({
   };
 
   const [layerIdx, setLayerIdx] = useState(() => {
-    const idx = LAYER_CONFIGS.findIndex(l => l.key === 'esri');
+    const idx = LAYER_CONFIGS.findIndex(l => l.key === 'google_sat');
     return idx >= 0 ? idx : 0;
-  }); // default to Flyfoto ESRI
+  }); // default to Google Satellitt
 
   // Ny funksjon for å lagre treffpunkt med valgt retning og avstand
   const handleSaveTargetWithDirection = async () => {
