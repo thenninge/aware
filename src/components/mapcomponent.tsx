@@ -2484,7 +2484,7 @@ export default function MapComponent({
 
         skyteplasserNoId.sort((a, b) => (a.created_at || '') < (b.created_at || '') ? -1 : 1);
         treffpunkterNoId.sort((a, b) => (a.created_at || '') < (b.created_at || '') ? -1 : 1);
-
+        
         const combinedPairsFallback: PointPair[] = [];
         for (let i = 0; i < Math.max(skyteplasserNoId.length, treffpunkterNoId.length); i++) {
           const skyteplass = skyteplasserNoId[i];
@@ -3013,12 +3013,6 @@ export default function MapComponent({
           <GoogleMapLayer centerLat={currentPosition.lat} centerLng={currentPosition.lng} zoom={13} />
         </div>
       )}
-      {selectedLayer?.key === 'google_sat' && (
-        <style jsx global>{`
-          .leaflet-container { background: transparent !important; }
-          .leaflet-pane, .leaflet-tile-pane, .leaflet-map-pane { background: transparent !important; }
-        `}</style>
-      )}
       {/* Rett før <MapContainer ...> i render: */}
       <MapContainer
         center={[currentPosition.lat, currentPosition.lng]}
@@ -3030,11 +3024,11 @@ export default function MapComponent({
         zoomDelta={1}
       >
         {selectedLayer?.key !== 'google_sat' && (
-          <TileLayer
+        <TileLayer
             url={selectedLayer.url}
             attribution={selectedLayer.attribution}
-            maxZoom={18}
-          />
+          maxZoom={18}
+        />
         )}
         
         <MapController 
@@ -4159,7 +4153,7 @@ export default function MapComponent({
                     key={`polyline-${p.key}`}
                     positions={[[p.current.lat, p.current.lng], [p.target.lat, p.target.lng]]}
                     pathOptions={{ color: targetLineColor, weight: targetLineWeight, dashArray: '8 12' }}
-                  />
+                      />
                 ));
               })()
         )}
