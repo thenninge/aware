@@ -105,6 +105,12 @@ body {
   transition: all 0.2s ease;
 }
 
+/* Improve touch responsiveness for buttons/controls */
+.btn-touch {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
 .slider-custom::-moz-range-thumb:hover {
   background: #2563eb;
   transform: scale(1.1);

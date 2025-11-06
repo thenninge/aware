@@ -4504,7 +4504,7 @@ export default function MapComponent({
       {/* Modal for target-radius (første steg) */}
       {showTargetRadiusModal && (
         <div className="fixed bottom-0 left-0 w-full z-[3000] flex justify-center items-end" onClick={() => { setShowTargetRadiusModal(false); setShowTargetDirectionUI(false); setLockedShotPosition(null); }}>
-          <div className="bg-white rounded-t-lg shadow-lg p-4 w-full max-w-xs mx-auto mb-2 flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white rounded-t-lg shadow-lg p-4 w-full max-w-xs mx-auto mb-2 flex flex-col gap-2" onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
             <div className="text-base font-semibold text-black mb-1">Sett skuddavstand:</div>
             <div className="flex items-center gap-2">
               <input
@@ -4536,17 +4536,17 @@ export default function MapComponent({
 
       
             <div className="flex justify-between items-center mt-2 gap-2">
-              <button
+              <button type="button"
                 onClick={() => {
                   setShowTargetRadiusModal(false);
                   setShowTargetDirectionUI(false);
                   setLockedShotPosition(null);
                 }}
-                className="px-6 py-2 rounded bg-gray-200 hover:bg-gray-300 text-sm text-black"
+                className="px-6 py-2 rounded bg-gray-200 hover:bg-gray-300 text-sm text-black btn-touch"
               >Avbryt</button>
-              <button
+              <button type="button"
                 onClick={() => { setShowTargetRadiusModal(false); setShowTargetDirectionUI(true); }}
-                className="px-6 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 text-sm"
+                className="px-6 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 text-sm btn-touch"
               >Neste</button>
             </div>
           </div>
@@ -4556,7 +4556,7 @@ export default function MapComponent({
       {/* Slider og lagre-knapp for retning (andre steg) */}
       {showTargetDirectionUI && (
         <div className="fixed bottom-0 left-0 w-full z-[3000] flex justify-center items-end" onClick={() => { setShowTargetRadiusModal(false); setShowTargetDirectionUI(false); setLockedShotPosition(null); }}>
-          <div className="bg-white rounded-t-lg shadow-lg p-4 w-full max-w-xs mx-auto mb-2 flex flex-col items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white rounded-t-lg shadow-lg p-4 w-full max-w-xs mx-auto mb-2 flex flex-col items-center gap-2" onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
             <label className="w-full text-black">
               <span className="block text-base font-semibold mb-2">Sett skuddretning:</span>
               <div className="flex items-center gap-2 w-full">
@@ -4592,15 +4592,15 @@ export default function MapComponent({
               {/* Degree display removed; value shown in input field */}
           </label>
             <div className="flex justify-between items-center mt-2 gap-2 w-full">
-              <button
+              <button type="button"
                 onClick={() => {
                   setShowTargetRadiusModal(false);
                   setShowTargetDirectionUI(false);
                   setLockedShotPosition(null);
                 }}
-                className="px-6 py-2 rounded bg-gray-200 hover:bg-gray-300 text-sm text-black"
+                className="px-6 py-2 rounded bg-gray-200 hover:bg-gray-300 text-sm text-black btn-touch"
               >Avbryt</button>
-          <button
+          <button type="button"
                 onClick={async () => {
                   try {
                     if (!isShotCompassEnabled) {
@@ -4615,11 +4615,11 @@ export default function MapComponent({
                     alert('Kunne ikke starte kompass. Gi tillatelse og prøv igjen.');
                   }
                 }}
-                className={`px-6 py-2 rounded text-white font-semibold text-sm ${isShotCompassEnabled ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600 hover:bg-gray-700'}`}
+                className={`px-6 py-2 rounded text-white font-semibold text-sm btn-touch ${isShotCompassEnabled ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600 hover:bg-gray-700'}`}
               >Kompass</button>
-          <button
+          <button type="button"
                 onClick={() => { handleSaveTargetWithDirection(); shotDirectionCompass.stopCompass(); setIsShotCompassEnabled(false); }}
-                className="px-6 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm"
+                className="px-6 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm btn-touch"
           >Lagre</button>
             </div>
           </div>
