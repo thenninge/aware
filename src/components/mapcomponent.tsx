@@ -3042,6 +3042,7 @@ export default function MapComponent({
   };
 
   const selectedLayer = LAYER_CONFIGS[layerIdx];
+  const isAnyModalOpen = showTargetRadiusModal || showTargetDirectionUI || showObservationRangeModal || showObservationDirectionUI || showObservationDialog || showFindDialog || showShotPairNameDialog;
 
   return (
     <div className="w-full h-screen relative">
@@ -3053,7 +3054,7 @@ export default function MapComponent({
       <MapContainer
         center={[currentPosition.lat, currentPosition.lng]}
         zoom={13}
-        style={{ height: '100%', width: '100%' }}
+        style={{ height: '100%', width: '100%', pointerEvents: isAnyModalOpen ? 'none' : 'auto' }}
         zoomControl={true}
         attributionControl={true}
         closePopupOnClick={true}
