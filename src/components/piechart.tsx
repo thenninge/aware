@@ -41,6 +41,7 @@ interface PieChartProps {
   stepDeg?: number; // resolution of arc (default 4°)
   globalOpacity?: number; // optional user override multiplier (0..1)
   invertDirections?: boolean; // when true, flip bearing by 180°
+  colorOverride?: string; // when set, use this color for all slices
 }
 
 const clampOpacity = (v: number) => Math.max(0, Math.min(1, v));
@@ -83,6 +84,7 @@ export default function PieChart(props: PieChartProps) {
     stepDeg = 4,
     globalOpacity,
     invertDirections = false,
+    colorOverride,
   } = props;
 
   const safePlaces = useMemo<PlaceData[]>(
@@ -136,7 +138,7 @@ export default function PieChart(props: PieChartProps) {
         const endAngle = p.bearing + angleRange;
 
         const catCfg = cfg[p.category];
-        const color = catCfg?.color ?? '#999999';
+        const color = colorOverride ?? (catCfg?.color ?? '#999999');
         const baseOpacity = catCfg?.opacity ?? 0.3;
         const fillOpacity = clampOpacity(
           (globalOpacity ?? 1) * baseOpacity

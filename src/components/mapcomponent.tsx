@@ -424,6 +424,7 @@ function MapController({
           angleRange={angleRange ?? 5}
           radius={radius}
           invertDirections={invertPieDirections}
+          colorOverride={invertPieDirections ? '#dc2626' : undefined}
         />
       )}
     </>
