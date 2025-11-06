@@ -212,42 +212,23 @@ function MapController({
         // Don't auto-zoom - let user control zoom level
       };
 
-      // Update center continuously while panning for smooth Google sync
-      let moveRaf: number | null = null;
-      const handleMoveThrottled = () => {
-        if (moveRaf != null) return;
-        moveRaf = requestAnimationFrame(() => {
-          moveRaf = null;
-          handleMapMove();
-          onCenterChange?.({ lat: map.getCenter().lat, lng: map.getCenter().lng });
-        });
+      // Update center only on moveend to avoid re-render during tap
+      const handleMoveEnd = () => {
+        handleMapMove();
       };
-      map.on('move', handleMoveThrottled);
-      map.on('moveend', handleMoveThrottled);
+      map.on('moveend', handleMoveEnd);
       map.on('click', handleMapClick);
-      let zoomRaf: number | null = null;
-      const handleZoom = () => {
-        if (zoomRaf != null) return;
-        zoomRaf = requestAnimationFrame(() => {
-          zoomRaf = null;
-          onZoomChange?.(map.getZoom());
-        });
+      const handleZoomEnd = () => {
+        onZoomChange?.(map.getZoom());
       };
-      // Update zoom continuously during zoom animation
-      map.on('zoom', handleZoom);
-      map.on('zoomend', handleZoom);
+      map.on('zoomend', handleZoomEnd);
       // initial zoom notify
       onZoomChange?.(map.getZoom());
-      onCenterChange?.({ lat: map.getCenter().lat, lng: map.getCenter().lng });
 
       return () => {
-        map.off('move', handleMoveThrottled);
-        map.off('moveend', handleMoveThrottled);
+        map.off('moveend', handleMoveEnd);
         map.off('click', handleMapClick);
-        map.off('zoom', handleZoom);
-        map.off('zoomend', handleZoom);
-        if (moveRaf != null) cancelAnimationFrame(moveRaf);
-        if (zoomRaf != null) cancelAnimationFrame(zoomRaf);
+        map.off('zoomend', handleZoomEnd);
       };
     } catch (error) {
       console.error('Map controller error:', error);
