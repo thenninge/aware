@@ -781,6 +781,13 @@ interface SavedObservation {
 
 const LAYER_CONFIGS = [
   {
+    name: 'Topo (Kartverket)',
+    key: 'kartverket_topo',
+    url: 'https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png',
+    attribution: '© Kartverket',
+    icon: '🗺️',
+  },
+  {
     name: 'Flyfoto',
     key: 'esri',
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
