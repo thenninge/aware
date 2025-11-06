@@ -45,6 +45,8 @@ interface FilterMenuProps {
   showHuntingBoundary?: boolean;
   onShowHuntingBoundaryChange?: (v: boolean) => void;
   onSync?: () => void;
+  batterySaver?: boolean;
+  onBatterySaverChange?: (v: boolean) => void;
 }
 
 const categoryLabels: Record<keyof CategoryFilter, string> = {
@@ -56,7 +58,7 @@ const categoryLabels: Record<keyof CategoryFilter, string> = {
   isolated_dwelling: 'Enkeltbolig',
 };
 
-export default function FilterMenu({ categoryFilters, onCategoryChange, radius, onRadiusChange, showMarkers, onShowMarkersChange, orientationMode, onOrientationModeChange, categoryConfigs, showOnlyLastShot, onShowOnlyLastShotChange, mode, showAllTracksAndFinds, onShowAllTracksAndFindsChange, showObservations, onShowObservationsChange, showFinds, onShowFindsChange, showShots, onShowShotsChange, showTracks, onShowTracksChange, showHuntingBoundary, onShowHuntingBoundaryChange, onSync, showSearchTracks, onShowSearchTracksChange, showSearchFinds, onShowSearchFindsChange }: FilterMenuProps) {
+export default function FilterMenu({ categoryFilters, onCategoryChange, radius, onRadiusChange, showMarkers, onShowMarkersChange, orientationMode, onOrientationModeChange, categoryConfigs, showOnlyLastShot, onShowOnlyLastShotChange, mode, showAllTracksAndFinds, onShowAllTracksAndFindsChange, showObservations, onShowObservationsChange, showFinds, onShowFindsChange, showShots, onShowShotsChange, showTracks, onShowTracksChange, showHuntingBoundary, onShowHuntingBoundaryChange, onSync, showSearchTracks, onShowSearchTracksChange, showSearchFinds, onShowSearchFindsChange, batterySaver, onBatterySaverChange }: FilterMenuProps) {
   return (
     <div className="bg-white rounded-lg shadow-lg p-4 min-w-[220px] max-w-xs">
       <div className="flex items-center justify-between mb-2">
@@ -300,6 +302,22 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
       {/* Track-mode (søk) specific filters */}
       {mode === 'søk' && (
         <>
+          {/* Batterispar */}
+          {onBatterySaverChange && (
+            <div className="mb-3">
+              <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={!!batterySaver}
+                  onChange={e => onBatterySaverChange(e.target.checked)}
+                  className="w-3 h-3 text-blue-600 rounded focus:ring-blue-500"
+                />
+                <span className="font-medium text-gray-700">
+                  Batterispar
+                </span>
+              </label>
+            </div>
+          )}
           {/* Vis skuddpar */}
           {showShots !== undefined && onShowShotsChange && (
             <div className="mb-3">

@@ -8,6 +8,8 @@ import 'leaflet/dist/leaflet.css';
 import React from 'react';
 import PieChart from './piechart';
 import SettingsMenu, { HuntingArea } from './settingsmenu';
+import { useWakeLock } from '@/hooks/useWakeLock';
+import { savePendingTrack } from '@/lib/idb';
 // Database operations now go through Next.js API routes
 import { Dialog } from '@headlessui/react';
 import { createPortal } from 'react-dom';
@@ -92,6 +94,7 @@ interface MapComponentProps {
   isCompassLocked?: boolean;
   onCompassModeChange?: (mode: 'off' | 'on') => void;
   onCompassLockedChange?: (locked: boolean) => void;
+  batterySaver?: boolean;
 }
 
 interface CategoryFilter {
@@ -129,6 +132,7 @@ function MapController({
   onGpsPositionChange,
   isMapLocked = false,
   invertPieDirections = false,
+  batterySaver = false,
 }: { 
   onPositionChange?: (position: Position) => void; 
   radius: number;
@@ -148,6 +152,7 @@ function MapController({
   onGpsPositionChange?: (position: Position) => void;
   isMapLocked?: boolean;
   invertPieDirections?: boolean;
+  batterySaver?: boolean;
 }) {
   const map = useMap();
   const [currentPosition, setCurrentPosition] = useState<Position>({ lat: 60.424834440433045, lng: 12.408766398367092 });
@@ -255,9 +260,9 @@ function MapController({
           onError?.();
         },
         {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 1000
+          enableHighAccuracy: !batterySaver,
+          timeout: 20000,
+          maximumAge: batterySaver ? 10000 : 1000,
         }
       );
       setWatchId(id);
@@ -593,7 +598,8 @@ function TrackingController({
   onTrackingPointsChange, 
   currentPosition,
   gpsPosition,
-  isLiveMode = false
+  isLiveMode = false,
+  batterySaver = false
 }: { 
   isTracking: boolean; 
   mode: string; 
@@ -601,6 +607,7 @@ function TrackingController({
   currentPosition?: Position; 
   gpsPosition?: Position | null;
   isLiveMode?: boolean;
+  batterySaver?: boolean;
 }) {
   const map = useMap();
   const [localTrackingPoints, setLocalTrackingPoints] = useState<Position[]>([]);
@@ -621,6 +628,13 @@ function TrackingController({
   // GPS-based tracking when GPS is enabled
   useEffect(() => {
     if (!isTracking || mode !== 'søk' || !isLiveMode || !gpsPosition) return;
+
+    // Apply time-based sampling depending on batterySaver
+    const now = Date.now();
+    const minIntervalMs = batterySaver ? 8000 : 1500;
+    (TrackingController as any)._lastSampleTime = (TrackingController as any)._lastSampleTime || 0;
+    if (now - (TrackingController as any)._lastSampleTime < minIntervalMs) return;
+    (TrackingController as any)._lastSampleTime = now;
 
     // Only track if we have moved at least 5 meters from last position
     if (lastGpsPosition) {
@@ -859,6 +873,7 @@ export default function MapComponent({
   isCompassLocked: externalIsCompassLocked,
   onCompassModeChange,
   onCompassLockedChange,
+  batterySaver = false,
 }: MapComponentProps) {
   const [showTargetDialog, setShowTargetDialog] = useState(false);
   const instanceId = useRef(Math.random());
@@ -881,6 +896,8 @@ export default function MapComponent({
   const [rotateMap, setRotateMap] = useState(false); // Ny state
 
   const [isScanning, setIsScanning] = useState(false);
+  const prevLiveRef = useRef<boolean>(false);
+  const prevCompassModeRef = useRef<'off' | 'on'>('off');
   const [invertSlices, setInvertSlices] = useState(false);
   const [savedPairs, setSavedPairs] = useState<PointPair[]>([]);
   
@@ -914,6 +931,24 @@ export default function MapComponent({
       console.warn('[MapComponent] Compass stall detected - auto-recovery in progress');
     },
   });
+  const wakeLock = useWakeLock();
+
+  // Auto-resume on visibility/pageshow if tracking is active
+  useEffect(() => {
+    const handleVisible = () => {
+      if (isTracking) {
+        onLiveModeChange?.(true);
+        onCompassModeChange?.('on');
+        void wakeLock.acquire();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisible);
+    window.addEventListener('pageshow', handleVisible);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisible);
+      window.removeEventListener('pageshow', handleVisible);
+    };
+  }, [isTracking, onLiveModeChange, onCompassModeChange, wakeLock]);
   
   // Kompass for skuddretning (engasjeres på knappetrykk i dialog)
   const [isShotCompassEnabled, setIsShotCompassEnabled] = useState(false);
@@ -1157,6 +1192,15 @@ export default function MapComponent({
   
   // Start sporing - generer ny tracking ID og start med tom liste
   const startTracking = () => {
+    // Remember previous states and enable GPS/compass for robust logging
+    prevLiveRef.current = !!isLiveMode;
+    prevCompassModeRef.current = compassMode || 'off';
+    onLiveModeChange?.(true);
+    if (compassMode === 'off') {
+      onCompassModeChange?.('on');
+    }
+    // Request screen wake lock
+    void wakeLock.acquire();
     const newTrackingId = `tracking_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     setCurrentTrackingId(newTrackingId);
     onTrackingPointsChange?.([]);
@@ -1165,6 +1209,10 @@ export default function MapComponent({
 
   // Stopp sporing og vis prompt
   const stopTracking = () => {
+    // Release screen wake lock and restore previous states
+    void wakeLock.release();
+    if (!prevLiveRef.current) onLiveModeChange?.(false);
+    if (prevCompassModeRef.current === 'off') onCompassModeChange?.('off');
     if (trackingPoints && trackingPoints.length > 0) {
       const shouldSave = window.confirm('Lagre spor til skudd?');
       if (shouldSave) {
@@ -1180,6 +1228,15 @@ export default function MapComponent({
       }
     }
     onTrackingChange?.(false);
+    // Persist segment to IndexedDB for recovery
+    try {
+      const seg = {
+        id: currentTrackingId,
+        createdAt: new Date().toISOString(),
+        points: (trackingPoints || []).map(p => ({ lat: p.lat, lng: p.lng, heading: p.heading })),
+      };
+      void savePendingTrack(seg);
+    } catch {}
   };
 
   // Lagre spor til localStorage
@@ -2963,6 +3020,7 @@ export default function MapComponent({
           clearPlaces={clearPlaces}
           isMapLocked={isMapLocked}
           invertPieDirections={invertSlices}
+          batterySaver={batterySaver}
         />
         
         {/* Tracking controller for søk-modus */}
@@ -2973,6 +3031,7 @@ export default function MapComponent({
           currentPosition={currentPosition}
           gpsPosition={gpsPosition}
           isLiveMode={isLiveMode}
+          batterySaver={batterySaver}
         />
         
         {/* Hunting area click handler */}

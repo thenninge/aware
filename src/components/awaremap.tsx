@@ -98,6 +98,7 @@ interface AwareMapProps {
   isCompassLocked?: boolean;
   onCompassModeChange?: (mode: 'off' | 'on') => void;
   onCompassLockedChange?: (locked: boolean) => void;
+  batterySaver?: boolean;
 }
 
 export default function AwareMap({
@@ -162,6 +163,7 @@ export default function AwareMap({
   isCompassLocked,
   onCompassModeChange,
   onCompassLockedChange,
+  batterySaver,
 }: AwareMapProps) {
   const [isClient, setIsClient] = useState(false);
   const [hasError, setHasError] = useState(false);
@@ -259,6 +261,7 @@ export default function AwareMap({
         isCompassLocked={isCompassLocked}
         onCompassModeChange={onCompassModeChange}
         onCompassLockedChange={onCompassLockedChange}
+        batterySaver={batterySaver}
       />
     </div>
   );

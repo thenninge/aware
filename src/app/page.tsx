@@ -66,6 +66,7 @@ export default function Home() {
   const showHuntingBoundary = showHuntingBoundaryByMode[mode]; // mode-specific
   const [isTracking, setIsTracking] = useState(false);
   const [trackingPoints, setTrackingPoints] = useState<Position[]>([]);
+  const [batterySaver, setBatterySaver] = useState(false);
   
   // Hunting area state
   const [huntingAreas, setHuntingAreas] = useState<HuntingArea[]>([]);
@@ -634,6 +635,8 @@ export default function Home() {
           showHuntingBoundary={showHuntingBoundary}
           onShowHuntingBoundaryChange={handleShowHuntingBoundaryChange}
           onSync={handleSyncFromFilter}
+          batterySaver={batterySaver}
+          onBatterySaverChange={setBatterySaver}
         />
         </div>
       )}
@@ -700,6 +703,7 @@ export default function Home() {
         isCompassLocked={isCompassLocked}
         onCompassModeChange={setCompassMode}
         onCompassLockedChange={setIsCompassLocked}
+        batterySaver={batterySaver}
       />
 
       {/* Admin Menu */}
