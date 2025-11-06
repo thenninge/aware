@@ -10,6 +10,7 @@ import PieChart from './piechart';
 import SettingsMenu, { HuntingArea } from './settingsmenu';
 import { useWakeLock } from '@/hooks/useWakeLock';
 import { savePendingTrack } from '@/lib/idb';
+import GoogleMapLayer from './GoogleMapLayer';
 // Database operations now go through Next.js API routes
 import { Dialog } from '@headlessui/react';
 import { createPortal } from 'react-dom';
@@ -779,6 +780,8 @@ interface SavedObservation {
   color: string;
 }
 
+const GOOGLE_TILE_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
+
 const LAYER_CONFIGS = [
   {
     name: 'Topo (Kartverket)',
@@ -792,6 +795,13 @@ const LAYER_CONFIGS = [
     key: 'esri',
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     attribution: 'Tiles © Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+    icon: '🛰️',
+  },
+  {
+    name: 'Satellitt (Google)',
+    key: 'google_sat',
+    url: `https://maps.googleapis.com/maps/vt?lyrs=s&x={x}&y={y}&z={z}&key=${GOOGLE_TILE_KEY}`,
+    attribution: '© Google',
     icon: '🛰️',
   },
   {
@@ -811,7 +821,7 @@ const LAYER_CONFIGS = [
 ];
 
 // Only rotate among these keys (order: Flyfoto ESRI, Kartverket, OSM)
-const LAYER_ROTATION_KEYS = ['esri', 'kartverket_topo', 'osm'] as const;
+const LAYER_ROTATION_KEYS = ['esri', 'google_sat', 'kartverket_topo', 'osm'] as const;
 
 // Legg til en SVG-komponent for layers-ikonet
 function LayersIcon() {
@@ -2993,8 +3003,16 @@ export default function MapComponent({
     }
   };
 
+  const selectedLayer = LAYER_CONFIGS[layerIdx];
+
   return (
     <div className="w-full h-screen relative">
+      {/* Google Maps background layer when selected */}
+      {selectedLayer?.key === 'google_sat' && currentPosition && (
+        <div className="absolute inset-0 z-[0] pointer-events-none">
+          <GoogleMapLayer centerLat={currentPosition.lat} centerLng={currentPosition.lng} zoom={13} />
+        </div>
+      )}
       {/* Rett før <MapContainer ...> i render: */}
       <MapContainer
         center={[currentPosition.lat, currentPosition.lng]}
@@ -3005,11 +3023,13 @@ export default function MapComponent({
         doubleClickZoom={true}
         zoomDelta={1}
       >
-        <TileLayer
-          url={LAYER_CONFIGS[layerIdx].url}
-          attribution={LAYER_CONFIGS[layerIdx].attribution}
-          maxZoom={18}
-        />
+        {selectedLayer?.key !== 'google_sat' && (
+          <TileLayer
+            url={selectedLayer.url}
+            attribution={selectedLayer.attribution}
+            maxZoom={18}
+          />
+        )}
         
         <MapController 
           onPositionChange={(pos) => {
