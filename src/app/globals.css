@@ -30,6 +30,14 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* Ensure Leaflet map background is transparent so underlying Google basemap shows when used */
+.leaflet-container,
+.leaflet-pane,
+.leaflet-tile-pane,
+.leaflet-map-pane {
+  background: transparent !important;
+}
+
 /* Skjul Next.js Turbopack overlay-ikonet i dev */
 #__nextjs-turbopack-overlay { display: none !important; }
 
