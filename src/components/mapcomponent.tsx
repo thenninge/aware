@@ -3597,21 +3597,89 @@ export default function MapComponent({
                   if (showOnlyLastShot) {
                     const last = lastFullPair || lastDerivedPair || fullShotPairs[fullShotPairs.length - 1];
                     if (!last) return null;
+                    const lastId = (last as any).id ?? (() => {
+                      const mt = safeSavedPairs.find(p => p && (p as any).target && (last as any).target && (p as any).target.lat === (last as any).target.lat && (p as any).target.lng === (last as any).target.lng);
+                      if (mt) return (mt as any).id as number;
+                      const mc = safeSavedPairs.find(p => p && (p as any).current && (last as any).current && (p as any).current.lat === (last as any).current.lat && (p as any).current.lng === (last as any).current.lng);
+                      return mc ? (mc as any).id as number : undefined;
+                    })();
                   return (
                     <>
                         {last.current && (
-                        <Circle
+                        <>
+                          <Circle
+                              center={[last.current.lat, last.current.lng]}
+                              radius={shotSize}
+                              pathOptions={{ color: shotColor, weight: 1.5, fillColor: shotColor, fillOpacity: 0.5 }}
+                            >
+                              {lastId && (
+                                <Popup>
+                                  <div className="text-center">
+                                    <div className="font-semibold text-sm">{(last as any)?.name || 'Skuddpar – skyteplass'}</div>
+                                    <button
+                                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteShotPair(lastId); }}
+                                      className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
+                                    >Slett skuddpar</button>
+                                  </div>
+                                </Popup>
+                              )}
+                          </Circle>
+                          <CircleMarker
                             center={[last.current.lat, last.current.lng]}
-                            radius={shotSize}
-                            pathOptions={{ color: shotColor, weight: 1.5, fillColor: shotColor, fillOpacity: 0.5 }}
-                          />
+                            radius={16}
+                            pathOptions={{ color: 'transparent', opacity: 0, fillOpacity: 0 }}
+                          >
+                            {lastId && (
+                              <Popup>
+                                <div className="text-center">
+                                  <div className="font-semibold text-sm">{(last as any)?.name || 'Skuddpar – skyteplass'}</div>
+                                  <button
+                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteShotPair(lastId); }}
+                                    className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
+                                  >Slett skuddpar</button>
+                                </div>
+                              </Popup>
+                            )}
+                          </CircleMarker>
+                        </>
                         )}
                         {last.target && (
-                          <Circle
-                            center={[last.target.lat, last.target.lng]}
-                            radius={targetSize}
-                            pathOptions={{ color: targetColor, weight: 2, fillColor: targetColor, fillOpacity: 0.5 }}
-                          />
+                          <>
+                            <Circle
+                              center={[last.target.lat, last.target.lng]}
+                              radius={targetSize}
+                              pathOptions={{ color: targetColor, weight: 2, fillColor: targetColor, fillOpacity: 0.5 }}
+                            >
+                              {lastId && (
+                                <Popup>
+                                  <div className="text-center">
+                                    <div className="font-semibold text-sm">{(last as any)?.name || 'Skuddpar – treffpunkt'}</div>
+                                    <button
+                                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteShotPair(lastId); }}
+                                      className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
+                                    >Slett skuddpar</button>
+                                  </div>
+                                </Popup>
+                              )}
+                            </Circle>
+                            <CircleMarker
+                              center={[last.target.lat, last.target.lng]}
+                              radius={16}
+                              pathOptions={{ color: 'transparent', opacity: 0, fillOpacity: 0 }}
+                            >
+                              {lastId && (
+                                <Popup>
+                                  <div className="text-center">
+                                    <div className="font-semibold text-sm">{(last as any)?.name || 'Skuddpar – treffpunkt'}</div>
+                                    <button
+                                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteShotPair(lastId); }}
+                                      className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
+                                    >Slett skuddpar</button>
+                                  </div>
+                                </Popup>
+                              )}
+                            </CircleMarker>
+                          </>
                         )}
                       </>
                     );
@@ -3735,28 +3803,108 @@ export default function MapComponent({
                     if (showOnlyLastShot) {
                       const last = (lastFullPair || lastDerivedPair || fullShotPairs[fullShotPairs.length - 1]) as any;
                       if (!last) return null;
+                      const lastId = (last as any).id ?? (() => {
+                        const mt = safeSavedPairs.find(p => p && (p as any).target && (last as any).target && (p as any).target.lat === (last as any).target.lat && (p as any).target.lng === (last as any).target.lng);
+                        if (mt) return (mt as any).id as number;
+                        const mc = safeSavedPairs.find(p => p && (p as any).current && (last as any).current && (p as any).current.lat === (last as any).current.lat && (p as any).current.lng === (last as any).current.lng);
+                        return mc ? (mc as any).id as number : undefined;
+                      })();
                     return (
                         <>
                           {last.current && (
-                          <Circle
-                              center={[last.current.lat, last.current.lng]}
-                              radius={shotSize}
-                              pathOptions={{ color: shotColor, weight: 1.5, fillColor: shotColor, fillOpacity: 0.5 }}
-                            />
+                            <>
+                              <Circle
+                                center={[last.current.lat, last.current.lng]}
+                                radius={shotSize}
+                                pathOptions={{ color: shotColor, weight: 1.5, fillColor: shotColor, fillOpacity: 0.5 }}
+                              >
+                                {lastId && (
+                                  <Popup>
+                                    <div className="text-center">
+                                      <div className="font-semibold text-sm">{(last as any)?.name || 'Skuddpar – skyteplass'}</div>
+                                      <button
+                                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteShotPair(lastId); }}
+                                        className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
+                                      >Slett skuddpar</button>
+                                    </div>
+                                  </Popup>
+                                )}
+                              </Circle>
+                              <CircleMarker
+                                center={[last.current.lat, last.current.lng]}
+                                radius={16}
+                                pathOptions={{ color: 'transparent', opacity: 0, fillOpacity: 0 }}
+                              >
+                                {lastId && (
+                                  <Popup>
+                                    <div className="text-center">
+                                      <div className="font-semibold text-sm">{(last as any)?.name || 'Skuddpar – skyteplass'}</div>
+                                      <button
+                                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteShotPair(lastId); }}
+                                        className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
+                                      >Slett skuddpar</button>
+                                    </div>
+                                  </Popup>
+                                )}
+                              </CircleMarker>
+                            </>
                           )}
                           {last.target && (
-                            <Circle
-                              center={[last.target.lat, last.target.lng]}
-                              radius={targetSize}
-                              pathOptions={{ color: targetColor, weight: 2, fillColor: targetColor, fillOpacity: 0.5 }}
-                            />
+                            <>
+                              <Circle
+                                center={[last.target.lat, last.target.lng]}
+                                radius={targetSize}
+                                pathOptions={{ color: targetColor, weight: 2, fillColor: targetColor, fillOpacity: 0.5 }}
+                              >
+                                {lastId && (
+                                  <Popup>
+                                    <div className="text-center">
+                                      <div className="font-semibold text-sm">{(last as any)?.name || 'Skuddpar – treffpunkt'}</div>
+                                      <button
+                                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteShotPair(lastId); }}
+                                        className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
+                                      >Slett skuddpar</button>
+                                    </div>
+                                  </Popup>
+                                )}
+                              </Circle>
+                              <CircleMarker
+                                center={[last.target.lat, last.target.lng]}
+                                radius={16}
+                                pathOptions={{ color: 'transparent', opacity: 0, fillOpacity: 0 }}
+                              >
+                                {lastId && (
+                                  <Popup>
+                                    <div className="text-center">
+                                      <div className="font-semibold text-sm">{(last as any)?.name || 'Skuddpar – treffpunkt'}</div>
+                                      <button
+                                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteShotPair(lastId); }}
+                                        className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
+                                      >Slett skuddpar</button>
+                                    </div>
+                                  </Popup>
+                                )}
+                              </CircleMarker>
+                            </>
                           )}
                           {last.current && last.target && (
                             <Polyline
                               key={`sok-last-poly`}
                               positions={[[last.current.lat, last.current.lng], [last.target.lat, last.target.lng]]}
                               pathOptions={{ color: targetLineColor, weight: targetLineWeight, dashArray: '8 12', opacity: 0.9 }}
-                            />
+                            >
+                              {lastId && (
+                                <Popup>
+                                  <div className="text-center">
+                                    <div className="font-semibold text-sm">Skuddpar</div>
+                                    <button
+                                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteShotPair(lastId); }}
+                                      className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
+                                    >Slett skuddpar</button>
+                                  </div>
+                                </Popup>
+                              )}
+                            </Polyline>
                           )}
                         </>
                       );
@@ -3874,28 +4022,108 @@ export default function MapComponent({
                   if (showOnlyLastShot) {
                     const last = (lastFullPair || lastDerivedPair || fullShotPairs[fullShotPairs.length - 1]) as any;
                     if (!last) return null;
+                    const lastId = (last as any).id ?? (() => {
+                      const mt = safeSavedPairs.find(p => p && (p as any).target && (last as any).target && (p as any).target.lat === (last as any).target.lat && (p as any).target.lng === (last as any).target.lng);
+                      if (mt) return (mt as any).id as number;
+                      const mc = safeSavedPairs.find(p => p && (p as any).current && (last as any).current && (p as any).current.lat === (last as any).current.lat && (p as any).current.lng === (last as any).current.lng);
+                      return mc ? (mc as any).id as number : undefined;
+                    })();
                     return (
                       <>
                         {last.current && (
-                          <Circle
-                            center={[last.current.lat, last.current.lng]}
-                            radius={shotSize}
-                            pathOptions={{ color: shotColor, weight: 1.5, fillColor: shotColor, fillOpacity: 0.5 }}
-                          />
+                          <>
+                            <Circle
+                              center={[last.current.lat, last.current.lng]}
+                              radius={shotSize}
+                              pathOptions={{ color: shotColor, weight: 1.5, fillColor: shotColor, fillOpacity: 0.5 }}
+                            >
+                              {lastId && (
+                                <Popup>
+                                  <div className="text-center">
+                                    <div className="font-semibold text-sm">{(last as any)?.name || 'Skuddpar – skyteplass'}</div>
+                                    <button
+                                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteShotPair(lastId); }}
+                                      className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
+                                    >Slett skuddpar</button>
+                                  </div>
+                                </Popup>
+                              )}
+                            </Circle>
+                            <CircleMarker
+                              center={[last.current.lat, last.current.lng]}
+                              radius={16}
+                              pathOptions={{ color: 'transparent', opacity: 0, fillOpacity: 0 }}
+                            >
+                              {lastId && (
+                                <Popup>
+                                  <div className="text-center">
+                                    <div className="font-semibold text-sm">{(last as any)?.name || 'Skuddpar – skyteplass'}</div>
+                                    <button
+                                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteShotPair(lastId); }}
+                                      className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
+                                    >Slett skuddpar</button>
+                                  </div>
+                                </Popup>
+                              )}
+                            </CircleMarker>
+                          </>
                         )}
                         {last.target && (
-                          <Circle
-                            center={[last.target.lat, last.target.lng]}
-                            radius={targetSize}
-                            pathOptions={{ color: targetColor, weight: 2, fillColor: targetColor, fillOpacity: 0.5 }}
-                          />
+                          <>
+                            <Circle
+                              center={[last.target.lat, last.target.lng]}
+                              radius={targetSize}
+                              pathOptions={{ color: targetColor, weight: 2, fillColor: targetColor, fillOpacity: 0.5 }}
+                            >
+                              {lastId && (
+                                <Popup>
+                                  <div className="text-center">
+                                    <div className="font-semibold text-sm">{(last as any)?.name || 'Skuddpar – treffpunkt'}</div>
+                                    <button
+                                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteShotPair(lastId); }}
+                                      className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
+                                    >Slett skuddpar</button>
+                                  </div>
+                                </Popup>
+                              )}
+                            </Circle>
+                            <CircleMarker
+                              center={[last.target.lat, last.target.lng]}
+                              radius={16}
+                              pathOptions={{ color: 'transparent', opacity: 0, fillOpacity: 0 }}
+                            >
+                              {lastId && (
+                                <Popup>
+                                  <div className="text-center">
+                                    <div className="font-semibold text-sm">{(last as any)?.name || 'Skuddpar – treffpunkt'}</div>
+                                    <button
+                                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteShotPair(lastId); }}
+                                      className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
+                                    >Slett skuddpar</button>
+                                  </div>
+                                </Popup>
+                              )}
+                            </CircleMarker>
+                          </>
                         )}
                         {last.current && last.target && (
                           <Polyline
                             key={`aware-last-poly`}
                             positions={[[last.current.lat, last.current.lng], [last.target.lat, last.target.lng]]}
                             pathOptions={{ color: targetLineColor, weight: targetLineWeight, dashArray: '8 12', opacity: 0.9 }}
-                          />
+                          >
+                            {lastId && (
+                              <Popup>
+                                <div className="text-center">
+                                  <div className="font-semibold text-sm">Skuddpar</div>
+                                  <button
+                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteShotPair(lastId); }}
+                                    className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
+                                  >Slett skuddpar</button>
+                                </div>
+                              </Popup>
+                            )}
+                          </Polyline>
                         )}
                       </>
                     );
@@ -4075,6 +4303,12 @@ export default function MapComponent({
             ? (() => {
                 const pair = lastFullPair || lastDerivedPair || fullShotPairs[fullShotPairs.length - 1];
                 if (pair && pair.current && pair.target) {
+                  const lastId = (pair as any).id ?? (() => {
+                    const mt = safeSavedPairs.find(p => p && (p as any).target && (pair as any).target && (p as any).target.lat === (pair as any).target.lat && (p as any).target.lng === (pair as any).target.lng);
+                    if (mt) return (mt as any).id as number;
+                    const mc = safeSavedPairs.find(p => p && (p as any).current && (pair as any).current && (p as any).current.lat === (pair as any).current.lat && (p as any).current.lng === (pair as any).current.lng);
+                    return mc ? (mc as any).id as number : undefined;
+                  })();
                   const positions: [number, number][] = [
                     [pair.current.lat, pair.current.lng],
                     [pair.target.lat, pair.target.lng],
@@ -4084,7 +4318,19 @@ export default function MapComponent({
                       key={`polyline-last-full-${(pair as any).key ?? (pair as any).id ?? 'last'}`}
                       positions={positions}
                       pathOptions={{ color: targetLineColor, weight: targetLineWeight, dashArray: '8 12' }}
-                    />
+                    >
+                      {lastId && (
+                        <Popup>
+                          <div className="text-center">
+                            <div className="font-semibold text-sm">Skuddpar</div>
+                            <button
+                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteShotPair(lastId); }}
+                              className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
+                            >Slett skuddpar</button>
+                          </div>
+                        </Popup>
+                      )}
+                    </Polyline>
                   );
                 }
                 return null;
