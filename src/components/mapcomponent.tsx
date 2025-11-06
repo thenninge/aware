@@ -1045,6 +1045,7 @@ export default function MapComponent({
   const [observationDirection, setObservationDirection] = useState(0);
   const [previewObservation, setPreviewObservation] = useState<Position | null>(null);
   const [pendingObservationPosition, setPendingObservationPosition] = useState<Position | null>(null);
+  const [lockedObservationPosition, setLockedObservationPosition] = useState<Position | null>(null);
 
   // Avstandsmåling state
   const [isMeasuring, setIsMeasuring] = useState(false);
@@ -2254,6 +2255,7 @@ export default function MapComponent({
     setObservationColor('#FF6B35');
     setObservationIncludeDTG(true);
     setPendingObservationPosition(null);
+    setLockedObservationPosition(null);
   };
 
   // Håndter observasjon med avstand + retning
@@ -2267,15 +2269,19 @@ export default function MapComponent({
   const handleObservationRangeOk = () => {
     setShowObservationRangeModal(false);
     setShowObservationDirectionUI(true);
+    if (currentPosition) {
+      setLockedObservationPosition({ lat: currentPosition.lat, lng: currentPosition.lng, heading: currentPosition.heading });
+    }
   };
 
   // Lagre observasjon med beregnet posisjon
   const handleSaveObservationWithDistance = () => {
-    if (!currentPosition) return;
-    // Beregn observasjon posisjon basert på nåværende posisjon, avstand og retning
+    const base = lockedObservationPosition || currentPosition;
+    if (!base) return;
+    // Beregn observasjon posisjon basert på låst posisjon, avstand og retning
     const observationPosition = destinationPoint(
-      currentPosition.lat,
-      currentPosition.lng,
+      base.lat,
+      base.lng,
       observationRange,
       ((observationDirection + 360) % 360)
     );
@@ -2286,6 +2292,7 @@ export default function MapComponent({
     setShowObservationDialog(true);
     // Nullstill forhåndsvisning
     setPreviewObservation(null);
+    setLockedObservationPosition(null);
   };
 
   // Rask lagring på nåværende posisjon fra avstands-steget
@@ -2308,6 +2315,7 @@ export default function MapComponent({
     // Full kansellering – ikke åpne navnedialog
     setShowObservationDialog(false);
     setPendingObservationPosition(null);
+    setLockedObservationPosition(null);
   };
 
   
@@ -3497,12 +3505,12 @@ export default function MapComponent({
           />
         )}
         
-        {/* Preview av observasjon når retning velges */}
-        {showObservationDirectionUI && currentPosition && (
+        {/* Preview av observasjon når retning velges (bruk låst posisjon) */}
+        {showObservationDirectionUI && lockedObservationPosition && (
           <>
             <Circle
-              key={`obs-radius-${observationRange}-${currentPosition.lat}-${currentPosition.lng}`}
-              center={[currentPosition.lat, currentPosition.lng]}
+              key={`obs-radius-${observationRange}-${lockedObservationPosition.lat}-${lockedObservationPosition.lng}`}
+              center={[lockedObservationPosition.lat, lockedObservationPosition.lng]}
               radius={observationRange}
               pathOptions={{
                 color: '#16a34a',
@@ -3514,17 +3522,17 @@ export default function MapComponent({
             {/* Linje fra nåværende posisjon ut til sirkelen i valgt retning */}
             <Polyline
               positions={[
-                [currentPosition.lat, currentPosition.lng],
+                [lockedObservationPosition.lat, lockedObservationPosition.lng],
                 [
                   destinationPoint(
-                    currentPosition.lat,
-                    currentPosition.lng,
+                    lockedObservationPosition.lat,
+                    lockedObservationPosition.lng,
                     observationRange,
                     observationDirection
                   ).lat,
                   destinationPoint(
-                    currentPosition.lat,
-                    currentPosition.lng,
+                    lockedObservationPosition.lat,
+                    lockedObservationPosition.lng,
                     observationRange,
                     observationDirection
                   ).lng,
@@ -3536,14 +3544,14 @@ export default function MapComponent({
             <Circle
               center={[
                 destinationPoint(
-                  currentPosition.lat,
-                  currentPosition.lng,
+                  lockedObservationPosition.lat,
+                  lockedObservationPosition.lng,
                   observationRange,
                   observationDirection
                 ).lat,
                 destinationPoint(
-                  currentPosition.lat,
-                  currentPosition.lng,
+                  lockedObservationPosition.lat,
+                  lockedObservationPosition.lng,
                   observationRange,
                   observationDirection
                 ).lng,
@@ -4466,9 +4474,9 @@ export default function MapComponent({
           {/* Kalibreringsknapp flyttet ut av denne gruppen */}
           
           {/* Layers button - moved above GPS to avoid confusion with compass */}
-          <button
+            <button
             className="w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center bg-white/90 border border-gray-300 hover:bg-gray-100"
-            onClick={() => {
+              onClick={() => {
               const currentKey = LAYER_CONFIGS[layerIdx]?.key;
               const i = LAYER_ROTATION_KEYS.indexOf(currentKey as any);
               const nextKey = LAYER_ROTATION_KEYS[(i >= 0 ? i + 1 : 0) % LAYER_ROTATION_KEYS.length];
