@@ -3013,6 +3013,12 @@ export default function MapComponent({
           <GoogleMapLayer centerLat={currentPosition.lat} centerLng={currentPosition.lng} zoom={13} />
         </div>
       )}
+      {selectedLayer?.key === 'google_sat' && (
+        <style jsx global>{`
+          .leaflet-container { background: transparent !important; }
+          .leaflet-pane, .leaflet-tile-pane, .leaflet-map-pane { background: transparent !important; }
+        `}</style>
+      )}
       {/* Rett før <MapContainer ...> i render: */}
       <MapContainer
         center={[currentPosition.lat, currentPosition.lng]}
