@@ -3056,6 +3056,7 @@ export default function MapComponent({
         style={{ height: '100%', width: '100%' }}
         zoomControl={true}
         attributionControl={true}
+        closePopupOnClick={true}
         doubleClickZoom={true}
         zoomDelta={1}
       >
