@@ -10,6 +10,7 @@
     "vercel-build": "next build"
   },
   "dependencies": {
+    "@googlemaps/js-api-loader": "^1.16.8",
     "@headlessui/react": "^2.2.7",
     "@supabase/supabase-js": "^2.55.0",
     "@types/d3": "^7.4.3",
