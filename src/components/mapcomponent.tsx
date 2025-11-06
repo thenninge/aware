@@ -135,6 +135,7 @@ function MapController({
   invertPieDirections = false,
   batterySaver = false,
   onZoomChange,
+  onCenterChange,
 }: { 
   onPositionChange?: (position: Position) => void; 
   radius: number;
@@ -156,6 +157,7 @@ function MapController({
   invertPieDirections?: boolean;
   batterySaver?: boolean;
   onZoomChange?: (zoom: number) => void;
+  onCenterChange?: (center: { lat: number; lng: number }) => void;
 }) {
   const map = useMap();
   const [currentPosition, setCurrentPosition] = useState<Position>({ lat: 60.424834440433045, lng: 12.408766398367092 });
@@ -211,24 +213,41 @@ function MapController({
       };
 
       // Update center continuously while panning for smooth Google sync
-      map.on('move', handleMapMove);
-      map.on('moveend', handleMapMove);
+      let moveRaf: number | null = null;
+      const handleMoveThrottled = () => {
+        if (moveRaf != null) return;
+        moveRaf = requestAnimationFrame(() => {
+          moveRaf = null;
+          handleMapMove();
+          onCenterChange?.({ lat: map.getCenter().lat, lng: map.getCenter().lng });
+        });
+      };
+      map.on('move', handleMoveThrottled);
+      map.on('moveend', handleMoveThrottled);
       map.on('click', handleMapClick);
+      let zoomRaf: number | null = null;
       const handleZoom = () => {
-        onZoomChange?.(map.getZoom());
+        if (zoomRaf != null) return;
+        zoomRaf = requestAnimationFrame(() => {
+          zoomRaf = null;
+          onZoomChange?.(map.getZoom());
+        });
       };
       // Update zoom continuously during zoom animation
       map.on('zoom', handleZoom);
       map.on('zoomend', handleZoom);
       // initial zoom notify
       onZoomChange?.(map.getZoom());
+      onCenterChange?.({ lat: map.getCenter().lat, lng: map.getCenter().lng });
 
       return () => {
-        map.off('move', handleMapMove);
-        map.off('moveend', handleMapMove);
+        map.off('move', handleMoveThrottled);
+        map.off('moveend', handleMoveThrottled);
         map.off('click', handleMapClick);
         map.off('zoom', handleZoom);
         map.off('zoomend', handleZoom);
+        if (moveRaf != null) cancelAnimationFrame(moveRaf);
+        if (zoomRaf != null) cancelAnimationFrame(zoomRaf);
       };
     } catch (error) {
       console.error('Map controller error:', error);
@@ -921,6 +940,7 @@ export default function MapComponent({
   const [clearPlaces, setClearPlaces] = useState(false);
   const [isMapLocked, setIsMapLocked] = useState(false); // Default to unlocked for free map interaction
   const [leafletZoom, setLeafletZoom] = useState(13);
+  const [googleCenter, setGoogleCenter] = useState<{ lat: number; lng: number } | null>(null);
 
   // Reset clearPlaces after it's been used
   useEffect(() => {
@@ -3027,7 +3047,12 @@ export default function MapComponent({
     <div className="w-full h-screen relative">
       {/* Google Maps background layer (always mounted, toggled via CSS) */}
       <div className="absolute inset-0 z-[0] pointer-events-none" style={{ display: selectedLayer?.key === 'google_sat' ? 'block' : 'none' }}>
-        <GoogleMapSmart className="w-full h-full" center={{ lat: currentPosition ? currentPosition.lat : 59.91, lng: currentPosition ? currentPosition.lng : 10.75 }} zoom={leafletZoom} mapTypeId="satellite" />
+        <GoogleMapSmart
+          className="w-full h-full"
+          center={{ lat: (googleCenter?.lat ?? currentPosition?.lat ?? 59.91), lng: (googleCenter?.lng ?? currentPosition?.lng ?? 10.75) }}
+          zoom={leafletZoom}
+          mapTypeId="satellite"
+        />
       </div>
       {/* Rett før <MapContainer ...> i render: */}
       <MapContainer
@@ -3079,6 +3104,7 @@ export default function MapComponent({
           invertPieDirections={invertSlices}
           batterySaver={batterySaver}
           onZoomChange={(z) => setLeafletZoom(z)}
+          onCenterChange={(c) => setGoogleCenter(c)}
         />
         
         {/* Tracking controller for søk-modus */}
