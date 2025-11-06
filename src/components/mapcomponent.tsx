@@ -4294,7 +4294,7 @@ export default function MapComponent({
               className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
                 isScanning 
                   ? 'bg-gray-400 cursor-not-allowed text-white' 
-                  : 'bg-red-600 hover:bg-red-700 text-white'
+                  : 'bg-gray-600 hover:bg-gray-700 text-white'
               }`}
               title={isScanning ? 'Scanning...' : 'Invertert bebyggelses-søk'}
               disabled={isScanning}
