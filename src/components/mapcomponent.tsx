@@ -134,6 +134,7 @@ function MapController({
   isMapLocked = false,
   invertPieDirections = false,
   batterySaver = false,
+  onZoomChange,
 }: { 
   onPositionChange?: (position: Position) => void; 
   radius: number;
@@ -154,6 +155,7 @@ function MapController({
   isMapLocked?: boolean;
   invertPieDirections?: boolean;
   batterySaver?: boolean;
+  onZoomChange?: (zoom: number) => void;
 }) {
   const map = useMap();
   const [currentPosition, setCurrentPosition] = useState<Position>({ lat: 60.424834440433045, lng: 12.408766398367092 });
@@ -210,10 +212,17 @@ function MapController({
 
       map.on('moveend', handleMapMove);
       map.on('click', handleMapClick);
+      const handleZoomEnd = () => {
+        onZoomChange?.(map.getZoom());
+      };
+      map.on('zoomend', handleZoomEnd);
+      // initial zoom notify
+      onZoomChange?.(map.getZoom());
 
       return () => {
         map.off('moveend', handleMapMove);
         map.off('click', handleMapClick);
+        map.off('zoomend', handleZoomEnd);
       };
     } catch (error) {
       console.error('Map controller error:', error);
@@ -3005,12 +3014,14 @@ export default function MapComponent({
 
   const selectedLayer = LAYER_CONFIGS[layerIdx];
 
+  const [leafletZoom, setLeafletZoom] = useState(13);
+
   return (
     <div className="w-full h-screen relative">
       {/* Google Maps background layer when selected */}
       {selectedLayer?.key === 'google_sat' && currentPosition && (
         <div className="absolute inset-0 z-[0] pointer-events-none">
-          <GoogleMapSmart className="w-full h-full" center={{ lat: currentPosition.lat, lng: currentPosition.lng }} zoom={13} mapTypeId="satellite" />
+          <GoogleMapSmart className="w-full h-full" center={{ lat: currentPosition.lat, lng: currentPosition.lng }} zoom={leafletZoom} mapTypeId="satellite" />
         </div>
       )}
       {/* Rett før <MapContainer ...> i render: */}
@@ -3062,6 +3073,7 @@ export default function MapComponent({
           isMapLocked={isMapLocked}
           invertPieDirections={invertSlices}
           batterySaver={batterySaver}
+          onZoomChange={(z) => setLeafletZoom(z)}
         />
         
         {/* Tracking controller for søk-modus */}
