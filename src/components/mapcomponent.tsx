@@ -810,6 +810,9 @@ const LAYER_CONFIGS = [
   },
 ];
 
+// Only rotate among these keys (order: Flyfoto ESRI, Kartverket, OSM)
+const LAYER_ROTATION_KEYS = ['esri', 'kartverket_topo', 'osm'] as const;
+
 // Legg til en SVG-komponent for layers-ikonet
 function LayersIcon() {
   return (
@@ -2921,7 +2924,10 @@ export default function MapComponent({
     setSavedPairs(prev => prev.filter(pair => pair.category !== 'Skyteplass' && pair.category !== 'Treffpunkt'));
   };
 
-  const [layerIdx, setLayerIdx] = useState(0); // 0 = Flyfoto
+  const [layerIdx, setLayerIdx] = useState(() => {
+    const idx = LAYER_CONFIGS.findIndex(l => l.key === 'esri');
+    return idx >= 0 ? idx : 0;
+  }); // default to Flyfoto ESRI
 
   // Ny funksjon for å lagre treffpunkt med valgt retning og avstand
   const handleSaveTargetWithDirection = async () => {
@@ -4462,7 +4468,13 @@ export default function MapComponent({
           {/* Layers button - moved above GPS to avoid confusion with compass */}
           <button
             className="w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center bg-white/90 border border-gray-300 hover:bg-gray-100"
-            onClick={() => setLayerIdx((layerIdx + 1) % LAYER_CONFIGS.length)}
+            onClick={() => {
+              const currentKey = LAYER_CONFIGS[layerIdx]?.key;
+              const i = LAYER_ROTATION_KEYS.indexOf(currentKey as any);
+              const nextKey = LAYER_ROTATION_KEYS[(i >= 0 ? i + 1 : 0) % LAYER_ROTATION_KEYS.length];
+              const nextIdx = LAYER_CONFIGS.findIndex(l => l.key === nextKey);
+              if (nextIdx >= 0) setLayerIdx(nextIdx);
+            }}
             title={`Bytt kartlag (${LAYER_CONFIGS[layerIdx].name})`}
             style={{ pointerEvents: 'auto' }}
           >
