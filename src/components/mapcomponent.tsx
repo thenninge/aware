@@ -4625,8 +4625,8 @@ export default function MapComponent({
 
       {/* Dialog for navn på skuddpar */}
       {showShotPairNameDialog && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[2000]">
-          <div className="bg-white rounded-lg shadow-lg p-6 w-80 flex flex-col gap-4">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[3000]" onClick={() => setShowShotPairNameDialog(false)}>
+          <div className="bg-white rounded-lg shadow-lg p-6 w-80 flex flex-col gap-4" onClick={(e) => e.stopPropagation()}>
             <div className="text-xl font-bold mb-2 text-gray-800">Navn på skuddpar</div>
 
             <label className="text-base font-semibold text-gray-700">
@@ -4671,8 +4671,8 @@ export default function MapComponent({
 
       {/* Modal for observasjon-radius (første steg) */}
       {showObservationRangeModal && (
-        <div className="fixed bottom-0 left-0 w-full z-[2002] flex justify-center items-end pointer-events-none">
-          <div className="bg-white rounded-t-lg shadow-lg p-4 w-full max-w-xs mx-auto mb-2 flex flex-col gap-2 pointer-events-auto">
+        <div className="fixed bottom-0 left-0 w-full z-[3000] flex justify-center items-end" onClick={handleCancelObservationDistance}>
+          <div className="bg-white rounded-t-lg shadow-lg p-4 w-full max-w-xs mx-auto mb-2 flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
             <div className="text-base font-semibold text-black mb-1">Avstand til observasjon:</div>
             <div className="flex items-center gap-2">
               <input
@@ -4719,8 +4719,8 @@ export default function MapComponent({
 
       {/* Modal for observasjon-retning (andre steg) */}
       {showObservationDirectionUI && (
-        <div className="fixed bottom-0 left-0 w-full z-[2002] flex justify-center items-end pointer-events-none">
-          <div className="bg-white rounded-t-lg shadow-lg p-4 w-full max-w-xs mx-auto mb-2 flex flex-col items-center gap-2 pointer-events-auto">
+        <div className="fixed bottom-0 left-0 w-full z-[3000] flex justify-center items-end" onClick={() => { handleCancelObservationDistance(); observationDirectionCompass.stopCompass(); setIsObservationCompassEnabled(false); }}>
+          <div className="bg-white rounded-t-lg shadow-lg p-4 w-full max-w-xs mx-auto mb-2 flex flex-col items-center gap-2" onClick={(e) => e.stopPropagation()}>
             <label className="w-full text-black">
               <span className="block text-base font-semibold mb-2">Retning til observasjon:</span>
               <div className="flex items-center gap-2 w-full">
@@ -4923,8 +4923,8 @@ export default function MapComponent({
 
       {/* Dialog for å lagre observasjon med navn og farge */}
       {showObservationDialog && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[2000]">
-          <div className="bg-white rounded-lg shadow-lg p-6 w-80 flex flex-col gap-4">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[3000]" onClick={() => setShowObservationDialog(false)}>
+          <div className="bg-white rounded-lg shadow-lg p-6 w-80 flex flex-col gap-4" onClick={(e) => e.stopPropagation()}>
             <div className="text-xl font-bold mb-2 text-gray-800">Lagre observasjon</div>
             
             <label className="text-base font-semibold text-gray-700">
@@ -4994,8 +4994,8 @@ export default function MapComponent({
 
       {/* Dialog for å lagre funn med navn og farge */}
       {showFindDialog && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[2000]">
-          <div className="bg-white rounded-lg shadow-lg p-6 w-80 flex flex-col gap-4">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[3000]" onClick={() => setShowFindDialog(false)}>
+          <div className="bg-white rounded-lg shadow-lg p-6 w-80 flex flex-col gap-4" onClick={(e) => e.stopPropagation()}>
             <div className="text-xl font-bold mb-2 text-gray-800">Lagre funn</div>
             
             <label className="text-base font-semibold text-gray-700">
