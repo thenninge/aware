@@ -2350,62 +2350,86 @@ export default function MapComponent({
           const nameMatch = content.match(/Name:\s*([^,]+)(?:,|$)/);
           
           return {
-            current: latMatch && lngMatch ? { lat: parseFloat(latMatch[1]), lng: parseFloat(lngMatch[1]) } : undefined,
+            current: latMatch && lngMatch ? { lat: parseFloat(latMatch[1]), lng: parseFloat(lngMatch[2] || lngMatch[1]) } : undefined,
             target: targetLatMatch ? { lat: parseFloat(targetLatMatch[1]), lng: parseFloat(targetLatMatch[2]) } : undefined,
             category: categoryMatch ? categoryMatch[1] : 'general',
-        id: post.id,
-        created_at: post.created_at,
+            id: post.id,
+            created_at: post.created_at,
             name: nameMatch ? nameMatch[1].trim() : undefined,
-          };
+            local_id: post.local_id || null,
+          } as any;
         });
 
-        // Kombiner Skyteplass og Treffpunkt til ett par-objekt
-        const skyteplasser = parsedPosts.filter(p => p.category === 'Skyteplass' && p.current);
-        const treffpunkter = parsedPosts.filter(p => p.category === 'Treffpunkt' && p.target);
-        
-        // Sorter etter created_at
-        skyteplasser.sort((a, b) => (a.created_at || '') < (b.created_at || '') ? -1 : 1);
-        treffpunkter.sort((a, b) => (a.created_at || '') < (b.created_at || '') ? -1 : 1);
-        
-        // Match skyteplasser med treffpunkter (første skyteplass med første treffpunkt, etc.)
-        const combinedPairs: PointPair[] = [];
-        for (let i = 0; i < Math.max(skyteplasser.length, treffpunkter.length); i++) {
-          const skyteplass = skyteplasser[i];
-          // Finn treffpunkt som ble lagret etter denne skyteplassen
-          const treffpunkt = treffpunkter.find(t => 
-            !skyteplass?.created_at || !t.created_at || t.created_at > skyteplass.created_at
-          );
-          
+        // 1) Kombiner via local_id når mulig
+        const groupsByLocalId = new Map<string, { skyteplass?: any; treffpunkt?: any }>();
+        for (const p of parsedPosts as any[]) {
+          if (!p.local_id) continue;
+          const key = p.local_id as string;
+          if (!groupsByLocalId.has(key)) groupsByLocalId.set(key, {});
+          const g = groupsByLocalId.get(key)!;
+          if (p.category === 'Skyteplass' && p.current) g.skyteplass = p;
+          if (p.category === 'Treffpunkt' && p.target) g.treffpunkt = p;
+        }
+
+        const combinedPairsFromLocalId: PointPair[] = [];
+        groupsByLocalId.forEach((g) => {
+          const current = g.skyteplass?.current;
+          const target = g.treffpunkt?.target;
+          if (!current && !target) return;
+          combinedPairsFromLocalId.push({
+            current,
+            target,
+            category: target ? 'Treffpunkt' : 'Skyteplass',
+            id: (g.treffpunkt?.id ?? g.skyteplass?.id ?? 0) as number,
+            created_at: g.treffpunkt?.created_at || g.skyteplass?.created_at,
+            name: g.treffpunkt?.name || g.skyteplass?.name,
+          });
+        });
+
+        // 2) Fallback for poster uten local_id (tid-basert heuristikk)
+        const skyteplasserNoId = (parsedPosts as any[])
+          .filter(p => p.category === 'Skyteplass' && p.current && !p.local_id);
+        const treffpunkterNoId = (parsedPosts as any[])
+          .filter(p => p.category === 'Treffpunkt' && p.target && !p.local_id);
+
+        skyteplasserNoId.sort((a, b) => (a.created_at || '') < (b.created_at || '') ? -1 : 1);
+        treffpunkterNoId.sort((a, b) => (a.created_at || '') < (b.created_at || '') ? -1 : 1);
+
+        const combinedPairsFallback: PointPair[] = [];
+        for (let i = 0; i < Math.max(skyteplasserNoId.length, treffpunkterNoId.length); i++) {
+          const skyteplass = skyteplasserNoId[i];
+          const treffpunkt = treffpunkterNoId.find(t => !skyteplass?.created_at || !t.created_at || t.created_at > skyteplass.created_at);
           if (skyteplass || treffpunkt) {
-            combinedPairs.push({
+            combinedPairsFallback.push({
               current: skyteplass?.current,
               target: treffpunkt?.target,
-              category: skyteplass?.category || treffpunkt?.category || 'general',
-              id: skyteplass?.id || treffpunkt?.id || 0,
+              category: treffpunkt?.target ? 'Treffpunkt' : 'Skyteplass',
+              id: (treffpunkt?.id ?? skyteplass?.id ?? 0) as number,
               created_at: skyteplass?.created_at || treffpunkt?.created_at,
               name: skyteplass?.name || treffpunkt?.name,
             });
-            
-            // Fjern brukt treffpunkt fra listen
             if (treffpunkt) {
-              const index = treffpunkter.indexOf(treffpunkt);
-              if (index > -1) treffpunkter.splice(index, 1);
+              const idx = treffpunkterNoId.indexOf(treffpunkt);
+              if (idx > -1) treffpunkterNoId.splice(idx, 1);
             }
           }
         }
-        
-        // Legg til gjenværende treffpunkter uten matchende skyteplass
-        treffpunkter.forEach(treffpunkt => {
-          combinedPairs.push({
-            current: undefined,
-            target: treffpunkt.target,
-            category: treffpunkt.category,
-            id: treffpunkt.id,
-            created_at: treffpunkt.created_at,
-            name: treffpunkt.name,
-          });
-        });
-        
+
+        const leftoverTreffpunktPairs: PointPair[] = treffpunkterNoId.map((t: any) => ({
+          current: undefined,
+          target: t.target,
+          category: 'Treffpunkt',
+          id: t.id,
+          created_at: t.created_at,
+          name: t.name,
+        }));
+
+        const combinedPairs: PointPair[] = [
+          ...combinedPairsFromLocalId,
+          ...combinedPairsFallback,
+          ...leftoverTreffpunktPairs,
+        ];
+
         setSavedPairs(combinedPairs);
       }
     } catch (error) {
@@ -2503,6 +2527,9 @@ export default function MapComponent({
       return;
     }
     try {
+      // Knytt Skyteplass og Treffpunkt sammen med felles localId
+      const pairLocalId = `pair_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+
       // Lagre skyteplass med navn i content
       const shotResponse = await fetch('/api/posts', {
         method: 'POST',
@@ -2510,7 +2537,8 @@ export default function MapComponent({
         body: JSON.stringify({
           title: 'Skyteplass',
           content: `Lat: ${lockedShotPosition.lat}, Lng: ${lockedShotPosition.lng}, Category: Skyteplass, Name: ${finalName}`,
-          teamId: activeTeam
+          teamId: activeTeam,
+          localId: pairLocalId,
         }),
       });
       if (!shotResponse.ok) throw new Error('Failed to save shot position');
@@ -2523,7 +2551,8 @@ export default function MapComponent({
         body: JSON.stringify({
           title: 'Treffpunkt',
           content: `Target: ${pendingTargetPosition.lat}, ${pendingTargetPosition.lng}, Category: Treffpunkt, Name: ${finalName}`,
-          teamId: activeTeam
+          teamId: activeTeam,
+          localId: pairLocalId,
         }),
       });
       if (!targetResponse.ok) throw new Error('Failed to save target position');
