@@ -10,7 +10,7 @@ import PieChart from './piechart';
 import SettingsMenu, { HuntingArea } from './settingsmenu';
 import { useWakeLock } from '@/hooks/useWakeLock';
 import { savePendingTrack } from '@/lib/idb';
-import GoogleMapLayer from './GoogleMapLayer';
+import GoogleMapSmart from './GoogleMapSmart';
 // Database operations now go through Next.js API routes
 import { Dialog } from '@headlessui/react';
 import { createPortal } from 'react-dom';
@@ -3010,7 +3010,7 @@ export default function MapComponent({
       {/* Google Maps background layer when selected */}
       {selectedLayer?.key === 'google_sat' && currentPosition && (
         <div className="absolute inset-0 z-[0] pointer-events-none">
-          <GoogleMapLayer centerLat={currentPosition.lat} centerLng={currentPosition.lng} zoom={13} />
+          <GoogleMapSmart className="w-full h-full" center={{ lat: currentPosition.lat, lng: currentPosition.lng }} zoom={13} mapTypeId="satellite" />
         </div>
       )}
       {/* Rett før <MapContainer ...> i render: */}
