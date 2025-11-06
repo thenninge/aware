@@ -3058,6 +3058,8 @@ export default function MapComponent({
         zoomControl={true}
         attributionControl={true}
         closePopupOnClick={true}
+        // @ts-ignore: pass through to Leaflet Map option for better touch handling
+        tap={false}
         doubleClickZoom={true}
         zoomDelta={1}
       >
@@ -3341,7 +3343,7 @@ export default function MapComponent({
                           {new Date(track.createdAt).toLocaleDateString('nb-NO')}
                         </div>
                         <button
-                          onClick={() => handleDeleteTrack(track.id)}
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteTrack(track.id); }}
                           className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
                         >Slett spor</button>
                       </div>
@@ -3367,7 +3369,7 @@ export default function MapComponent({
                           {new Date(track.createdAt).toLocaleDateString('nb-NO')}
                         </div>
                         <button
-                          onClick={() => handleDeleteTrack(track.id)}
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteTrack(track.id); }}
                           className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
                         >Slett spor</button>
                       </div>
@@ -3404,7 +3406,7 @@ export default function MapComponent({
                       {new Date(find.createdAt).toLocaleDateString('nb-NO')}
                     </div>
                     <button
-                      onClick={() => handleDeleteFind(find.id)}
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteFind(find.id); }}
                       className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
                     >Slett funn</button>
                   </div>
@@ -3437,8 +3439,8 @@ export default function MapComponent({
                       {new Date(observation.createdAt).toLocaleDateString('nb-NO')}
                     </div>
                     <button
-                      onClick={() => handleDeleteObservation(observation.id)}
-                      className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteObservation(observation.id); }}
+                      className="mt-2 px-2 py-1 rounded bg-red-600 hover:bg-red-700 text-white"
                     >Slett observasjon</button>
                   </div>
                 </Popup>
@@ -3656,7 +3658,7 @@ export default function MapComponent({
                                 <div className="text-center">
                                   <div className="font-semibold text-sm">{pair?.name || 'Skuddpar – skyteplass'}</div>
                                   <button
-                                    onClick={() => handleDeleteShotPairByIndex(idx)}
+                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteShotPairByIndex(idx); }}
                                     className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
                                   >Slett skuddpar</button>
                                 </div>
@@ -3672,7 +3674,7 @@ export default function MapComponent({
                                 <div className="text-center">
                                   <div className="font-semibold text-sm">{pair?.name || 'Skuddpar – skyteplass'}</div>
                                   <button
-                                    onClick={() => handleDeleteShotPairByIndex(idx)}
+                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteShotPairByIndex(idx); }}
                                     className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
                                   >Slett skuddpar</button>
                                 </div>
@@ -3697,7 +3699,7 @@ export default function MapComponent({
                                 <div className="text-center">
                                   <div className="font-semibold text-sm">{pair?.name || 'Skuddpar – treffpunkt'}</div>
                                   <button
-                                    onClick={() => handleDeleteShotPairByIndex(idx)}
+                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteShotPairByIndex(idx); }}
                                     className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
                                   >Slett skuddpar</button>
                                 </div>
@@ -3713,7 +3715,7 @@ export default function MapComponent({
                                 <div className="text-center">
                                   <div className="font-semibold text-sm">{pair?.name || 'Skuddpar – treffpunkt'}</div>
                                   <button
-                                    onClick={() => handleDeleteShotPairByIndex(idx)}
+                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteShotPairByIndex(idx); }}
                                     className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
                                   >Slett skuddpar</button>
                                 </div>
@@ -3736,7 +3738,7 @@ export default function MapComponent({
                               <div className="text-center">
                                 <div className="font-semibold text-sm">Skuddpar</div>
                                 <button
-                                  onClick={() => handleDeleteShotPairByIndex(idx)}
+                                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteShotPairByIndex(idx); }}
                                   className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
                                 >Slett skuddpar</button>
                               </div>
@@ -3800,7 +3802,7 @@ export default function MapComponent({
                                   <div className="text-center">
                                   <div className="font-semibold text-sm">{pair?.name || 'Skuddpar – skyteplass'}</div>
                                     <button
-                                      onClick={() => handleDeleteShotPairByIndex(idx)}
+                                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteShotPairByIndex(idx); }}
                                       className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
                                     >Slett skuddpar</button>
                                   </div>
@@ -3815,7 +3817,7 @@ export default function MapComponent({
                                 <div className="text-center">
                                   <div className="font-semibold text-sm">{pair?.name || 'Skuddpar – skyteplass'}</div>
                                   <button
-                                    onClick={() => handleDeleteShotPairByIndex(idx)}
+                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteShotPairByIndex(idx); }}
                                     className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
                                   >Slett skuddpar</button>
                                 </div>
@@ -3840,7 +3842,7 @@ export default function MapComponent({
                                   <div className="text-center">
                                   <div className="font-semibold text-sm">{pair?.name || 'Skuddpar – treffpunkt'}</div>
                                     <button
-                                      onClick={() => handleDeleteShotPairByIndex(idx)}
+                                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteShotPairByIndex(idx); }}
                                       className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
                                     >Slett skuddpar</button>
                                   </div>
@@ -3855,7 +3857,7 @@ export default function MapComponent({
                                 <div className="text-center">
                                   <div className="font-semibold text-sm">{pair?.name || 'Skuddpar – treffpunkt'}</div>
                                   <button
-                                    onClick={() => handleDeleteShotPairByIndex(idx)}
+                                    onClick={(e) => { e.stopPropagation(); handleDeleteShotPairByIndex(idx); }}
                                     className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
                                   >Slett skuddpar</button>
                                 </div>
@@ -3877,7 +3879,7 @@ export default function MapComponent({
                                 <div className="text-center">
                                   <div className="font-semibold text-sm">Skuddpar</div>
                                   <button
-                                    onClick={() => handleDeleteShotPairByIndex(idx)}
+                                    onClick={(e) => { e.stopPropagation(); handleDeleteShotPairByIndex(idx); }}
                                     className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
                                   >Slett skuddpar</button>
                                 </div>
@@ -3942,7 +3944,7 @@ export default function MapComponent({
                             <div className="text-center">
                               <div className="font-semibold text-sm">{pair?.name || 'Skuddpar – skyteplass'}</div>
                               <button
-                                onClick={() => handleDeleteShotPairByIndex(idx)}
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteShotPairByIndex(idx); }}
                                 className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
                               >Slett skuddpar</button>
                             </div>
@@ -3957,7 +3959,7 @@ export default function MapComponent({
                             <div className="text-center">
                               <div className="font-semibold text-sm">{pair?.name || 'Skuddpar – skyteplass'}</div>
                               <button
-                                onClick={() => handleDeleteShotPairByIndex(idx)}
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteShotPairByIndex(idx); }}
                                 className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
                               >Slett skuddpar</button>
                             </div>
@@ -3987,7 +3989,7 @@ export default function MapComponent({
                             <div className="text-center">
                               <div className="font-semibold text-sm">{pair?.name || 'Skuddpar – treffpunkt'}</div>
                               <button
-                                onClick={() => handleDeleteShotPairByIndex(idx)}
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteShotPairByIndex(idx); }}
                                 className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
                               >Slett skuddpar</button>
                             </div>
@@ -4002,7 +4004,7 @@ export default function MapComponent({
                             <div className="text-center">
                               <div className="font-semibold text-sm">{pair?.name || 'Skuddpar – treffpunkt'}</div>
                               <button
-                                onClick={() => handleDeleteShotPairByIndex(idx)}
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteShotPairByIndex(idx); }}
                                 className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
                               >Slett skuddpar</button>
                             </div>
@@ -4033,7 +4035,7 @@ export default function MapComponent({
                                 <div className="text-center">
                                   <div className="font-semibold text-sm">Skuddpar</div>
                                   <button
-                                    onClick={() => handleDeleteShotPairByIndex(idx)}
+                                    onClick={(e) => { e.stopPropagation(); handleDeleteShotPairByIndex(idx); }}
                                     className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
                                   >Slett skuddpar</button>
                                 </div>

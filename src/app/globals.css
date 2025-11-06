@@ -38,6 +38,14 @@ body {
   background: transparent !important;
 }
 
+/* Enlarge Leaflet popup close button hit area for better touch usability */
+.leaflet-popup-close-button {
+  width: 28px;
+  height: 28px;
+  font-size: 24px;
+  line-height: 24px;
+}
+
 /* Skjul Next.js Turbopack overlay-ikonet i dev */
 #__nextjs-turbopack-overlay { display: none !important; }
 
