@@ -3045,32 +3045,25 @@ export default function MapComponent({
 
   return (
     <div className="w-full h-screen relative">
-      {/* Google Maps background layer (always mounted, toggled via CSS) */}
-      <div className="absolute inset-0 z-[0] pointer-events-none" style={{ display: selectedLayer?.key === 'google_sat' ? 'block' : 'none' }}>
-        <GoogleMapSmart
-          className="w-full h-full"
-          center={{ lat: (googleCenter?.lat ?? currentPosition?.lat ?? 59.91), lng: (googleCenter?.lng ?? currentPosition?.lng ?? 10.75) }}
-          zoom={leafletZoom}
-          mapTypeId="satellite"
-        />
-      </div>
+      {/* Google Maps background layer disabled when using vt tiles via Leaflet */}
+      {/* <div className="absolute inset-0 z-[0] pointer-events-none" style={{ display: 'none' }}>
+        <GoogleMapSmart className="w-full h-full" center={{ lat: (googleCenter?.lat ?? currentPosition?.lat ?? 59.91), lng: (googleCenter?.lng ?? currentPosition?.lng ?? 10.75) }} zoom={leafletZoom} mapTypeId="satellite" />
+      </div> */}
       {/* Rett før <MapContainer ...> i render: */}
       <MapContainer
         center={[currentPosition.lat, currentPosition.lng]}
         zoom={13}
-        style={{ height: '100%', width: '100%', background: selectedLayer?.key === 'google_sat' ? 'transparent' : undefined }}
+        style={{ height: '100%', width: '100%' }}
         zoomControl={true}
         attributionControl={true}
         doubleClickZoom={true}
         zoomDelta={1}
       >
-        {selectedLayer?.key !== 'google_sat' && (
         <TileLayer
-            url={selectedLayer.url}
-            attribution={selectedLayer.attribution}
+          url={selectedLayer.url}
+          attribution={selectedLayer.attribution}
           maxZoom={18}
         />
-        )}
         
         <MapController 
           onPositionChange={(pos) => {
