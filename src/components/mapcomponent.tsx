@@ -128,6 +128,7 @@ function MapController({
   clearPlaces,
   onGpsPositionChange,
   isMapLocked = false,
+  invertPieDirections = false,
 }: { 
   onPositionChange?: (position: Position) => void; 
   radius: number;
@@ -146,6 +147,7 @@ function MapController({
   clearPlaces?: boolean;
   onGpsPositionChange?: (position: Position) => void;
   isMapLocked?: boolean;
+  invertPieDirections?: boolean;
 }) {
   const map = useMap();
   const [currentPosition, setCurrentPosition] = useState<Position>({ lat: 60.424834440433045, lng: 12.408766398367092 });
@@ -421,6 +423,7 @@ function MapController({
           centerLng={searchPosition.lng}
           angleRange={angleRange ?? 5}
           radius={radius}
+          invertDirections={invertPieDirections}
         />
       )}
     </>
@@ -877,6 +880,7 @@ export default function MapComponent({
   const [rotateMap, setRotateMap] = useState(false); // Ny state
 
   const [isScanning, setIsScanning] = useState(false);
+  const [invertSlices, setInvertSlices] = useState(false);
   const [savedPairs, setSavedPairs] = useState<PointPair[]>([]);
   
   // Use props or default to 'off'
@@ -2353,8 +2357,8 @@ export default function MapComponent({
             current: latMatch && lngMatch ? { lat: parseFloat(latMatch[1]), lng: parseFloat(lngMatch[2] || lngMatch[1]) } : undefined,
             target: targetLatMatch ? { lat: parseFloat(targetLatMatch[1]), lng: parseFloat(targetLatMatch[2]) } : undefined,
             category: categoryMatch ? categoryMatch[1] : 'general',
-            id: post.id,
-            created_at: post.created_at,
+        id: post.id,
+        created_at: post.created_at,
             name: nameMatch ? nameMatch[1].trim() : undefined,
             local_id: post.local_id || null,
           } as any;
@@ -2414,9 +2418,9 @@ export default function MapComponent({
             }
           }
         }
-
+        
         const leftoverTreffpunktPairs: PointPair[] = treffpunkterNoId.map((t: any) => ({
-          current: undefined,
+            current: undefined,
           target: t.target,
           category: 'Treffpunkt',
           id: t.id,
@@ -2429,7 +2433,7 @@ export default function MapComponent({
           ...combinedPairsFallback,
           ...leftoverTreffpunktPairs,
         ];
-
+        
         setSavedPairs(combinedPairs);
       }
     } catch (error) {
@@ -2957,6 +2961,7 @@ export default function MapComponent({
           }}
           clearPlaces={clearPlaces}
           isMapLocked={isMapLocked}
+          invertPieDirections={invertSlices}
         />
         
         {/* Tracking controller for søk-modus */}
@@ -4282,10 +4287,25 @@ export default function MapComponent({
 
       {/* Scan & Live Buttons - Bottom Right */}
       <div className="fixed bottom-4 right-4 sm:bottom-4 sm:right-4 bottom-2 right-2 z-[2000] flex flex-col gap-2" style={{ pointerEvents: 'auto' }}>
+          {/* Invertert bebyggelses-scan knapp (❗) over 🔍 i aware-mode */}
+          {mode === 'aware' && (
+            <button
+              onClick={() => { setInvertSlices(true); onScanArea?.(); }}
+              className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
+                isScanning 
+                  ? 'bg-gray-400 cursor-not-allowed text-white' 
+                  : 'bg-red-600 hover:bg-red-700 text-white'
+              }`}
+              title={isScanning ? 'Scanning...' : 'Invertert bebyggelses-søk'}
+              disabled={isScanning}
+            >
+              {isScanning ? '⏳' : '❗'}
+            </button>
+          )}
           {/* Scan-knapp kun i aware-mode */}
           {mode === 'aware' && (
           <button
-            onClick={onScanArea}
+            onClick={() => { setInvertSlices(false); onScanArea?.(); }}
               className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
                 isScanning 
                   ? 'bg-gray-400 cursor-not-allowed text-white' 

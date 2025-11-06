@@ -40,6 +40,7 @@ interface PieChartProps {
   radius: number; // meters
   stepDeg?: number; // resolution of arc (default 4°)
   globalOpacity?: number; // optional user override multiplier (0..1)
+  invertDirections?: boolean; // when true, flip bearing by 180°
 }
 
 const clampOpacity = (v: number) => Math.max(0, Math.min(1, v));
@@ -81,6 +82,7 @@ export default function PieChart(props: PieChartProps) {
     radius,
     stepDeg = 4,
     globalOpacity,
+    invertDirections = false,
   } = props;
 
   const safePlaces = useMemo<PlaceData[]>(
@@ -104,15 +106,16 @@ export default function PieChart(props: PieChartProps) {
         const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
         const bearing = (Math.atan2(y, x) * 180) / Math.PI;
         const normalizedBearing = norm360(bearing);
+        const finalBearing = invertDirections ? norm360(normalizedBearing + 180) : normalizedBearing;
 
         const dy = (place.lat - centerLat) * 111000;
         const dx =
           (place.lng - centerLng) * 111000 * Math.cos(toRad(centerLat));
         const distance = Math.sqrt(dx * dx + dy * dy);
 
-        return { ...place, bearing: normalizedBearing, distance };
+        return { ...place, bearing: finalBearing, distance };
       }),
-    [safePlaces, centerLat, centerLng]
+    [safePlaces, centerLat, centerLng, invertDirections]
   );
 
   const slices = useMemo(() => {
