@@ -914,6 +914,7 @@ export default function MapComponent({
   const [searchPosition, setSearchPosition] = useState<Position | null>(null);
   const [clearPlaces, setClearPlaces] = useState(false);
   const [isMapLocked, setIsMapLocked] = useState(false); // Default to unlocked for free map interaction
+  const [leafletZoom, setLeafletZoom] = useState(13);
 
   // Reset clearPlaces after it's been used
   useEffect(() => {
@@ -3015,8 +3016,6 @@ export default function MapComponent({
   };
 
   const selectedLayer = LAYER_CONFIGS[layerIdx];
-
-  const [leafletZoom, setLeafletZoom] = useState(13);
 
   return (
     <div className="w-full h-screen relative">
