@@ -4500,8 +4500,8 @@ export default function MapComponent({
 
       {/* Modal for target-radius (første steg) */}
       {showTargetRadiusModal && (
-        <div className="fixed bottom-0 left-0 w-full z-[2002] flex justify-center items-end pointer-events-none">
-          <div className="bg-white rounded-t-lg shadow-lg p-4 w-full max-w-xs mx-auto mb-2 flex flex-col gap-2 pointer-events-auto">
+        <div className="fixed bottom-0 left-0 w-full z-[3000] flex justify-center items-end" onClick={() => { setShowTargetRadiusModal(false); setShowTargetDirectionUI(false); setLockedShotPosition(null); }}>
+          <div className="bg-white rounded-t-lg shadow-lg p-4 w-full max-w-xs mx-auto mb-2 flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
             <div className="text-base font-semibold text-black mb-1">Sett skuddavstand:</div>
             <div className="flex items-center gap-2">
               <input
@@ -4552,8 +4552,8 @@ export default function MapComponent({
 
       {/* Slider og lagre-knapp for retning (andre steg) */}
       {showTargetDirectionUI && (
-        <div className="fixed bottom-0 left-0 w-full z-[2002] flex justify-center items-end pointer-events-none">
-          <div className="bg-white rounded-t-lg shadow-lg p-4 w-full max-w-xs mx-auto mb-2 flex flex-col items-center gap-2 pointer-events-auto">
+        <div className="fixed bottom-0 left-0 w-full z-[3000] flex justify-center items-end" onClick={() => { setShowTargetRadiusModal(false); setShowTargetDirectionUI(false); setLockedShotPosition(null); }}>
+          <div className="bg-white rounded-t-lg shadow-lg p-4 w-full max-w-xs mx-auto mb-2 flex flex-col items-center gap-2" onClick={(e) => e.stopPropagation()}>
             <label className="w-full text-black">
               <span className="block text-base font-semibold mb-2">Sett skuddretning:</span>
               <div className="flex items-center gap-2 w-full">
