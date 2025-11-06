@@ -644,13 +644,15 @@ function TrackingController({
   // GPS-based tracking when GPS is enabled
   useEffect(() => {
     if (!isTracking || mode !== 'søk' || !isLiveMode || !gpsPosition) return;
-
-    // Apply time-based sampling depending on batterySaver
-    const now = Date.now();
-    const minIntervalMs = batterySaver ? 8000 : 1500;
-    (TrackingController as any)._lastSampleTime = (TrackingController as any)._lastSampleTime || 0;
-    if (now - (TrackingController as any)._lastSampleTime < minIntervalMs) return;
-    (TrackingController as any)._lastSampleTime = now;
+    
+    // Apply time-based sampling only in Battery Saver mode; otherwise rely on distance gating
+    if (batterySaver) {
+      const now = Date.now();
+      const minIntervalMs = 8000; // ~8s in saver mode
+      (TrackingController as any)._lastSampleTime = (TrackingController as any)._lastSampleTime || 0;
+      if (now - (TrackingController as any)._lastSampleTime < minIntervalMs) return;
+      (TrackingController as any)._lastSampleTime = now;
+    }
 
     // Only track if we have moved at least 5 meters from last position
     if (lastGpsPosition) {
@@ -1232,13 +1234,9 @@ export default function MapComponent({
   
   // Start sporing - generer ny tracking ID og start med tom liste
   const startTracking = () => {
-    // Remember previous states and enable GPS/compass for robust logging
+    // Remember current states (no automatic toggling of GPS/compass here)
     prevLiveRef.current = !!isLiveMode;
-    prevCompassModeRef.current = compassMode || 'off';
-    onLiveModeChange?.(true);
-    if (compassMode === 'off') {
-      onCompassModeChange?.('on');
-    }
+    prevCompassModeRef.current = (compassMode as any) || 'off';
     // Request screen wake lock
     void wakeLock.acquire();
     const newTrackingId = `tracking_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -1251,8 +1249,9 @@ export default function MapComponent({
   const stopTracking = () => {
     // Release screen wake lock and restore previous states
     void wakeLock.release();
-    if (!prevLiveRef.current) onLiveModeChange?.(false);
-    if (prevCompassModeRef.current === 'off') onCompassModeChange?.('off');
+    // Do not force-toggle GPS/compass off if user enabled them manually
+    if (!prevLiveRef.current && isLiveMode) onLiveModeChange?.(false);
+    if (prevCompassModeRef.current === 'off' && compassMode === 'on') onCompassModeChange?.('off');
     if (trackingPoints && trackingPoints.length > 0) {
       const shouldSave = window.confirm('Lagre spor til skudd?');
       if (shouldSave) {
