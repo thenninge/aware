@@ -3250,15 +3250,7 @@ export default function MapComponent({
                   fillColor: '#EAB308',
                   fillOpacity: 0.5,
                 }}
-                eventHandlers={{
-                  click: (e) => {
-                    // Åpne popup manuelt på mobil
-                    const popup = e.target.getPopup();
-                    if (popup) {
-                      popup.openPopup();
-                    }
-                  }
-                }}
+                
               >
                 <Popup>
                   <div className="text-center">
@@ -3280,15 +3272,7 @@ export default function MapComponent({
                   weight: 2,
                   opacity: 0.8
                 }}
-                eventHandlers={{
-                  click: (e) => {
-                    // Åpne popup manuelt på mobil
-                    const popup = e.target.getPopup();
-                    if (popup) {
-                      popup.openPopup();
-                    }
-                  }
-                }}
+                
               >
                 <Popup>
                   <div className="text-center">
@@ -3346,15 +3330,7 @@ export default function MapComponent({
                       fillColor: track.color || '#EAB308',
                       fillOpacity: 0.3, // Litt mer transparent enn aktive spor
                     }}
-                    eventHandlers={{
-                      click: (e) => {
-                        // Åpne popup manuelt på mobil
-                        const popup = e.target.getPopup();
-                        if (popup) {
-                          popup.openPopup();
-                        }
-                      }
-                    }}
+                    
                   >
                     <Popup>
                       <div className="text-center">
@@ -3380,15 +3356,7 @@ export default function MapComponent({
                       weight: 1.5,
                       opacity: 0.6 // Litt mer transparent enn aktive spor
                     }}
-                    eventHandlers={{
-                      click: (e) => {
-                        // Åpne popup manuelt på mobil
-                        const popup = e.target.getPopup();
-                        if (popup) {
-                          popup.openPopup();
-                        }
-                      }
-                    }}
+                    
                   >
                     <Popup>
                       <div className="text-center">
@@ -3425,15 +3393,7 @@ export default function MapComponent({
                   iconSize: [16, 16],
                   iconAnchor: [8, 8],
                 })}
-                eventHandlers={{
-                  click: (e) => {
-                    // Åpne popup manuelt på mobil
-                    const popup = e.target.getPopup();
-                    if (popup) {
-                      popup.openPopup();
-                    }
-                  }
-                }}
+                
               >
                 <Popup>
                   <div className="text-center">
@@ -3466,15 +3426,7 @@ export default function MapComponent({
                   fillOpacity: 0,
                   weight: 2,
                 }}
-                eventHandlers={{
-                  click: (e) => {
-                    // Åpne popup manuelt på mobil
-                    const popup = e.target.getPopup();
-                    if (popup) {
-                      popup.openPopup();
-                    }
-                  }
-                }}
+                
               >
                 <Popup>
                   <div className="text-center">
@@ -3696,12 +3648,7 @@ export default function MapComponent({
                             fillColor: shotColor,
                             fillOpacity: 0.5,
                           }}
-                              eventHandlers={{
-                                click: (e) => {
-                                  const popup = e.target.getPopup();
-                                  if (popup) popup.openPopup();
-                                }
-                              }}
+                              
                             >
                               <Popup>
                                 <div className="text-center">
@@ -3742,12 +3689,7 @@ export default function MapComponent({
                             fillColor: targetColor,
                             fillOpacity: 0.5,
                           }}
-                              eventHandlers={{
-                                click: (e) => {
-                                  const popup = e.target.getPopup();
-                                  if (popup) popup.openPopup();
-                                }
-                              }}
+                              
                             >
                               <Popup>
                                 <div className="text-center">
@@ -3786,12 +3728,7 @@ export default function MapComponent({
                             key={`track-all-poly-${pair.id ?? idx}`}
                             positions={[[pair.current.lat, pair.current.lng], [pair.target.lat, pair.target.lng]]}
                             pathOptions={{ color: targetLineColor, weight: targetLineWeight, dashArray: '8 12', opacity: 0.9 }}
-                            eventHandlers={{
-                              click: (e) => {
-                                const popup = e.target.getPopup();
-                                if (popup) popup.openPopup();
-                              }
-                            }}
+                            
                           >
                             <Popup>
                               <div className="text-center">
@@ -3855,12 +3792,7 @@ export default function MapComponent({
                                   fillColor: shotColor,
                                   fillOpacity: 0.5,
                                 }}
-                                eventHandlers={{
-                                  click: (e) => {
-                                    const popup = e.target.getPopup();
-                                    if (popup) popup.openPopup();
-                                  }
-                                }}
+                                
                               >
                                 <Popup>
                                   <div className="text-center">
@@ -3900,12 +3832,7 @@ export default function MapComponent({
                               fillColor: targetColor,
                               fillOpacity: 0.5,
                             }}
-                                eventHandlers={{
-                                  click: (e) => {
-                                    const popup = e.target.getPopup();
-                                    if (popup) popup.openPopup();
-                                  }
-                                }}
+                                
                               >
                                 <Popup>
                                   <div className="text-center">
@@ -3942,12 +3869,7 @@ export default function MapComponent({
                               key={`sok-all-poly-${pair.id ?? idx}`}
                               positions={[[pair.current.lat, pair.current.lng], [pair.target.lat, pair.target.lng]]}
                               pathOptions={{ color: targetLineColor, weight: targetLineWeight, dashArray: '8 12' }}
-                              eventHandlers={{
-                                click: (e) => {
-                                  const popup = e.target.getPopup();
-                                  if (popup) popup.openPopup();
-                                }
-                              }}
+                              
                             >
                               <Popup>
                                 <div className="text-center">
