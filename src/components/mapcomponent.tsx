@@ -2333,6 +2333,10 @@ export default function MapComponent({
   const [showTargetRadiusModal, setShowTargetRadiusModal] = useState(false);
   const [showTargetDirectionUI, setShowTargetDirectionUI] = useState(false);
   const [targetRange, setTargetRange] = useState(500); // Default 500m
+  useEffect(() => {
+    const max = Math.max(200, Math.min(1000, targetRangeSetting || 1000));
+    if (targetRange > max) setTargetRange(max);
+  }, [targetRangeSetting]);
   const [targetDirection, setTargetDirection] = useState(0); // Startverdi 0 (nord)
   const [previewTarget, setPreviewTarget] = useState<Position | null>(null);
   const [lockedShotPosition, setLockedShotPosition] = useState<Position | null>(null);
@@ -4737,7 +4741,7 @@ export default function MapComponent({
               <input
                 type="number"
                 min={200}
-                max={1000}
+                max={Math.max(200, Math.min(1000, targetRangeSetting || 1000))}
                 step={50}
                 value={targetRange}
                 onChange={e => setTargetRange(Number(e.target.value))}
@@ -4747,7 +4751,7 @@ export default function MapComponent({
               <input
                 type="range"
                 min={200}
-                max={1000}
+                max={Math.max(200, Math.min(1000, targetRangeSetting || 1000))}
                 step={50}
                 value={targetRange}
                 onChange={e => setTargetRange(Number(e.target.value))}
