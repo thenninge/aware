@@ -14,31 +14,43 @@ export function ViewshedOverlay({
   strokeColor?: string;
   fillColor?: string;
 }) {
-  const polyRef = useRef<google.maps.Polygon | null>(null);
+  const outlineRef = useRef<google.maps.Polygon | null>(null);
   const quadRefs = useRef<google.maps.Polygon[]>([]);
+  const wedgeRef = useRef<google.maps.Polygon | null>(null);
   const dotRef = useRef<google.maps.Marker | null>(null);
 
   useEffect(() => {
     if (!map) return;
     // clear old
-    polyRef.current?.setMap(null); polyRef.current = null;
+    outlineRef.current?.setMap(null); outlineRef.current = null;
     quadRefs.current.forEach(p => p.setMap(null)); quadRefs.current = [];
+    wedgeRef.current?.setMap(null); wedgeRef.current = null;
     dotRef.current?.setMap(null);
     dotRef.current = null;
 
     if (!data) return;
+    // Outer outline stroke only
+    if (data.path && data.path.length > 1) {
+      outlineRef.current = new google.maps.Polygon({
+        paths: data.path,
+        strokeColor,
+        strokeOpacity: 0.8,
+        strokeWeight: 2,
+        fillOpacity: 0,
+        map,
+      });
+    }
     if (data.quads && data.quads.length > 0) {
       quadRefs.current = data.quads.map(path => new google.maps.Polygon({
         paths: path,
-        strokeColor,
-        strokeOpacity: 0.5,
-        strokeWeight: 1,
+        strokeOpacity: 0,
+        strokeWeight: 0,
         fillColor,
         fillOpacity: 0.25,
         map
       }));
     } else {
-      polyRef.current = new google.maps.Polygon({
+      wedgeRef.current = new google.maps.Polygon({
         paths: data.path,
         strokeColor,
         strokeOpacity: 0.8,
@@ -62,8 +74,9 @@ export function ViewshedOverlay({
       map,
     });
     return () => {
-      polyRef.current?.setMap(null); polyRef.current = null;
+      outlineRef.current?.setMap(null); outlineRef.current = null;
       quadRefs.current.forEach(p => p.setMap(null)); quadRefs.current = [];
+      wedgeRef.current?.setMap(null); wedgeRef.current = null;
       dotRef.current?.setMap(null);
       dotRef.current = null;
     };
