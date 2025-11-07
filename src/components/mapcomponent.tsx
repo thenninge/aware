@@ -2334,8 +2334,10 @@ export default function MapComponent({
   const [showTargetDirectionUI, setShowTargetDirectionUI] = useState(false);
   const [targetRange, setTargetRange] = useState(500); // Default 500m
   useEffect(() => {
-    const max = Math.max(200, Math.min(1000, targetRangeSetting || 1000));
+    const min = 100;
+    const max = Math.max(min, Math.min(1000, targetRangeSetting || 1000));
     if (targetRange > max) setTargetRange(max);
+    if (targetRange < min) setTargetRange(min);
   }, [targetRangeSetting]);
   const [targetDirection, setTargetDirection] = useState(0); // Startverdi 0 (nord)
   const [previewTarget, setPreviewTarget] = useState<Position | null>(null);
@@ -4740,9 +4742,9 @@ export default function MapComponent({
             <div className="flex items-center gap-2">
               <input
                 type="number"
-                min={200}
-                max={Math.max(200, Math.min(1000, targetRangeSetting || 1000))}
-                step={Math.max(1, Math.round((Math.max(200, Math.min(1000, targetRangeSetting || 1000)) - 200) * 0.01))}
+                min={100}
+                max={Math.max(100, Math.min(1000, targetRangeSetting || 1000))}
+                step={5}
                 value={targetRange}
                 onChange={e => setTargetRange(Number(e.target.value))}
                 className="w-16 border rounded px-2 py-1 text-[16px] text-black"
@@ -4750,9 +4752,9 @@ export default function MapComponent({
               <span className="text-xs text-black">m</span>
               <input
                 type="range"
-                min={200}
-                max={Math.max(200, Math.min(1000, targetRangeSetting || 1000))}
-                step={Math.max(1, Math.round((Math.max(200, Math.min(1000, targetRangeSetting || 1000)) - 200) * 0.01))}
+                min={100}
+                max={Math.max(100, Math.min(1000, targetRangeSetting || 1000))}
+                step={5}
                 value={targetRange}
                 onChange={e => setTargetRange(Number(e.target.value))}
                 className="flex-1 touch-manipulation slider-thumb-25"
