@@ -1194,6 +1194,11 @@ export default function MapComponent({
     setIsMeasuring(false);
     setMeasurementPoints([]);
     setTotalDistance(0);
+    // Clear LOS overlay if present
+    try {
+      los.clear();
+    } catch {}
+    setIsLosAwaitingClick(false);
     
     // Reset search results and remove search circle completely
     setPlaces([]);
