@@ -179,7 +179,8 @@ export function useViewshed(params: ViewshedParams) {
           }
           await Promise.all(jobs);
         }
-        const path = [origin, ...endpoints, endpoints[0]];
+        // Use endpoints ring only to avoid a radial seam from origin
+        const path = [...endpoints, endpoints[0]];
         setData({ origin, endpoints, path });
         setStatus('done');
       } catch (e: any) {
