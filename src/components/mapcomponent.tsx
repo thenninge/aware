@@ -5332,14 +5332,14 @@ export default function MapComponent({
             <div className="grid grid-cols-4 gap-2">
               {([
                 ['N', 'Nord'],
-                ['E', 'Øst'],
                 ['S', 'Sør'],
+                ['E', 'Øst'],
                 ['W', 'Vest'],
               ] as [ 'N' | 'E' | 'S' | 'W', string ][]).map(([val, label]) => (
                 <button
                   key={val}
                   onClick={() => setCalibrationDirection(val)}
-                  className={`px-2 py-2 rounded border text-sm ${calibrationDirection === val ? 'bg-blue-600 text-white border-blue-700' : 'bg-white border-gray-300 hover:bg-gray-100'}`}
+                  className={`px-2 py-2 rounded border text-sm ${calibrationDirection === val ? 'bg-blue-600 text-white border-blue-700' : 'bg-white text-gray-900 border-gray-300 hover:bg-gray-100'}`}
                 >{label}</button>
               ))}
             </div>
