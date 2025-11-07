@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { MapContainer, TileLayer, Marker, useMap, Circle, CircleMarker, Polyline, Polygon, Tooltip, Popup, LayersControl } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMap, Circle, CircleMarker, Polyline, Polygon, Tooltip, Popup, LayersControl, ZoomControl } from 'react-leaflet';
 import L from 'leaflet';
 import MSRRetikkel from './msr-retikkel';
 import 'leaflet/dist/leaflet.css';
@@ -100,6 +100,7 @@ interface MapComponentProps {
   showZoomButtons?: boolean;
   zoomButtonsX?: number;
   zoomButtonsY?: number;
+  zoomButtonsSide?: 'left' | 'right';
 }
 
 interface CategoryFilter {
@@ -921,6 +922,7 @@ export default function MapComponent({
   showZoomButtons = true,
   zoomButtonsX = 8,
   zoomButtonsY = 64,
+  zoomButtonsSide = 'left',
 }: MapComponentProps) {
   const [showTargetDialog, setShowTargetDialog] = useState(false);
   const instanceId = useRef(Math.random());
@@ -3038,7 +3040,15 @@ export default function MapComponent({
   const isAnyModalOpen = showTargetRadiusModal || showTargetDirectionUI || showObservationRangeModal || showObservationDirectionUI || showObservationDialog || showFindDialog || showShotPairNameDialog;
 
   return (
-    <div className="w-full h-screen relative" data-show-zoom={showZoomButtons ? 'true' : 'false'} style={{ ['--zoom-top' as any]: `${zoomButtonsY}px`, ['--zoom-left' as any]: `${zoomButtonsX}px` }}>
+    <div
+      className="w-full h-screen relative"
+      data-show-zoom={showZoomButtons ? 'true' : 'false'}
+      style={{
+        ['--zoom-top' as any]: `${zoomButtonsY}px`,
+        ['--zoom-left' as any]: `${zoomButtonsSide === 'left' ? zoomButtonsX : 8}px`,
+        ['--zoom-right' as any]: `${zoomButtonsSide === 'right' ? zoomButtonsX : 8}px`,
+      }}
+    >
       {/* Google Maps background layer disabled when using vt tiles via Leaflet */}
       {/* <div className="absolute inset-0 z-[0] pointer-events-none" style={{ display: 'none' }}>
         <GoogleMapSmart className="w-full h-full" center={{ lat: (googleCenter?.lat ?? currentPosition?.lat ?? 59.91), lng: (googleCenter?.lng ?? currentPosition?.lng ?? 10.75) }} zoom={leafletZoom} mapTypeId="satellite" />
@@ -3048,7 +3058,7 @@ export default function MapComponent({
         center={[currentPosition.lat, currentPosition.lng]}
         zoom={13}
         style={{ height: '100%', width: '100%', pointerEvents: isAnyModalOpen ? 'none' : 'auto' }}
-        zoomControl={showZoomButtons}
+        zoomControl={false}
         attributionControl={true}
         closePopupOnClick={true}
         // @ts-ignore: pass through to Leaflet Map option for better touch handling
@@ -3056,6 +3066,9 @@ export default function MapComponent({
         doubleClickZoom={true}
         zoomDelta={1}
       >
+        {showZoomButtons && (
+          <ZoomControl position={zoomButtonsSide === 'left' ? 'topleft' : 'topright'} />
+        )}
         <TileLayer
           url={selectedLayer.url}
           attribution={selectedLayer.attribution}

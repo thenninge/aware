@@ -60,6 +60,12 @@ select, select option {
   z-index: 1500; /* above map but below our top menus (z~2000) */
 }
 
+.leaflet-top.leaflet-right {
+  top: calc(env(safe-area-inset-top, 0px) + var(--zoom-top, 64px)) !important;
+  right: calc(env(safe-area-inset-right, 0px) + var(--zoom-right, 8px)) !important;
+  z-index: 1500;
+}
+
 /* Hide zoom controls when toggled off via data attribute on container */
 [data-show-zoom='false'] .leaflet-control-zoom {
   display: none !important;

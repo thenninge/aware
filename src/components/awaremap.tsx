@@ -103,6 +103,7 @@ interface AwareMapProps {
   showZoomButtons?: boolean;
   zoomButtonsX?: number;
   zoomButtonsY?: number;
+  zoomButtonsSide?: 'left' | 'right';
 }
 
 export default function AwareMap({
@@ -172,6 +173,7 @@ export default function AwareMap({
   showZoomButtons,
   zoomButtonsX,
   zoomButtonsY,
+  zoomButtonsSide,
 }: AwareMapProps) {
   const [isClient, setIsClient] = useState(false);
   const [hasError, setHasError] = useState(false);
@@ -256,6 +258,7 @@ export default function AwareMap({
         showZoomButtons={showZoomButtons}
         zoomButtonsX={zoomButtonsX}
         zoomButtonsY={zoomButtonsY}
+        zoomButtonsSide={zoomButtonsSide}
         showHuntingBoundary={showHuntingBoundary}
         huntingAreas={huntingAreas}
         activeHuntingAreaId={activeHuntingAreaId}

@@ -142,7 +142,9 @@ export default function SettingsMenu({
   zoomButtonsX,
   zoomButtonsY,
   onZoomButtonsXChange,
-  onZoomButtonsYChange
+  onZoomButtonsYChange,
+  zoomButtonsSide,
+  onZoomButtonsSideChange
 }: SettingsMenuProps & { currentCenter?: { lat: number, lng: number } }) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [showHomeSaved, setShowHomeSaved] = useState(false);
@@ -455,6 +457,19 @@ export default function SettingsMenu({
                   className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
                 />
                 Show zoom buttons
+              </label>
+            </div>
+          )}
+          {(onZoomButtonsSideChange && zoomButtonsSide !== undefined) && (
+            <div className="mb-3">
+              <label className="flex items-center gap-2 cursor-pointer text-sm">
+                <input
+                  type="checkbox"
+                  checked={zoomButtonsSide === 'right'}
+                  onChange={e => onZoomButtonsSideChange(e.target.checked ? 'right' : 'left')}
+                  className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                />
+                Right side
               </label>
             </div>
           )}
@@ -954,7 +969,8 @@ export default function SettingsMenu({
             huntingBoundaryOpacity,
             showZoomButtons,
             zoomButtonsX,
-            zoomButtonsY
+            zoomButtonsY,
+            zoomButtonsSide
           };
           localStorage.setItem('aware_settings_defaults', JSON.stringify(defaults));
           setShowDefaultsSaved(true);

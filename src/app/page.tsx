@@ -99,6 +99,7 @@ export default function Home() {
   const [showZoomButtons, setShowZoomButtons] = useState(true);
   const [zoomButtonsX, setZoomButtonsX] = useState(8);
   const [zoomButtonsY, setZoomButtonsY] = useState(64);
+  const [zoomButtonsSide, setZoomButtonsSide] = useState<'left' | 'right'>('left');
   
   // State for Compass
   const [compassSliceLength, setCompassSliceLength] = useState(30); // % of screen height
@@ -173,6 +174,7 @@ export default function Home() {
         if (defaults.showZoomButtons !== undefined) setShowZoomButtons(defaults.showZoomButtons);
         if (defaults.zoomButtonsX !== undefined) setZoomButtonsX(defaults.zoomButtonsX);
         if (defaults.zoomButtonsY !== undefined) setZoomButtonsY(defaults.zoomButtonsY);
+        if (defaults.zoomButtonsSide !== undefined) setZoomButtonsSide(defaults.zoomButtonsSide);
       } catch (e) {
         console.error('Error loading defaults:', e);
       }
@@ -614,6 +616,8 @@ export default function Home() {
             zoomButtonsY={zoomButtonsY}
             onZoomButtonsXChange={setZoomButtonsX}
             onZoomButtonsYChange={setZoomButtonsY}
+            zoomButtonsSide={zoomButtonsSide}
+            onZoomButtonsSideChange={setZoomButtonsSide}
           />
         </div>
       )}
@@ -705,6 +709,7 @@ export default function Home() {
         showZoomButtons={showZoomButtons}
         zoomButtonsX={zoomButtonsX}
         zoomButtonsY={zoomButtonsY}
+        zoomButtonsSide={zoomButtonsSide}
         showHuntingBoundary={showHuntingBoundary}
         huntingAreas={huntingAreas}
         activeHuntingAreaId={activeHuntingAreaId}
