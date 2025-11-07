@@ -4551,12 +4551,13 @@ export default function MapComponent({
             <button
             onClick={handleResetMeasurement}
             className={`w-18 h-12 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex items-center justify-center ${
-              (isMeasuring || measurementPoints.length > 0 || searchPosition)
+              (isMeasuring || measurementPoints.length > 0 || searchPosition || !!los.data)
                 ? 'bg-red-600 hover:bg-red-700 text-white border-red-700'
                 : 'bg-gray-300 text-gray-400 border-gray-400 cursor-not-allowed'
             }`}
-            disabled={!isMeasuring && measurementPoints.length === 0 && !searchPosition}
+            disabled={!isMeasuring && measurementPoints.length === 0 && !searchPosition && !los.data}
             style={{ pointerEvents: 'auto' }}
+            title="Fjern målinger/overlays"
             >
                   ✕
             </button>
