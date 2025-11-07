@@ -762,6 +762,8 @@ interface PointPair {
   id: number;
   created_at?: string;
   name?: string;
+  linked?: boolean;
+  pair_local_id?: string;
 }
 
 // Type for lagrede søk-spor
@@ -2458,7 +2460,7 @@ export default function MapComponent({
         }
 
         const combinedPairsFromLocalId: PointPair[] = [];
-        groupsByLocalId.forEach((g) => {
+        groupsByLocalId.forEach((g, key) => {
           const current = g.skyteplass?.current;
           const target = g.treffpunkt?.target;
           if (!current && !target) return;
@@ -2469,6 +2471,8 @@ export default function MapComponent({
             id: (g.treffpunkt?.id ?? g.skyteplass?.id ?? 0) as number,
             created_at: g.treffpunkt?.created_at || g.skyteplass?.created_at,
             name: g.treffpunkt?.name || g.skyteplass?.name,
+            pair_local_id: key,
+            linked: true,
           });
         });
 
@@ -2493,6 +2497,7 @@ export default function MapComponent({
               id: (treffpunkt?.id ?? skyteplass?.id ?? 0) as number,
               created_at: skyteplass?.created_at || treffpunkt?.created_at,
               name: skyteplass?.name || treffpunkt?.name,
+              linked: false,
             });
             if (treffpunkt) {
               const idx = treffpunkterNoId.indexOf(treffpunkt);
@@ -2508,6 +2513,7 @@ export default function MapComponent({
           id: t.id,
           created_at: t.created_at,
           name: t.name,
+          linked: false,
         }));
 
         const combinedPairs: PointPair[] = [
@@ -2751,8 +2757,8 @@ export default function MapComponent({
   const lastFullPair = hasSavedPairs
     ? (() => {
         for (let i = safeSavedPairs.length - 1; i >= 0; i--) {
-          const p = safeSavedPairs[i];
-          if (p && p.current && p.target) return p;
+          const p: any = safeSavedPairs[i];
+          if (p && p.current && p.target && p.linked === true) return p;
         }
         return undefined;
       })()
@@ -3874,7 +3880,7 @@ export default function MapComponent({
                               </CircleMarker>
                             </>
                           )}
-                          {last.current && last.target && (
+                          {last.current && last.target && (last as any).linked === true && (
                             <Polyline
                               key={`sok-last-poly`}
                               positions={[[last.current.lat, last.current.lng], [last.target.lat, last.target.lng]]}
@@ -4093,7 +4099,7 @@ export default function MapComponent({
                             </CircleMarker>
                           </>
                         )}
-                        {last.current && last.target && (
+                        {last.current && last.target && (last as any).linked === true && (
                           <Polyline
                             key={`aware-last-poly`}
                             positions={[[last.current.lat, last.current.lng], [last.target.lat, last.target.lng]]}
@@ -4115,7 +4121,7 @@ export default function MapComponent({
                       </>
                     );
                   }
-                  return safeSavedPairs.filter(Boolean).map((pair, idx) => (
+                  return safeSavedPairs.filter((pair: any) => pair && pair.current && pair.target && pair.linked === true).map((pair: any, idx: number) => (
                   <React.Fragment key={pair.id ?? idx}>
                     {pair && pair.current && (
                       <>
