@@ -13,7 +13,7 @@ export default function LosTestPage() {
 
   const los = useViewshed({
     apiKey: apiKey || '',
-    radiusM: 200,
+    radiusM: 350,
     rays: 180,
     samples: 64,
     observerHeightM: 5,
@@ -28,7 +28,7 @@ export default function LosTestPage() {
       const { Map } = (await loader.importLibrary('maps')) as google.maps.MapsLibrary;
       setMap(
         new Map(mapDiv.current, {
-          center: { lat: 59.91, lng: 10.75 },
+          center: { lat: 60.5936, lng: 12.3955 },
           zoom: 14,
           mapTypeId: 'satellite',
           gestureHandling: 'greedy',
