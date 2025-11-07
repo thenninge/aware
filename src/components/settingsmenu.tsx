@@ -481,7 +481,7 @@ export default function SettingsMenu({
               <input
                 type="range"
                 min={0}
-                max={400}
+                max={750}
                 step={2}
                 value={zoomButtonsY}
                 onChange={e => onZoomButtonsYChange(Number(e.target.value))}
