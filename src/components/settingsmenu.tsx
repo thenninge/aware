@@ -439,7 +439,7 @@ export default function SettingsMenu({
           className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors"
         >
           <span className="text-sm font-medium text-gray-700">Zoom buttons settings</span>
-          <span className="text-gray-500 text-sm">⚙️</span>
+          <span className="text-gray-500 text-sm">{isZoomButtonsExpanded ? '▼' : '▶'}</span>
         </button>
         {isZoomButtonsExpanded && (
         <div className="p-3 bg-white">
