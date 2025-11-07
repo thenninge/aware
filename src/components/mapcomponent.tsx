@@ -1640,23 +1640,8 @@ export default function MapComponent({
           tracks: (savedTracks || []).map(track => ({ ...track, id: track.id, points: track.points, shotPairId: track.shotPairId })),
           finds: (savedFinds || []).map(find => ({ ...find, id: find.id, shotPairId: find.shotPairId, position: find.position, color: find.color })),
           observations: (savedObservations || []).map(obs => ({ ...obs, id: obs.id, position: obs.position, color: obs.color })),
-          posts: (safeSavedPairs || []).map((p: any) => {
-            // Bygg tittel/innhold slik /api/sync kan lagre i posts-tabellen
-            let title = 'Post';
-            let content = '';
-            if (p?.category === 'Skyteplass' && p?.current) {
-              title = 'Skyteplass';
-              content = `Lat: ${p.current.lat}, Lng: ${p.current.lng}, Category: Skyteplass`;
-            } else if (p?.category === 'Treffpunkt' && p?.target) {
-              title = 'Treffpunkt';
-              content = `Target: ${p.target.lat}, ${p.target.lng}, Category: Treffpunkt`;
-            } else if (p?.current) {
-              content = `Lat: ${p.current.lat}, Lng: ${p.current.lng}`;
-            } else if (p?.target) {
-              content = `Target: ${p.target.lat}, ${p.target.lng}`;
-            }
-            return { id: p.id, title, content };
-          })
+          // Posts pushes disabled here to avoid duplicating already auto-uploaded pairs
+          posts: []
         };
 
         const response = await fetch('/api/sync', {
@@ -1781,13 +1766,7 @@ export default function MapComponent({
           }
         }
 
-        // Show sync results
-        const pushMessage = [];
-        if (syncResults.pushed.tracks > 0) pushMessage.push(`${syncResults.pushed.tracks} spor`);
-        if (syncResults.pushed.finds > 0) pushMessage.push(`${syncResults.pushed.finds} funn`);
-        if (syncResults.pushed.observations > 0) pushMessage.push(`${syncResults.pushed.observations} observasjoner`);
-        if (syncResults.pushed.posts > 0) pushMessage.push(`${syncResults.pushed.posts} skuddpar`);
-
+        // Show sync results: only count pulled (downloaded) items
         const pullMessage = [];
         if (syncResults.pulled.tracks.length > 0) pullMessage.push(`${syncResults.pulled.tracks.length} spor`);
         if (syncResults.pulled.finds.length > 0) pullMessage.push(`${syncResults.pulled.finds.length} funn`);
@@ -1796,7 +1775,6 @@ export default function MapComponent({
         if (huntingAreasCount > 0) pullMessage.push(`${huntingAreasCount} jaktfelt`);
 
         let message = 'Synkronisering fullført!';
-        if (pushMessage.length > 0) message += `\nPushet: ${pushMessage.join(', ')}`;
         if (pullMessage.length > 0) message += `\nHentet: ${pullMessage.join(', ')}`;
         if (syncResults.errors.length > 0) {
           message += `\nFeil: ${syncResults.errors.length}`;
