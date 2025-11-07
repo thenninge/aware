@@ -2444,6 +2444,7 @@ export default function MapComponent({
   const [showTargetRadiusModal, setShowTargetRadiusModal] = useState(false);
   const [showTargetDirectionUI, setShowTargetDirectionUI] = useState(false);
   const [targetRange, setTargetRange] = useState(500); // Default 500m
+  const [isModalSliderActive, setIsModalSliderActive] = useState(false);
   useEffect(() => {
     const min = 100;
     const max = Math.max(min, Math.min(1000, targetRangeSetting || 1000));
@@ -3153,7 +3154,6 @@ export default function MapComponent({
         ['--zoom-top' as any]: `${zoomButtonsY}px`,
         ['--zoom-left' as any]: `${zoomButtonsSide === 'left' ? zoomButtonsX : 8}px`,
         ['--zoom-right' as any]: `${zoomButtonsSide === 'right' ? zoomButtonsX : 8}px`,
-        overflow: isAnyModalOpen ? 'hidden' as any : undefined,
       }}
     >
       {/* Google Maps background layer disabled when using vt tiles via Leaflet */}
@@ -3164,7 +3164,7 @@ export default function MapComponent({
       <MapContainer
         center={[currentPosition.lat, currentPosition.lng]}
         zoom={13}
-        style={{ height: '100%', width: '100%', pointerEvents: isAnyModalOpen ? 'none' : 'auto' }}
+        style={{ height: '100%', width: '100%', pointerEvents: 'auto' }}
         zoomControl={false}
         attributionControl={true}
         closePopupOnClick={true}
@@ -3203,7 +3203,7 @@ export default function MapComponent({
           onLoadingChange={setIsScanning}
           mode={mode}
           showOnlyLastShot={showOnlyLastShot}
-          lockInteractions={isAnyModalOpen}
+          lockInteractions={isModalSliderActive}
           onSearchPositionChange={(pos) => {
             setSearchPosition(pos);
           }}
@@ -4912,12 +4912,16 @@ export default function MapComponent({
                   padding: '12px 0',
                   margin: '-12px 0'
                 }}
-                onPointerDown={(e) => e.stopPropagation()}
+                onPointerDown={(e) => { e.stopPropagation(); setIsModalSliderActive(true); }}
                 onPointerMove={(e) => e.stopPropagation()}
-                onTouchStart={(e) => e.stopPropagation()}
+                onPointerUp={() => setIsModalSliderActive(false)}
+                onPointerCancel={() => setIsModalSliderActive(false)}
+                onTouchStart={(e) => { e.stopPropagation(); setIsModalSliderActive(true); }}
                 onTouchMove={(e) => e.stopPropagation()}
-                onMouseDown={(e) => e.stopPropagation()}
+                onTouchEnd={() => setIsModalSliderActive(false)}
+                onMouseDown={(e) => { e.stopPropagation(); setIsModalSliderActive(true); }}
                 onMouseMove={(e) => e.stopPropagation()}
+                onMouseUp={() => setIsModalSliderActive(false)}
               />
       </div>
 
@@ -5091,10 +5095,15 @@ export default function MapComponent({
                 }}
                 onPointerDown={(e) => e.stopPropagation()}
                 onPointerMove={(e) => e.stopPropagation()}
+                onPointerUp={() => setIsModalSliderActive(false)}
+                onPointerCancel={() => setIsModalSliderActive(false)}
+                onPointerDownCapture={() => setIsModalSliderActive(true)}
                 onTouchStart={(e) => e.stopPropagation()}
                 onTouchMove={(e) => e.stopPropagation()}
+                onTouchEnd={() => setIsModalSliderActive(false)}
                 onMouseDown={(e) => e.stopPropagation()}
                 onMouseMove={(e) => e.stopPropagation()}
+                onMouseUp={() => setIsModalSliderActive(false)}
               />
             </div>
             <div className="flex justify-between items-center mt-2 gap-2">
