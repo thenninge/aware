@@ -4669,12 +4669,6 @@ export default function MapComponent({
 
       {/* Scan & Live Buttons - Bottom Right */}
       <div className="fixed bottom-4 right-4 sm:bottom-4 sm:right-4 bottom-2 right-2 z-[2000] flex flex-col gap-2" style={{ pointerEvents: 'auto' }}>
-          {/* LOS status hint */}
-          {mode === 'aware' && (isLosAwaitingClick || los.status === 'running' || isLosLoadingSdk) && (
-            <div className="mb-1 px-2 py-1 rounded text-xs text-gray-800 bg-white/90 border border-gray-300 shadow">
-              {isLosLoadingSdk ? 'LOS: laster…' : (los.status === 'running' ? 'LOS: beregner…' : 'LOS: klar')}
-            </div>
-          )}
           {/* LOS (Line of Sight) knapp over ❗ i aware-mode */}
           {mode === 'aware' && (
             <button
@@ -4687,7 +4681,7 @@ export default function MapComponent({
               title="LOS (Line of Sight) fra aktiv posisjon"
               disabled={isScanning || isLosLoadingSdk || los.status === 'running'}
             >
-              {'👁️'}
+              {(isLosLoadingSdk || los.status === 'running') ? '⏳' : '👁️'}
             </button>
           )}
           {/* Invertert bebyggelses-scan knapp (❗) over 🔍 i aware-mode */}
