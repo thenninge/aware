@@ -17,6 +17,7 @@ export function ViewshedOverlay({
   const outlineRef = useRef<google.maps.Polygon | null>(null);
   const quadRefs = useRef<google.maps.Polygon[]>([]);
   const wedgeRef = useRef<google.maps.Polygon | null>(null);
+  const internalOutlineRefs = useRef<google.maps.Polygon[]>([]);
   const dotRef = useRef<google.maps.Marker | null>(null);
 
   useEffect(() => {
@@ -25,6 +26,7 @@ export function ViewshedOverlay({
     outlineRef.current?.setMap(null); outlineRef.current = null;
     quadRefs.current.forEach(p => p.setMap(null)); quadRefs.current = [];
     wedgeRef.current?.setMap(null); wedgeRef.current = null;
+    internalOutlineRefs.current.forEach(p => p.setMap(null)); internalOutlineRefs.current = [];
     dotRef.current?.setMap(null);
     dotRef.current = null;
 
@@ -60,6 +62,17 @@ export function ViewshedOverlay({
         map,
       });
     }
+    // Internal hole outlines (stroke only)
+    if (data.outlines && data.outlines.length > 0) {
+      internalOutlineRefs.current = data.outlines.map(seg => new google.maps.Polygon({
+        paths: seg,
+        strokeColor,
+        strokeOpacity: 0.8,
+        strokeWeight: 2,
+        fillOpacity: 0,
+        map
+      }));
+    }
     // center dot using a symbol circle marker
     dotRef.current = new google.maps.Marker({
       position: data.origin,
@@ -77,6 +90,7 @@ export function ViewshedOverlay({
       outlineRef.current?.setMap(null); outlineRef.current = null;
       quadRefs.current.forEach(p => p.setMap(null)); quadRefs.current = [];
       wedgeRef.current?.setMap(null); wedgeRef.current = null;
+      internalOutlineRefs.current.forEach(p => p.setMap(null)); internalOutlineRefs.current = [];
       dotRef.current?.setMap(null);
       dotRef.current = null;
     };

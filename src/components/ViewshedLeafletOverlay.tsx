@@ -38,6 +38,14 @@ export default function ViewshedLeafletOverlay({
           pathOptions={{ color, weight: 2, opacity: 0.8, fillColor: color, fillOpacity: 0.2 }}
         />
       )}
+      {/* Internal hole outlines: stroke only */}
+      {data.outlines && data.outlines.map((seg, idx) => (
+        <Polygon
+          key={`los-outline-${idx}`}
+          positions={seg.map(p => [p.lat, p.lng]) as [number, number][]}
+          pathOptions={{ color, weight: 2, opacity: 0.8, fillOpacity: 0 }}
+        />
+      ))}
       <CircleMarker
         center={[data.origin.lat, data.origin.lng]}
         radius={2.5}

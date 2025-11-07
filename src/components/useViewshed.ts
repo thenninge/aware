@@ -169,6 +169,7 @@ export type ViewshedData = {
   endpoints: LatLng[];
   path: LatLng[];
   quads?: LatLng[][];
+  outlines?: LatLng[][];
 };
 
 export function useViewshed(params: ViewshedParams) {
@@ -233,7 +234,30 @@ export function useViewshed(params: ViewshedParams) {
         // Use endpoints ring only to avoid a radial seam from origin
         const path = [...endpoints, endpoints[0]];
         const quads = buildVisibleQuads(profiles, true);
-        setData({ origin, endpoints, path, quads });
+        // Build outline segments along visibility transitions
+        const outlines: LatLng[][] = [];
+        const raysCount = profiles.length;
+        for (let j = 0; j < raysCount; j++) {
+          const A = profiles[j];
+          if (!A) continue;
+          // along ray (radial) where visibility toggles between k and k+1
+          for (let k = 0; k < A.visible.length - 1; k++) {
+            if (A.visible[k] !== A.visible[k + 1]) {
+              outlines.push([A.locations[k], A.locations[k + 1]]);
+            }
+          }
+          // across rays at same ring index
+          const j2 = (j + 1) % raysCount;
+          const B = profiles[j2];
+          if (!B) continue;
+          const n = Math.min(A.visible.length, B.visible.length);
+          for (let k = 0; k < n; k++) {
+            if (A.visible[k] !== B.visible[k]) {
+              outlines.push([A.locations[k], B.locations[k]]);
+            }
+          }
+        }
+        setData({ origin, endpoints, path, quads, outlines });
         setStatus('done');
       } catch (e: any) {
         if (e?.message === 'aborted') return;
