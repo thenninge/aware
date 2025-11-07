@@ -73,6 +73,8 @@ interface SettingsMenuProps {
   zoomButtonsY?: number;
   onZoomButtonsXChange?: (v: number) => void;
   onZoomButtonsYChange?: (v: number) => void;
+  zoomButtonsSide?: 'left' | 'right';
+  onZoomButtonsSideChange?: (v: 'left' | 'right') => void;
 }
 
 export interface HuntingArea {
@@ -464,7 +466,7 @@ export default function SettingsMenu({
               <input
                 type="range"
                 min={0}
-                max={200}
+                max={400}
                 step={2}
                 value={zoomButtonsY}
                 onChange={e => onZoomButtonsYChange(Number(e.target.value))}
@@ -479,7 +481,7 @@ export default function SettingsMenu({
               </label>
               <input
                 type="range"
-                min={0}
+                min={-10}
                 max={64}
                 step={1}
                 value={zoomButtonsX}
