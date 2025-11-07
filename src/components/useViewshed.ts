@@ -40,16 +40,11 @@ function hav(a: LatLng, b: LatLng) {
 async function elevProfile(
   origin: LatLng,
   end: LatLng,
-  samples: number,
-  key: string
+  samples: number
 ) {
-  const url = new URL('https://maps.googleapis.com/maps/api/elevation/json');
-  url.searchParams.set(
-    'path',
-    `${origin.lat},${origin.lng}|${end.lat},${end.lng}`
-  );
+  const url = new URL('/api/elevation', window.location.origin);
+  url.searchParams.set('path', `${origin.lat},${origin.lng}|${end.lat},${end.lng}`);
   url.searchParams.set('samples', String(samples));
-  url.searchParams.set('key', key);
   const r = await fetch(url.toString());
   const j = await r.json();
   if (j.status !== 'OK') throw new Error(j.status || 'ELEVATION_ERROR');
@@ -136,7 +131,7 @@ export function useViewshed(params: ViewshedParams) {
             const bearing = (i * 360) / rays;
             const end = destPoint(origin, bearing, radiusM);
             jobs.push(
-              elevProfile(origin, end, samples, apiKey).then((p) => {
+              elevProfile(origin, end, samples).then((p) => {
                 endpoints[i] = visibleEndpoint(
                   origin,
                   p,
