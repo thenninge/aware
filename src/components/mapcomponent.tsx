@@ -2428,7 +2428,11 @@ export default function MapComponent({
   // Legg til state for "vis kun siste skudd"
   // Åpne dialog når Target trykkes
   const openTargetDialog = () => {
-    setTargetRange(250);
+    // Default to midpoint of slider range
+    const min = 100;
+    const max = Math.max(min, Math.min(1000, targetRangeSetting || 1000));
+    const mid = Math.round((min + max) / 2);
+    setTargetRange(mid);
     setShowTargetRadiusModal(true);
     setShowTargetDirectionUI(false);
     setShowTargetDialog(false); // Skjul gammel dialog
@@ -2657,12 +2661,11 @@ export default function MapComponent({
     if (currentPosition) {
       // Lås posisjonen for target-seleksjon
       setLockedShotPosition({ ...currentPosition });
-      // Sett startverdi for skuddavstand fra quick filter-setting
-      if (typeof targetRangeSetting === 'number') {
-        setTargetRange(targetRangeSetting);
-      } else {
-        setTargetRange(500);
-      }
+      // Sett startverdi til 50% av sliderens range
+      const min = 100;
+      const max = Math.max(min, Math.min(1000, targetRangeSetting || 1000));
+      const mid = Math.round((min + max) / 2);
+      setTargetRange(mid);
       // Start target-seleksjon flyten direkte
       setShowTargetRadiusModal(true);
     }
