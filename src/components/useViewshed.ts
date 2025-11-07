@@ -37,18 +37,43 @@ function hav(a: LatLng, b: LatLng) {
   return 2 * R * Math.asin(Math.sqrt(h));
 }
 
-async function elevProfile(
-  origin: LatLng,
-  end: LatLng,
+// Bruk Maps JS SDK – ingen CORS
+async function fetchProfile(
+  origin: google.maps.LatLngLiteral,
+  end: google.maps.LatLngLiteral,
   samples: number
 ) {
-  const url = new URL('/api/elevation', window.location.origin);
-  url.searchParams.set('path', `${origin.lat},${origin.lng}|${end.lat},${end.lng}`);
-  url.searchParams.set('samples', String(samples));
-  const r = await fetch(url.toString());
-  const j = await r.json();
-  if (j.status !== 'OK') throw new Error(j.status || 'ELEVATION_ERROR');
-  return j.results as Array<{ location: LatLng; elevation: number }>;
+  const maybeLib = (google.maps as any).importLibrary?.bind(google.maps);
+  let ElevationServiceCtor: any = (google.maps as any).ElevationService;
+  if (maybeLib) {
+    try {
+      const lib = (await (google.maps as any).importLibrary('elevation')) as google.maps.ElevationLibrary;
+      if ((lib as any)?.ElevationService) {
+        ElevationServiceCtor = (lib as any).ElevationService;
+      }
+    } catch {
+      // fall back
+    }
+  }
+  const svc = ElevationServiceCtor ? new ElevationServiceCtor() : new (google.maps as any).ElevationService();
+
+  return new Promise<Array<{ location: { lat: number; lng: number }; elevation: number }>>((resolve, reject) => {
+    svc.getElevationAlongPath(
+      { path: [origin, end], samples },
+      (results: any, status: any) => {
+        if (status === 'OK' && results) {
+          resolve(
+            results.map((r: any) => ({
+              location: { lat: r.location.lat(), lng: r.location.lng() },
+              elevation: r.elevation,
+            }))
+          );
+        } else {
+          reject(new Error(status));
+        }
+      }
+    );
+  });
 }
 
 function visibleEndpoint(
@@ -131,7 +156,7 @@ export function useViewshed(params: ViewshedParams) {
             const bearing = (i * 360) / rays;
             const end = destPoint(origin, bearing, radiusM);
             jobs.push(
-              elevProfile(origin, end, samples).then((p) => {
+              fetchProfile(origin as any, end as any, samples).then((p) => {
                 endpoints[i] = visibleEndpoint(
                   origin,
                   p,
