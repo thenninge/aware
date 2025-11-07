@@ -53,6 +53,13 @@ select, select option {
   background-color: #ffffff;
 }
 
+/* Ensure Leaflet zoom controls are visible on mobile (account for safe-area and top overlays) */
+.leaflet-top.leaflet-left {
+  top: calc(env(safe-area-inset-top, 0px) + 64px) !important;
+  left: calc(env(safe-area-inset-left, 0px) + 8px) !important;
+  z-index: 1500; /* above map but below our top menus (z~2000) */
+}
+
 /* Skjul Next.js Turbopack overlay-ikonet i dev */
 #__nextjs-turbopack-overlay { display: none !important; }
 
