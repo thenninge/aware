@@ -95,6 +95,10 @@ export default function Home() {
   const [msrRetikkelOpacity, setMSRRetikkelOpacity] = useState(80);
   const [msrRetikkelStyle, setMSRRetikkelStyle] = useState<'msr' | 'ivar'>('ivar');
   const [msrRetikkelVerticalPosition, setMSRRetikkelVerticalPosition] = useState(50);
+  // Zoom buttons
+  const [showZoomButtons, setShowZoomButtons] = useState(true);
+  const [zoomButtonsX, setZoomButtonsX] = useState(8);
+  const [zoomButtonsY, setZoomButtonsY] = useState(64);
   
   // State for Compass
   const [compassSliceLength, setCompassSliceLength] = useState(30); // % of screen height
@@ -166,6 +170,9 @@ export default function Home() {
         if (defaults.huntingBoundaryColor !== undefined) setHuntingBoundaryColor(defaults.huntingBoundaryColor);
         if (defaults.huntingBoundaryWeight !== undefined) setHuntingBoundaryWeight(defaults.huntingBoundaryWeight);
         if (defaults.huntingBoundaryOpacity !== undefined) setHuntingBoundaryOpacity(defaults.huntingBoundaryOpacity);
+        if (defaults.showZoomButtons !== undefined) setShowZoomButtons(defaults.showZoomButtons);
+        if (defaults.zoomButtonsX !== undefined) setZoomButtonsX(defaults.zoomButtonsX);
+        if (defaults.zoomButtonsY !== undefined) setZoomButtonsY(defaults.zoomButtonsY);
       } catch (e) {
         console.error('Error loading defaults:', e);
       }
@@ -601,6 +608,12 @@ export default function Home() {
             onHuntingBoundaryOpacityChange={setHuntingBoundaryOpacity}
             compassSliceLength={compassSliceLength}
             onCompassSliceLengthChange={setCompassSliceLength}
+            showZoomButtons={showZoomButtons}
+            onShowZoomButtonsChange={setShowZoomButtons}
+            zoomButtonsX={zoomButtonsX}
+            zoomButtonsY={zoomButtonsY}
+            onZoomButtonsXChange={setZoomButtonsX}
+            onZoomButtonsYChange={setZoomButtonsY}
           />
         </div>
       )}
@@ -689,6 +702,9 @@ export default function Home() {
         targetColor={targetColor}
         targetLineWeight={targetLineWeight}
         targetRangeSetting={targetRangeSetting}
+        showZoomButtons={showZoomButtons}
+        zoomButtonsX={zoomButtonsX}
+        zoomButtonsY={zoomButtonsY}
         showHuntingBoundary={showHuntingBoundary}
         huntingAreas={huntingAreas}
         activeHuntingAreaId={activeHuntingAreaId}

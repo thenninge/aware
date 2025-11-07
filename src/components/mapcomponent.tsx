@@ -97,6 +97,9 @@ interface MapComponentProps {
   onCompassLockedChange?: (locked: boolean) => void;
   batterySaver?: boolean;
   targetRangeSetting?: number;
+  showZoomButtons?: boolean;
+  zoomButtonsX?: number;
+  zoomButtonsY?: number;
 }
 
 interface CategoryFilter {
@@ -915,6 +918,9 @@ export default function MapComponent({
   onCompassLockedChange,
   batterySaver = false,
   targetRangeSetting = 500,
+  showZoomButtons = true,
+  zoomButtonsX = 8,
+  zoomButtonsY = 64,
 }: MapComponentProps) {
   const [showTargetDialog, setShowTargetDialog] = useState(false);
   const instanceId = useRef(Math.random());
@@ -3032,7 +3038,7 @@ export default function MapComponent({
   const isAnyModalOpen = showTargetRadiusModal || showTargetDirectionUI || showObservationRangeModal || showObservationDirectionUI || showObservationDialog || showFindDialog || showShotPairNameDialog;
 
   return (
-    <div className="w-full h-screen relative">
+    <div className="w-full h-screen relative" style={{ ['--zoom-top' as any]: `${zoomButtonsY}px`, ['--zoom-left' as any]: `${zoomButtonsX}px` }}>
       {/* Google Maps background layer disabled when using vt tiles via Leaflet */}
       {/* <div className="absolute inset-0 z-[0] pointer-events-none" style={{ display: 'none' }}>
         <GoogleMapSmart className="w-full h-full" center={{ lat: (googleCenter?.lat ?? currentPosition?.lat ?? 59.91), lng: (googleCenter?.lng ?? currentPosition?.lng ?? 10.75) }} zoom={leafletZoom} mapTypeId="satellite" />
@@ -3042,7 +3048,7 @@ export default function MapComponent({
         center={[currentPosition.lat, currentPosition.lng]}
         zoom={13}
         style={{ height: '100%', width: '100%', pointerEvents: isAnyModalOpen ? 'none' : 'auto' }}
-        zoomControl={true}
+        zoomControl={showZoomButtons}
         attributionControl={true}
         closePopupOnClick={true}
         // @ts-ignore: pass through to Leaflet Map option for better touch handling

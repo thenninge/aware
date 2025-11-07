@@ -67,6 +67,12 @@ interface SettingsMenuProps {
   onHuntingBoundaryOpacityChange?: (opacity: number) => void;
   compassSliceLength?: number; // 0-100 (% of screen height)
   onCompassSliceLengthChange?: (length: number) => void;
+  showZoomButtons?: boolean;
+  onShowZoomButtonsChange?: (v: boolean) => void;
+  zoomButtonsX?: number;
+  zoomButtonsY?: number;
+  onZoomButtonsXChange?: (v: number) => void;
+  onZoomButtonsYChange?: (v: number) => void;
 }
 
 export interface HuntingArea {
@@ -128,7 +134,13 @@ export default function SettingsMenu({
   onHuntingBoundaryWeightChange,
   onHuntingBoundaryOpacityChange,
   compassSliceLength,
-  onCompassSliceLengthChange
+  onCompassSliceLengthChange,
+  showZoomButtons,
+  onShowZoomButtonsChange,
+  zoomButtonsX,
+  zoomButtonsY,
+  onZoomButtonsXChange,
+  onZoomButtonsYChange
 }: SettingsMenuProps & { currentCenter?: { lat: number, lng: number } }) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [showHomeSaved, setShowHomeSaved] = useState(false);
@@ -141,6 +153,7 @@ export default function SettingsMenu({
   const [isFilterExpanded, setIsFilterExpanded] = useState(false);
   const [isShootTrackExpanded, setIsShootTrackExpanded] = useState(false);
   const [isHuntingAreaExpanded, setIsHuntingAreaExpanded] = useState(false);
+  const [isZoomButtonsExpanded, setIsZoomButtonsExpanded] = useState(false);
   const [savedHomePosition, setSavedHomePosition] = useState<{ lat: number; lng: number } | null>(null);
 
   const categoryLabels: Record<keyof CategoryFilter, string> = {
@@ -417,6 +430,67 @@ export default function SettingsMenu({
           )}
         </div>
       )}
+
+      {/* Zoom Buttons Settings Expander */}
+      <div className="mb-4 border border-gray-200 rounded-lg overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setIsZoomButtonsExpanded(!isZoomButtonsExpanded)}
+          className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors"
+        >
+          <span className="text-sm font-medium text-gray-700">Zoom buttons settings</span>
+          <span className="text-gray-500 text-sm">⚙️</span>
+        </button>
+        {isZoomButtonsExpanded && (
+        <div className="p-3 bg-white">
+          {onShowZoomButtonsChange && (
+            <div className="mb-3">
+              <label className="flex items-center gap-2 cursor-pointer text-sm">
+                <input
+                  type="checkbox"
+                  checked={!!showZoomButtons}
+                  onChange={e => onShowZoomButtonsChange(e.target.checked)}
+                  className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                />
+                Show zoom buttons
+              </label>
+            </div>
+          )}
+          {(onZoomButtonsYChange && zoomButtonsY !== undefined) && (
+            <div className="mb-3">
+              <label className="text-xs font-medium text-gray-700 block mb-1">
+                Y-position: {zoomButtonsY}px
+              </label>
+              <input
+                type="range"
+                min={0}
+                max={200}
+                step={2}
+                value={zoomButtonsY}
+                onChange={e => onZoomButtonsYChange(Number(e.target.value))}
+                className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer hover:bg-gray-300 transition-colors"
+              />
+            </div>
+          )}
+          {(onZoomButtonsXChange && zoomButtonsX !== undefined) && (
+            <div className="mb-1">
+              <label className="text-xs font-medium text-gray-700 block mb-1">
+                X-position: {zoomButtonsX}px
+              </label>
+              <input
+                type="range"
+                min={0}
+                max={64}
+                step={1}
+                value={zoomButtonsX}
+                onChange={e => onZoomButtonsXChange(Number(e.target.value))}
+                className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer hover:bg-gray-300 transition-colors"
+              />
+            </div>
+          )}
+        </div>
+        )}
+      </div>
       
       {/* Filter Settings Expander */}
       {categoryFilters && onCategoryChange && (
@@ -875,7 +949,10 @@ export default function SettingsMenu({
             targetLineWeight,
             huntingBoundaryColor,
             huntingBoundaryWeight,
-            huntingBoundaryOpacity
+            huntingBoundaryOpacity,
+            showZoomButtons,
+            zoomButtonsX,
+            zoomButtonsY
           };
           localStorage.setItem('aware_settings_defaults', JSON.stringify(defaults));
           setShowDefaultsSaved(true);
