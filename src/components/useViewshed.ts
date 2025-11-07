@@ -169,7 +169,7 @@ export type ViewshedData = {
   endpoints: LatLng[];
   path: LatLng[];
   quads?: LatLng[][];
-  outlines?: LatLng[][];
+  holes?: LatLng[][];
 };
 
 export function useViewshed(params: ViewshedParams) {
@@ -234,30 +234,28 @@ export function useViewshed(params: ViewshedParams) {
         // Use endpoints ring only to avoid a radial seam from origin
         const path = [...endpoints, endpoints[0]];
         const quads = buildVisibleQuads(profiles, true);
-        // Build outline segments along visibility transitions
-        const outlines: LatLng[][] = [];
-        const raysCount = profiles.length;
-        for (let j = 0; j < raysCount; j++) {
-          const A = profiles[j];
-          if (!A) continue;
-          // along ray (radial) where visibility toggles between k and k+1
-          for (let k = 0; k < A.visible.length - 1; k++) {
-            if (A.visible[k] !== A.visible[k + 1]) {
-              outlines.push([A.locations[k], A.locations[k + 1]]);
+        // Build quads for non-visible (holes)
+        const holes = (function buildBlockedQuads(profilesIn: RayProfile[]) {
+          const rays = profilesIn.length;
+          const res: LatLng[][] = [];
+          for (let j = 0; j < rays; j++) {
+            const j2 = (j + 1) % rays;
+            const A = profilesIn[j]; const B = profilesIn[j2];
+            if (!A || !B) continue;
+            const n = Math.min(A.visible.length, B.visible.length);
+            for (let k = 0; k < n - 1; k++) {
+              const v00 = A.visible[k];
+              const v01 = A.visible[k + 1];
+              const v10 = B.visible[k];
+              const v11 = B.visible[k + 1];
+              if (!v00 && !v01 && !v10 && !v11) {
+                res.push([A.locations[k], A.locations[k + 1], B.locations[k + 1], B.locations[k]]);
+              }
             }
           }
-          // across rays at same ring index
-          const j2 = (j + 1) % raysCount;
-          const B = profiles[j2];
-          if (!B) continue;
-          const n = Math.min(A.visible.length, B.visible.length);
-          for (let k = 0; k < n; k++) {
-            if (A.visible[k] !== B.visible[k]) {
-              outlines.push([A.locations[k], B.locations[k]]);
-            }
-          }
-        }
-        setData({ origin, endpoints, path, quads, outlines });
+          return res;
+        })(profiles);
+        setData({ origin, endpoints, path, quads, holes });
         setStatus('done');
       } catch (e: any) {
         if (e?.message === 'aborted') return;

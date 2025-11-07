@@ -18,6 +18,7 @@ export function ViewshedOverlay({
   const quadRefs = useRef<google.maps.Polygon[]>([]);
   const wedgeRef = useRef<google.maps.Polygon | null>(null);
   const internalOutlineRefs = useRef<google.maps.Polygon[]>([]);
+  const holeRefs = useRef<google.maps.Polygon[]>([]);
   const dotRef = useRef<google.maps.Marker | null>(null);
 
   useEffect(() => {
@@ -27,6 +28,7 @@ export function ViewshedOverlay({
     quadRefs.current.forEach(p => p.setMap(null)); quadRefs.current = [];
     wedgeRef.current?.setMap(null); wedgeRef.current = null;
     internalOutlineRefs.current.forEach(p => p.setMap(null)); internalOutlineRefs.current = [];
+    holeRefs.current.forEach(p => p.setMap(null)); holeRefs.current = [];
     dotRef.current?.setMap(null);
     dotRef.current = null;
 
@@ -63,13 +65,14 @@ export function ViewshedOverlay({
       });
     }
     // Internal hole outlines (stroke only)
-    if (data.outlines && data.outlines.length > 0) {
-      internalOutlineRefs.current = data.outlines.map(seg => new google.maps.Polygon({
-        paths: seg,
-        strokeColor,
-        strokeOpacity: 0.8,
-        strokeWeight: 2,
-        fillOpacity: 0,
+    // Replaced by holes fill
+    if (data.holes && data.holes.length > 0) {
+      holeRefs.current = data.holes.map(path => new google.maps.Polygon({
+        paths: path,
+        strokeOpacity: 0,
+        strokeWeight: 0,
+        fillColor: '#ef4444',
+        fillOpacity: 0.12,
         map
       }));
     }
@@ -91,6 +94,7 @@ export function ViewshedOverlay({
       quadRefs.current.forEach(p => p.setMap(null)); quadRefs.current = [];
       wedgeRef.current?.setMap(null); wedgeRef.current = null;
       internalOutlineRefs.current.forEach(p => p.setMap(null)); internalOutlineRefs.current = [];
+      holeRefs.current.forEach(p => p.setMap(null)); holeRefs.current = [];
       dotRef.current?.setMap(null);
       dotRef.current = null;
     };
