@@ -17,6 +17,7 @@ import { createPortal } from 'react-dom';
 import { useCompass } from '@/hooks/useCompass';
 import { useViewshed } from '@/components/useViewshed';
 import ViewshedLeafletOverlay from '@/components/ViewshedLeafletOverlay';
+import { Loader } from '@googlemaps/js-api-loader';
 
 interface Position {
   lat: number;
@@ -964,6 +965,7 @@ export default function MapComponent({
   const [savedPairs, setSavedPairs] = useState<PointPair[]>([]);
   // LOS state
   const [isLosAwaitingClick, setIsLosAwaitingClick] = useState(false);
+  const [isLosLoadingSdk, setIsLosLoadingSdk] = useState(false);
   const los = useViewshed({
     apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
     radiusM: 350,
@@ -979,6 +981,28 @@ export default function MapComponent({
     los.runAt({ lat: pos.lat, lng: pos.lng });
     setIsLosAwaitingClick(false);
   }, [los]);
+  const runLosAtCurrent = useCallback(async () => {
+    if (!currentPosition) return;
+    if (los.status === 'running') return;
+    setIsLosAwaitingClick(false);
+    try {
+      // Ensure Google Maps JS SDK is available to use ElevationService when possible
+      if (typeof window !== 'undefined' && !(window as any).google?.maps) {
+        setIsLosLoadingSdk(true);
+        const loader = new Loader({
+          apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+          version: 'weekly',
+        });
+        // Load elevation library (safe to call even if already loaded)
+        await loader.importLibrary('elevation').catch(() => {});
+        setIsLosLoadingSdk(false);
+      }
+      los.clear();
+      los.runAt({ lat: currentPosition.lat, lng: currentPosition.lng });
+    } finally {
+      setIsLosLoadingSdk(false);
+    }
+  }, [currentPosition, los]);
   
   // Use props or default to 'off'
   const compassMode = externalCompassMode || 'off';
@@ -4636,22 +4660,22 @@ export default function MapComponent({
       {/* Scan & Live Buttons - Bottom Right */}
       <div className="fixed bottom-4 right-4 sm:bottom-4 sm:right-4 bottom-2 right-2 z-[2000] flex flex-col gap-2" style={{ pointerEvents: 'auto' }}>
           {/* LOS status hint */}
-          {mode === 'aware' && (isLosAwaitingClick || los.status === 'running') && (
+          {mode === 'aware' && (isLosAwaitingClick || los.status === 'running' || isLosLoadingSdk) && (
             <div className="mb-1 px-2 py-1 rounded text-xs text-gray-800 bg-white/90 border border-gray-300 shadow">
-              {los.status === 'running' ? 'LOS: beregner…' : 'LOS: klikk i kartet'}
+              {isLosLoadingSdk ? 'LOS: laster…' : (los.status === 'running' ? 'LOS: beregner…' : 'LOS: klar')}
             </div>
           )}
           {/* LOS (Line of Sight) knapp over ❗ i aware-mode */}
           {mode === 'aware' && (
             <button
-              onClick={() => setIsLosAwaitingClick(true)}
+              onClick={() => runLosAtCurrent()}
               className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${(
-                isScanning ? 'bg-gray-400 cursor-not-allowed text-white'
-                : isLosAwaitingClick ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                : 'bg-gray-600 hover:bg-gray-700 text-white'
+                isScanning || isLosLoadingSdk || los.status === 'running'
+                  ? 'bg-gray-400 cursor-not-allowed text-white'
+                  : 'bg-gray-600 hover:bg-gray-700 text-white'
               )}`}
-              title={isLosAwaitingClick ? 'Klikk i kartet for LOS' : 'LOS (Line of Sight)'}
-              disabled={isScanning || los.status === 'running'}
+              title="LOS (Line of Sight) fra aktiv posisjon"
+              disabled={isScanning || isLosLoadingSdk || los.status === 'running'}
             >
               {'👁️'}
             </button>
