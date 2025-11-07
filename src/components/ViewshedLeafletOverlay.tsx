@@ -13,13 +13,22 @@ export default function ViewshedLeafletOverlay({
   centerDotColor?: string;
 }) {
   if (!data) return null;
-  const positions = data.path.map((p) => [p.lat, p.lng]) as [number, number][];
   return (
     <>
-      <Polygon
-        positions={positions}
-        pathOptions={{ color, weight: 2, opacity: 0.8, fillColor: color, fillOpacity: 0.2 }}
-      />
+      {data.quads && data.quads.length > 0 ? (
+        data.quads.map((quad, idx) => (
+          <Polygon
+            key={`los-quad-${idx}`}
+            positions={quad.map(p => [p.lat, p.lng]) as [number, number][]}
+            pathOptions={{ color, weight: 1, opacity: 0.5, fillColor: color, fillOpacity: 0.25 }}
+          />
+        ))
+      ) : (
+        <Polygon
+          positions={data.path.map((p) => [p.lat, p.lng]) as [number, number][]}
+          pathOptions={{ color, weight: 2, opacity: 0.8, fillColor: color, fillOpacity: 0.2 }}
+        />
+      )}
       <CircleMarker
         center={[data.origin.lat, data.origin.lng]}
         radius={5}

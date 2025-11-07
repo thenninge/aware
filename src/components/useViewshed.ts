@@ -112,10 +112,63 @@ export type ViewshedParams = {
   apiKey: string;
 };
 
+type Sample = { location: LatLng; elevation: number };
+type RayProfile = { locations: LatLng[]; visible: boolean[] };
+
+function losMaskAlongRay(profile: Sample[], observerHeightM: number, targetHeightM: number) {
+  const n = profile.length;
+  const visible = new Array<boolean>(n).fill(false);
+  if (n === 0) return { visible };
+  const h0 = profile[0].elevation + observerHeightM;
+  let maxSlope = -Infinity;
+  let prev = profile[0].location;
+  let acc = 0;
+  const eps = 1e-4;
+  visible[0] = true;
+  for (let i = 1; i < n; i++) {
+    const cur = profile[i].location;
+    acc += hav(prev, cur);
+    const elevTarget = profile[i].elevation + targetHeightM;
+    const slope = (elevTarget - h0) / Math.max(acc, 1e-6);
+    if (slope > maxSlope + eps) {
+      visible[i] = true;
+      maxSlope = slope;
+    } else {
+      visible[i] = false;
+    }
+    prev = cur;
+  }
+  return { visible };
+}
+
+function buildVisibleQuads(profiles: RayProfile[], closeRing = true) {
+  const rays = profiles.length;
+  const quads: LatLng[][] = [];
+  for (let j = 0; j < rays; j++) {
+    const j2 = (j + 1) % rays;
+    if (!closeRing && j === rays - 1) break;
+    const A = profiles[j];
+    const B = profiles[j2];
+    if (!A || !B) continue;
+    const n = Math.min(A.visible.length, B.visible.length);
+    for (let k = 0; k < n - 1; k++) {
+      const v00 = A.visible[k];
+      const v01 = A.visible[k + 1];
+      const v10 = B.visible[k];
+      const v11 = B.visible[k + 1];
+      if (v00 && v01 && v10 && v11) {
+        quads.push([A.locations[k], A.locations[k + 1], B.locations[k + 1], B.locations[k]]);
+      }
+    }
+  }
+  return quads;
+}
+
 export type ViewshedData = {
   origin: LatLng;
   endpoints: LatLng[];
   path: LatLng[];
+  quads?: LatLng[][];
 };
 
 export function useViewshed(params: ViewshedParams) {
@@ -149,6 +202,7 @@ export function useViewshed(params: ViewshedParams) {
       abortRef.current = { aborted: false };
       try {
         const endpoints: LatLng[] = new Array(rays);
+        const profiles: RayProfile[] = new Array(rays);
         for (let start = 0; start < rays; start += batchSize) {
           if (abortRef.current.aborted) throw new Error('aborted');
           const jobs: Promise<void>[] = [];
@@ -169,19 +223,17 @@ export function useViewshed(params: ViewshedParams) {
                 if (j.status !== 'OK') throw new Error(j.status || 'ELEVATION_ERROR');
                 p = j.results as Array<{ location: LatLng; elevation: number }>;
               }
-                endpoints[i] = visibleEndpoint(
-                  origin,
-                p,
-                  observerHeightM,
-                  targetHeightM
-                );
+              endpoints[i] = visibleEndpoint(origin, p, observerHeightM, targetHeightM);
+              const vis = losMaskAlongRay(p as Sample[], observerHeightM, targetHeightM);
+              profiles[i] = { locations: (p as Sample[]).map(s => s.location), visible: vis.visible };
             })());
           }
           await Promise.all(jobs);
         }
         // Use endpoints ring only to avoid a radial seam from origin
         const path = [...endpoints, endpoints[0]];
-        setData({ origin, endpoints, path });
+        const quads = buildVisibleQuads(profiles, true);
+        setData({ origin, endpoints, path, quads });
         setStatus('done');
       } catch (e: any) {
         if (e?.message === 'aborted') return;
