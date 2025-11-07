@@ -40,7 +40,7 @@ export default function ViewshedLeafletOverlay({
       )}
       <CircleMarker
         center={[data.origin.lat, data.origin.lng]}
-        radius={5}
+        radius={2.5}
         pathOptions={{ color: centerDotColor, fillColor: centerDotColor, fillOpacity: 1, opacity: 1 }}
       />
     </>

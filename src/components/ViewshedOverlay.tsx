@@ -65,7 +65,7 @@ export function ViewshedOverlay({
       position: data.origin,
       icon: {
         path: google.maps.SymbolPath.CIRCLE,
-        scale: 5,
+        scale: 2.5,
         fillColor: '#ff0000',
         fillOpacity: 1,
         strokeOpacity: 0,
