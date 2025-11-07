@@ -75,6 +75,11 @@ interface SettingsMenuProps {
   onZoomButtonsYChange?: (v: number) => void;
   zoomButtonsSide?: 'left' | 'right';
   onZoomButtonsSideChange?: (v: 'left' | 'right') => void;
+  // LOS settings
+  losObserverHeightM?: number;
+  losRadiusM?: number;
+  onLosObserverHeightChange?: (v: number) => void;
+  onLosRadiusChange?: (v: number) => void;
 }
 
 export interface HuntingArea {
@@ -144,7 +149,11 @@ export default function SettingsMenu({
   onZoomButtonsXChange,
   onZoomButtonsYChange,
   zoomButtonsSide,
-  onZoomButtonsSideChange
+  onZoomButtonsSideChange,
+  losObserverHeightM,
+  losRadiusM,
+  onLosObserverHeightChange,
+  onLosRadiusChange
 }: SettingsMenuProps & { currentCenter?: { lat: number, lng: number } }) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [showHomeSaved, setShowHomeSaved] = useState(false);
@@ -158,6 +167,7 @@ export default function SettingsMenu({
   const [isShootTrackExpanded, setIsShootTrackExpanded] = useState(false);
   const [isHuntingAreaExpanded, setIsHuntingAreaExpanded] = useState(false);
   const [isZoomButtonsExpanded, setIsZoomButtonsExpanded] = useState(false);
+  const [isLosExpanded, setIsLosExpanded] = useState(false);
   const [savedHomePosition, setSavedHomePosition] = useState<{ lat: number; lng: number } | null>(null);
 
   const categoryLabels: Record<keyof CategoryFilter, string> = {
@@ -506,6 +516,57 @@ export default function SettingsMenu({
             </div>
           )}
         </div>
+        )}
+      </div>
+
+      {/* LOS Settings Expander */}
+      <div className="mb-4 border border-gray-200 rounded-lg overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setIsLosExpanded(!isLosExpanded)}
+          className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors"
+        >
+          <span className="text-sm font-medium text-gray-700">LOS settings</span>
+          <span className="text-gray-500 text-sm">{isLosExpanded ? '▼' : '▶'}</span>
+        </button>
+        {isLosExpanded && (
+          <div className="p-3 bg-white">
+            {onLosObserverHeightChange && losObserverHeightM !== undefined && (
+              <div className="mb-3">
+                <label className="text-xs font-medium text-gray-700 block mb-1">
+                  Høyde over bakken: {losObserverHeightM} m
+                </label>
+                <input
+                  type="range"
+                  min={0}
+                  max={15}
+                  step={1}
+                  value={losObserverHeightM}
+                  onChange={e => onLosObserverHeightChange(Number(e.target.value))}
+                  className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer hover:bg-gray-300 transition-colors"
+                />
+              </div>
+            )}
+            {onLosRadiusChange && losRadiusM !== undefined && (
+              <div className="mb-1">
+                <label className="text-xs font-medium text-gray-700 block mb-1">
+                  Range (radius): {losRadiusM} m
+                </label>
+                <input
+                  type="range"
+                  min={100}
+                  max={500}
+                  step={10}
+                  value={losRadiusM}
+                  onChange={e => onLosRadiusChange(Number(e.target.value))}
+                  className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer hover:bg-gray-300 transition-colors"
+                />
+                <div className="text-[11px] text-gray-500 mt-1">
+                  Radius for LOS‑beregning (ikke diameter)
+                </div>
+              </div>
+            )}
+          </div>
         )}
       </div>
       
@@ -970,7 +1031,9 @@ export default function SettingsMenu({
             showZoomButtons,
             zoomButtonsX,
             zoomButtonsY,
-            zoomButtonsSide
+            zoomButtonsSide,
+            losObserverHeightM,
+            losRadiusM
           };
           localStorage.setItem('aware_settings_defaults', JSON.stringify(defaults));
           setShowDefaultsSaved(true);

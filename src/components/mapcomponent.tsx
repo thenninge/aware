@@ -104,6 +104,9 @@ interface MapComponentProps {
   zoomButtonsX?: number;
   zoomButtonsY?: number;
   zoomButtonsSide?: 'left' | 'right';
+  // LOS
+  losObserverHeightM?: number;
+  losRadiusM?: number;
 }
 
 interface CategoryFilter {
@@ -933,6 +936,8 @@ export default function MapComponent({
   zoomButtonsX = 8,
   zoomButtonsY = 64,
   zoomButtonsSide = 'left',
+  losObserverHeightM = 5,
+  losRadiusM = 300,
 }: MapComponentProps) {
   const [showTargetDialog, setShowTargetDialog] = useState(false);
   const instanceId = useRef(Math.random());
@@ -968,10 +973,10 @@ export default function MapComponent({
   const [isLosLoadingSdk, setIsLosLoadingSdk] = useState(false);
   const los = useViewshed({
     apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
-    radiusM: 350,
+    radiusM: losRadiusM,
     rays: 180,
     samples: 64,
-    observerHeightM: 5,
+    observerHeightM: losObserverHeightM,
     targetHeightM: 0,
     batchSize: 12,
   });
@@ -3166,7 +3171,7 @@ export default function MapComponent({
         {mode === 'aware' && (
           <ViewshedLeafletOverlay data={los.data} />
         )}
-
+        
         {/* Tracking controller for søk-modus */}
         <TrackingController 
           isTracking={isTracking}

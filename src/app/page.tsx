@@ -67,6 +67,9 @@ export default function Home() {
   const [isTracking, setIsTracking] = useState(false);
   const [trackingPoints, setTrackingPoints] = useState<Position[]>([]);
   const [batterySaver, setBatterySaver] = useState(false);
+  // LOS settings
+  const [losObserverHeightM, setLosObserverHeightM] = useState(5);
+  const [losRadiusM, setLosRadiusM] = useState(300);
   
   // Hunting area state
   const [huntingAreas, setHuntingAreas] = useState<HuntingArea[]>([]);
@@ -175,6 +178,8 @@ export default function Home() {
         if (defaults.zoomButtonsX !== undefined) setZoomButtonsX(defaults.zoomButtonsX);
         if (defaults.zoomButtonsY !== undefined) setZoomButtonsY(defaults.zoomButtonsY);
         if (defaults.zoomButtonsSide !== undefined) setZoomButtonsSide(defaults.zoomButtonsSide);
+        if (defaults.losObserverHeightM !== undefined) setLosObserverHeightM(defaults.losObserverHeightM);
+        if (defaults.losRadiusM !== undefined) setLosRadiusM(defaults.losRadiusM);
       } catch (e) {
         console.error('Error loading defaults:', e);
       }
@@ -618,6 +623,10 @@ export default function Home() {
             onZoomButtonsYChange={setZoomButtonsY}
             zoomButtonsSide={zoomButtonsSide}
             onZoomButtonsSideChange={setZoomButtonsSide}
+          losObserverHeightM={losObserverHeightM}
+          losRadiusM={losRadiusM}
+          onLosObserverHeightChange={setLosObserverHeightM}
+          onLosRadiusChange={setLosRadiusM}
           />
         </div>
       )}
@@ -710,6 +719,8 @@ export default function Home() {
         zoomButtonsX={zoomButtonsX}
         zoomButtonsY={zoomButtonsY}
         zoomButtonsSide={zoomButtonsSide}
+        losObserverHeightM={losObserverHeightM}
+        losRadiusM={losRadiusM}
         showHuntingBoundary={showHuntingBoundary}
         huntingAreas={huntingAreas}
         activeHuntingAreaId={activeHuntingAreaId}
