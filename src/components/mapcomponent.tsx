@@ -201,6 +201,9 @@ function MapController({
     if (!map) return;
     try {
       if (lockInteractions) {
+        // prevent body scroll/bounce on mobile while modal open
+        const prevOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
         map.dragging.disable();
         map.scrollWheelZoom.disable();
         map.boxZoom.disable();
@@ -208,6 +211,16 @@ function MapController({
         // @ts-ignore
         if (map.touchZoom) map.touchZoom.disable();
         map.doubleClickZoom.disable();
+        return () => {
+          document.body.style.overflow = prevOverflow;
+          map.dragging.enable();
+          map.scrollWheelZoom.enable();
+          map.boxZoom.enable();
+          map.keyboard.enable();
+          // @ts-ignore
+          if (map.touchZoom) map.touchZoom.enable();
+          map.doubleClickZoom.enable();
+        };
       } else {
         map.dragging.enable();
         map.scrollWheelZoom.enable();
@@ -3140,6 +3153,7 @@ export default function MapComponent({
         ['--zoom-top' as any]: `${zoomButtonsY}px`,
         ['--zoom-left' as any]: `${zoomButtonsSide === 'left' ? zoomButtonsX : 8}px`,
         ['--zoom-right' as any]: `${zoomButtonsSide === 'right' ? zoomButtonsX : 8}px`,
+        overflow: isAnyModalOpen ? 'hidden' as any : undefined,
       }}
     >
       {/* Google Maps background layer disabled when using vt tiles via Leaflet */}
@@ -4898,6 +4912,12 @@ export default function MapComponent({
                   padding: '12px 0',
                   margin: '-12px 0'
                 }}
+                onPointerDown={(e) => e.stopPropagation()}
+                onPointerMove={(e) => e.stopPropagation()}
+                onTouchStart={(e) => e.stopPropagation()}
+                onTouchMove={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+                onMouseMove={(e) => e.stopPropagation()}
               />
       </div>
 
@@ -5069,6 +5089,12 @@ export default function MapComponent({
                   padding: '12px 0',
                   margin: '-12px 0'
                 }}
+                onPointerDown={(e) => e.stopPropagation()}
+                onPointerMove={(e) => e.stopPropagation()}
+                onTouchStart={(e) => e.stopPropagation()}
+                onTouchMove={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+                onMouseMove={(e) => e.stopPropagation()}
               />
             </div>
             <div className="flex justify-between items-center mt-2 gap-2">
