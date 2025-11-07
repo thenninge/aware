@@ -62,7 +62,7 @@ export default function Home() {
   const [showFinds, setShowFinds] = useState(true);
   const [showShots, setShowShots] = useState(true); // For Aware-mode
   const [showTracks, setShowTracks] = useState(true); // For Aware-mode
-  const [showHuntingBoundaryByMode, setShowHuntingBoundaryByMode] = useState<Record<'aware' | 'track' | 'søk', boolean>>({ aware: false, track: false, søk: false });
+  const [showHuntingBoundaryByMode, setShowHuntingBoundaryByMode] = useState<Record<'aware' | 'track' | 'søk', boolean>>({ aware: true, track: true, søk: true });
   const showHuntingBoundary = showHuntingBoundaryByMode[mode]; // mode-specific
   const [isTracking, setIsTracking] = useState(false);
   const [trackingPoints, setTrackingPoints] = useState<Position[]>([]);
