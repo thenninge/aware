@@ -46,6 +46,13 @@ body {
   line-height: 24px;
 }
 
+/* Force dark text on native selects/options (iOS Safari contrast fix) */
+select, select option {
+  color: #111827 !important; /* gray-900 */
+  -webkit-text-fill-color: #111827;
+  background-color: #ffffff;
+}
+
 /* Skjul Next.js Turbopack overlay-ikonet i dev */
 #__nextjs-turbopack-overlay { display: none !important; }
 
