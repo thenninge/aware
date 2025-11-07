@@ -47,6 +47,9 @@ interface FilterMenuProps {
   onSync?: () => void;
   batterySaver?: boolean;
   onBatterySaverChange?: (v: boolean) => void;
+  // Shoot quick filter
+  targetRangeMeters?: number;
+  onTargetRangeChange?: (v: number) => void;
 }
 
 const categoryLabels: Record<keyof CategoryFilter, string> = {
@@ -58,7 +61,7 @@ const categoryLabels: Record<keyof CategoryFilter, string> = {
   isolated_dwelling: 'Enkeltbolig',
 };
 
-export default function FilterMenu({ categoryFilters, onCategoryChange, radius, onRadiusChange, showMarkers, onShowMarkersChange, orientationMode, onOrientationModeChange, categoryConfigs, showOnlyLastShot, onShowOnlyLastShotChange, mode, showAllTracksAndFinds, onShowAllTracksAndFindsChange, showObservations, onShowObservationsChange, showFinds, onShowFindsChange, showShots, onShowShotsChange, showTracks, onShowTracksChange, showHuntingBoundary, onShowHuntingBoundaryChange, onSync, showSearchTracks, onShowSearchTracksChange, showSearchFinds, onShowSearchFindsChange, batterySaver, onBatterySaverChange }: FilterMenuProps) {
+export default function FilterMenu({ categoryFilters, onCategoryChange, radius, onRadiusChange, showMarkers, onShowMarkersChange, orientationMode, onOrientationModeChange, categoryConfigs, showOnlyLastShot, onShowOnlyLastShotChange, mode, showAllTracksAndFinds, onShowAllTracksAndFindsChange, showObservations, onShowObservationsChange, showFinds, onShowFindsChange, showShots, onShowShotsChange, showTracks, onShowTracksChange, showHuntingBoundary, onShowHuntingBoundaryChange, onSync, showSearchTracks, onShowSearchTracksChange, showSearchFinds, onShowSearchFindsChange, batterySaver, onBatterySaverChange, targetRangeMeters, onTargetRangeChange }: FilterMenuProps) {
   return (
     <div className="bg-white rounded-lg shadow-lg p-4 min-w-[220px] max-w-xs">
       <div className="flex items-center justify-between mb-2">
@@ -195,6 +198,23 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
       {/* Shoot-mode (track) specific filters */}
       {mode === 'track' && (
         <>
+          {/* Target range slider for Shoot quick filter */}
+          {onTargetRangeChange && (
+            <div className="mb-3">
+              <label className="text-xs font-medium text-gray-700 block mb-1">
+                Target range: {targetRangeMeters ?? 500}m
+              </label>
+              <input
+                type="range"
+                min={200}
+                max={1000}
+                step={50}
+                value={targetRangeMeters ?? 500}
+                onChange={e => onTargetRangeChange(Number(e.target.value))}
+                className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer hover:bg-gray-300 transition-colors"
+              />
+            </div>
+          )}
           {/* Vis skuddpar */}
           {showShots !== undefined && onShowShotsChange && (
             <div className="mb-3">

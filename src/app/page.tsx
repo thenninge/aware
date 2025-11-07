@@ -84,6 +84,7 @@ export default function Home() {
   const [shotColor, setShotColor] = useState('#2563eb'); // blue
   const [targetColor, setTargetColor] = useState('#dc2626'); // red
   const [targetLineWeight, setTargetLineWeight] = useState(4); // pixels
+  const [targetRangeSetting, setTargetRangeSetting] = useState(500); // meters (200-1000)
   
   // State for valgt treffpunkt i søk-modus
   const [selectedTargetIndex, setSelectedTargetIndex] = useState(0);
@@ -637,6 +638,8 @@ export default function Home() {
           onSync={handleSyncFromFilter}
           batterySaver={batterySaver}
           onBatterySaverChange={setBatterySaver}
+          targetRangeMeters={targetRangeSetting}
+          onTargetRangeChange={setTargetRangeSetting}
         />
         </div>
       )}
@@ -685,6 +688,7 @@ export default function Home() {
         shotColor={shotColor}
         targetColor={targetColor}
         targetLineWeight={targetLineWeight}
+        targetRangeSetting={targetRangeSetting}
         showHuntingBoundary={showHuntingBoundary}
         huntingAreas={huntingAreas}
         activeHuntingAreaId={activeHuntingAreaId}

@@ -96,6 +96,7 @@ interface MapComponentProps {
   onCompassModeChange?: (mode: 'off' | 'on') => void;
   onCompassLockedChange?: (locked: boolean) => void;
   batterySaver?: boolean;
+  targetRangeSetting?: number;
 }
 
 interface CategoryFilter {
@@ -913,6 +914,7 @@ export default function MapComponent({
   onCompassModeChange,
   onCompassLockedChange,
   batterySaver = false,
+  targetRangeSetting = 500,
 }: MapComponentProps) {
   const [showTargetDialog, setShowTargetDialog] = useState(false);
   const instanceId = useRef(Math.random());
@@ -2330,7 +2332,7 @@ export default function MapComponent({
   // --- For interaktiv target-pos modal ---
   const [showTargetRadiusModal, setShowTargetRadiusModal] = useState(false);
   const [showTargetDirectionUI, setShowTargetDirectionUI] = useState(false);
-  const [targetRange, setTargetRange] = useState(250); // Default 250m
+  const [targetRange, setTargetRange] = useState(500); // Default 500m
   const [targetDirection, setTargetDirection] = useState(0); // Startverdi 0 (nord)
   const [previewTarget, setPreviewTarget] = useState<Position | null>(null);
   const [lockedShotPosition, setLockedShotPosition] = useState<Position | null>(null);
@@ -2579,6 +2581,12 @@ export default function MapComponent({
     if (currentPosition) {
       // Lås posisjonen for target-seleksjon
       setLockedShotPosition({ ...currentPosition });
+      // Sett startverdi for skuddavstand fra quick filter-setting
+      if (typeof targetRangeSetting === 'number') {
+        setTargetRange(targetRangeSetting);
+      } else {
+        setTargetRange(500);
+      }
       // Start target-seleksjon flyten direkte
       setShowTargetRadiusModal(true);
     }
@@ -4728,9 +4736,9 @@ export default function MapComponent({
             <div className="flex items-center gap-2">
               <input
                 type="number"
-                min={50}
-                max={500}
-                step={5}
+                min={200}
+                max={1000}
+                step={50}
                 value={targetRange}
                 onChange={e => setTargetRange(Number(e.target.value))}
                 className="w-16 border rounded px-2 py-1 text-[16px] text-black"
@@ -4738,9 +4746,9 @@ export default function MapComponent({
               <span className="text-xs text-black">m</span>
               <input
                 type="range"
-                min={50}
-                max={500}
-                step={5}
+                min={200}
+                max={1000}
+                step={50}
                 value={targetRange}
                 onChange={e => setTargetRange(Number(e.target.value))}
                 className="flex-1 touch-manipulation slider-thumb-25"

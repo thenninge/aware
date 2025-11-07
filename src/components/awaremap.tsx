@@ -99,6 +99,7 @@ interface AwareMapProps {
   onCompassModeChange?: (mode: 'off' | 'on') => void;
   onCompassLockedChange?: (locked: boolean) => void;
   batterySaver?: boolean;
+  targetRangeSetting?: number;
 }
 
 export default function AwareMap({
@@ -164,6 +165,7 @@ export default function AwareMap({
   onCompassModeChange,
   onCompassLockedChange,
   batterySaver,
+  targetRangeSetting,
 }: AwareMapProps) {
   const [isClient, setIsClient] = useState(false);
   const [hasError, setHasError] = useState(false);
@@ -244,6 +246,7 @@ export default function AwareMap({
         shotColor={shotColor}
         targetColor={targetColor}
         targetLineWeight={targetLineWeight}
+        targetRangeSetting={targetRangeSetting}
         showHuntingBoundary={showHuntingBoundary}
         huntingAreas={huntingAreas}
         activeHuntingAreaId={activeHuntingAreaId}
