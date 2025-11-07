@@ -106,6 +106,7 @@ interface AwareMapProps {
   zoomButtonsSide?: 'left' | 'right';
   losObserverHeightM?: number;
   losRadiusM?: number;
+  losColor?: string;
 }
 
 export default function AwareMap({
@@ -178,6 +179,7 @@ export default function AwareMap({
   zoomButtonsSide,
   losObserverHeightM,
   losRadiusM,
+  losColor,
 }: AwareMapProps) {
   const [isClient, setIsClient] = useState(false);
   const [hasError, setHasError] = useState(false);
@@ -266,6 +268,7 @@ export default function AwareMap({
         // LOS settings
         losObserverHeightM={losObserverHeightM}
         losRadiusM={losRadiusM}
+        losColor={losColor}
         showHuntingBoundary={showHuntingBoundary}
         huntingAreas={huntingAreas}
         activeHuntingAreaId={activeHuntingAreaId}

@@ -80,6 +80,8 @@ interface SettingsMenuProps {
   losRadiusM?: number;
   onLosObserverHeightChange?: (v: number) => void;
   onLosRadiusChange?: (v: number) => void;
+  losColor?: string;
+  onLosColorChange?: (v: string) => void;
 }
 
 export interface HuntingArea {
@@ -153,7 +155,9 @@ export default function SettingsMenu({
   losObserverHeightM,
   losRadiusM,
   onLosObserverHeightChange,
-  onLosRadiusChange
+  onLosRadiusChange,
+  losColor,
+  onLosColorChange
 }: SettingsMenuProps & { currentCenter?: { lat: number, lng: number } }) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [showHomeSaved, setShowHomeSaved] = useState(false);
@@ -564,6 +568,19 @@ export default function SettingsMenu({
                 <div className="text-[11px] text-gray-500 mt-1">
                   Radius for LOS‑beregning (ikke diameter)
                 </div>
+              </div>
+            )}
+            {onLosColorChange && (
+              <div className="mt-3">
+                <label className="text-xs font-medium text-gray-700 block mb-1">
+                  LOS color
+                </label>
+                <input
+                  type="color"
+                  value={losColor ?? '#00FFAA'}
+                  onChange={e => onLosColorChange(e.target.value)}
+                  className="w-10 h-6 p-0 border rounded cursor-pointer"
+                />
               </div>
             )}
           </div>
@@ -1033,7 +1050,8 @@ export default function SettingsMenu({
             zoomButtonsY,
             zoomButtonsSide,
             losObserverHeightM,
-            losRadiusM
+            losRadiusM,
+            losColor
           };
           localStorage.setItem('aware_settings_defaults', JSON.stringify(defaults));
           setShowDefaultsSaved(true);

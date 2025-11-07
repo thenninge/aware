@@ -70,6 +70,7 @@ export default function Home() {
   // LOS settings
   const [losObserverHeightM, setLosObserverHeightM] = useState(5);
   const [losRadiusM, setLosRadiusM] = useState(350);
+  const [losColor, setLosColor] = useState<string>('#00FFAA');
   
   // Hunting area state
   const [huntingAreas, setHuntingAreas] = useState<HuntingArea[]>([]);
@@ -180,6 +181,7 @@ export default function Home() {
         if (defaults.zoomButtonsSide !== undefined) setZoomButtonsSide(defaults.zoomButtonsSide);
         if (defaults.losObserverHeightM !== undefined) setLosObserverHeightM(defaults.losObserverHeightM);
         if (defaults.losRadiusM !== undefined) setLosRadiusM(defaults.losRadiusM);
+        if (defaults.losColor !== undefined) setLosColor(defaults.losColor);
       } catch (e) {
         console.error('Error loading defaults:', e);
       }
@@ -620,13 +622,15 @@ export default function Home() {
             zoomButtonsX={zoomButtonsX}
             zoomButtonsY={zoomButtonsY}
             onZoomButtonsXChange={setZoomButtonsX}
-            onZoomButtonsYChange={setZoomButtonsY}
-            zoomButtonsSide={zoomButtonsSide}
-            onZoomButtonsSideChange={setZoomButtonsSide}
+          onZoomButtonsYChange={setZoomButtonsY}
+          zoomButtonsSide={zoomButtonsSide}
+          onZoomButtonsSideChange={setZoomButtonsSide}
           losObserverHeightM={losObserverHeightM}
           losRadiusM={losRadiusM}
           onLosObserverHeightChange={setLosObserverHeightM}
           onLosRadiusChange={setLosRadiusM}
+          losColor={losColor}
+          onLosColorChange={setLosColor}
           />
         </div>
       )}
@@ -637,8 +641,6 @@ export default function Home() {
           onCategoryChange={handleCategoryChange}
           radius={radius}
           onRadiusChange={handleRadiusChange}
-          losRangeMeters={losRadiusM}
-          onLosRangeChange={setLosRadiusM}
           showMarkers={showMarkers}
           onShowMarkersChange={handleShowMarkersChange}
           orientationMode={orientationMode}
@@ -668,6 +670,10 @@ export default function Home() {
           onBatterySaverChange={setBatterySaver}
           targetRangeMeters={targetRangeSetting}
           onTargetRangeChange={setTargetRangeSetting}
+          losRangeMeters={losRadiusM}
+          onLosRangeChange={setLosRadiusM}
+          losHeightMeters={losObserverHeightM}
+          onLosHeightChange={setLosObserverHeightM}
         />
         </div>
       )}

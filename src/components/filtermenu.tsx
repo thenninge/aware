@@ -23,6 +23,9 @@ interface FilterMenuProps {
   // LOS range control (aware quick filter)
   losRangeMeters?: number;
   onLosRangeChange?: (v: number) => void;
+  // LOS height control (aware quick filter)
+  losHeightMeters?: number;
+  onLosHeightChange?: (v: number) => void;
   showMarkers: boolean;
   onShowMarkersChange: (show: boolean) => void;
   orientationMode: 'north' | 'heading';
@@ -64,7 +67,7 @@ const categoryLabels: Record<keyof CategoryFilter, string> = {
   isolated_dwelling: 'Enkeltbolig',
 };
 
-export default function FilterMenu({ categoryFilters, onCategoryChange, radius, onRadiusChange, losRangeMeters, onLosRangeChange, showMarkers, onShowMarkersChange, orientationMode, onOrientationModeChange, categoryConfigs, showOnlyLastShot, onShowOnlyLastShotChange, mode, showAllTracksAndFinds, onShowAllTracksAndFindsChange, showObservations, onShowObservationsChange, showFinds, onShowFindsChange, showShots, onShowShotsChange, showTracks, onShowTracksChange, showHuntingBoundary, onShowHuntingBoundaryChange, onSync, showSearchTracks, onShowSearchTracksChange, showSearchFinds, onShowSearchFindsChange, batterySaver, onBatterySaverChange, targetRangeMeters, onTargetRangeChange }: FilterMenuProps) {
+export default function FilterMenu({ categoryFilters, onCategoryChange, radius, onRadiusChange, losRangeMeters, onLosRangeChange, losHeightMeters, onLosHeightChange, showMarkers, onShowMarkersChange, orientationMode, onOrientationModeChange, categoryConfigs, showOnlyLastShot, onShowOnlyLastShotChange, mode, showAllTracksAndFinds, onShowAllTracksAndFindsChange, showObservations, onShowObservationsChange, showFinds, onShowFindsChange, showShots, onShowShotsChange, showTracks, onShowTracksChange, showHuntingBoundary, onShowHuntingBoundaryChange, onSync, showSearchTracks, onShowSearchTracksChange, showSearchFinds, onShowSearchFindsChange, batterySaver, onBatterySaverChange, targetRangeMeters, onTargetRangeChange }: FilterMenuProps) {
   return (
     <div className="bg-white rounded-lg shadow-lg p-4 min-w-[220px] max-w-xs">
       <div className="flex items-center justify-between mb-2">
@@ -104,6 +107,23 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
             step={10}
             value={losRangeMeters ?? 350}
             onChange={e => onLosRangeChange(Number(e.target.value))}
+            className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer hover:bg-gray-300 transition-colors"
+          />
+        </div>
+      )}
+      {/* LOS height in aware quick filter */}
+      {mode === 'aware' && onLosHeightChange && (
+        <div className="mb-3">
+          <label className="text-xs font-medium text-gray-700 block mb-1">
+            LOS-height: {losHeightMeters ?? 5}m
+          </label>
+          <input
+            type="range"
+            min={0}
+            max={15}
+            step={1}
+            value={losHeightMeters ?? 5}
+            onChange={e => onLosHeightChange(Number(e.target.value))}
             className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer hover:bg-gray-300 transition-colors"
           />
         </div>
