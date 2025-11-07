@@ -43,7 +43,7 @@ export default function ViewshedLeafletOverlay({
         <Polygon
           key={`los-hole-${idx}`}
           positions={quad.map(p => [p.lat, p.lng]) as [number, number][]}
-          pathOptions={{ color: '#ef4444', weight: 2, opacity: 0.8, fillColor: '#ef4444', fillOpacity: 0.12 }}
+          pathOptions={{ color: '#ef4444', weight: 0, opacity: 0, fillColor: '#ef4444', fillOpacity: 0.12 }}
         />
       ))}
       <CircleMarker

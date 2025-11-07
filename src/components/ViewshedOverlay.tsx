@@ -69,9 +69,8 @@ export function ViewshedOverlay({
     if (data.holes && data.holes.length > 0) {
       holeRefs.current = data.holes.map(path => new google.maps.Polygon({
         paths: path,
-        strokeColor: '#ef4444',
-        strokeOpacity: 0.8,
-        strokeWeight: 2,
+        strokeOpacity: 0,
+        strokeWeight: 0,
         fillColor: '#ef4444',
         fillOpacity: 0.12,
         map
