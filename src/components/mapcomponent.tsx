@@ -4742,7 +4742,7 @@ export default function MapComponent({
                 type="number"
                 min={200}
                 max={Math.max(200, Math.min(1000, targetRangeSetting || 1000))}
-                step={50}
+                step={Math.max(1, Math.round((Math.max(200, Math.min(1000, targetRangeSetting || 1000)) - 200) * 0.01))}
                 value={targetRange}
                 onChange={e => setTargetRange(Number(e.target.value))}
                 className="w-16 border rounded px-2 py-1 text-[16px] text-black"
@@ -4752,7 +4752,7 @@ export default function MapComponent({
                 type="range"
                 min={200}
                 max={Math.max(200, Math.min(1000, targetRangeSetting || 1000))}
-                step={50}
+                step={Math.max(1, Math.round((Math.max(200, Math.min(1000, targetRangeSetting || 1000)) - 200) * 0.01))}
                 value={targetRange}
                 onChange={e => setTargetRange(Number(e.target.value))}
                 className="flex-1 touch-manipulation slider-thumb-25"
