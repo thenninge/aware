@@ -15,6 +15,8 @@ import GoogleMapSmart from './GoogleMapSmart';
 import { Dialog } from '@headlessui/react';
 import { createPortal } from 'react-dom';
 import { useCompass } from '@/hooks/useCompass';
+import { useViewshed } from '@/components/useViewshed';
+import ViewshedLeafletOverlay from '@/components/ViewshedLeafletOverlay';
 
 interface Position {
   lat: number;
@@ -141,6 +143,8 @@ function MapController({
   batterySaver = false,
   onZoomChange,
   onCenterChange,
+  isLosAwaitingClick = false,
+  onLosOriginSelected,
 }: { 
   onPositionChange?: (position: Position) => void; 
   radius: number;
@@ -163,6 +167,8 @@ function MapController({
   batterySaver?: boolean;
   onZoomChange?: (zoom: number) => void;
   onCenterChange?: (center: { lat: number; lng: number }) => void;
+  isLosAwaitingClick?: boolean;
+  onLosOriginSelected?: (pos: Position) => void;
 }) {
   const map = useMap();
   const [currentPosition, setCurrentPosition] = useState<Position>({ lat: 60.424834440433045, lng: 12.408766398367092 });
@@ -214,6 +220,9 @@ function MapController({
         };
         setCurrentPosition(pos);
         onPositionChange?.(pos); // Update parent component when user clicks
+        if (isLosAwaitingClick && mode === 'aware') {
+          onLosOriginSelected?.(pos);
+        }
         // Don't auto-zoom - let user control zoom level
       };
 
@@ -953,6 +962,23 @@ export default function MapComponent({
   const prevCompassModeRef = useRef<'off' | 'on'>('off');
   const [invertSlices, setInvertSlices] = useState(false);
   const [savedPairs, setSavedPairs] = useState<PointPair[]>([]);
+  // LOS state
+  const [isLosAwaitingClick, setIsLosAwaitingClick] = useState(false);
+  const los = useViewshed({
+    apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+    radiusM: 350,
+    rays: 180,
+    samples: 64,
+    observerHeightM: 5,
+    targetHeightM: 0,
+    batchSize: 12,
+  });
+  const handleLosOriginSelected = useCallback((pos: Position) => {
+    if (los.status === 'running') return;
+    los.clear();
+    los.runAt({ lat: pos.lat, lng: pos.lng });
+    setIsLosAwaitingClick(false);
+  }, [los]);
   
   // Use props or default to 'off'
   const compassMode = externalCompassMode || 'off';
@@ -3108,8 +3134,15 @@ export default function MapComponent({
           batterySaver={batterySaver}
           onZoomChange={(z) => setLeafletZoom(z)}
           onCenterChange={(c) => setGoogleCenter(c)}
+          isLosAwaitingClick={isLosAwaitingClick}
+          onLosOriginSelected={handleLosOriginSelected}
         />
         
+        {/* Viewshed overlay (Leaflet polygon) */}
+        {mode === 'aware' && (
+          <ViewshedLeafletOverlay data={los.data} />
+        )}
+
         {/* Tracking controller for søk-modus */}
         <TrackingController 
           isTracking={isTracking}
@@ -4602,6 +4635,21 @@ export default function MapComponent({
 
       {/* Scan & Live Buttons - Bottom Right */}
       <div className="fixed bottom-4 right-4 sm:bottom-4 sm:right-4 bottom-2 right-2 z-[2000] flex flex-col gap-2" style={{ pointerEvents: 'auto' }}>
+          {/* LOS (Line of Sight) knapp over ❗ i aware-mode */}
+          {mode === 'aware' && (
+            <button
+              onClick={() => setIsLosAwaitingClick(true)}
+              className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
+                isScanning
+                  ? 'bg-gray-400 cursor-not-allowed text-white'
+                  : 'bg-gray-600 hover:bg-gray-700 text-white'
+              }`}
+              title={'LOS: klikk i kartet for sikt'}
+              disabled={isScanning}
+            >
+              {'👁️'}
+            </button>
+          )}
           {/* Invertert bebyggelses-scan knapp (❗) over 🔍 i aware-mode */}
           {mode === 'aware' && (
             <button
