@@ -20,6 +20,9 @@ interface FilterMenuProps {
   onCategoryChange: (category: keyof CategoryFilter) => void;
   radius: number;
   onRadiusChange: (radius: number) => void;
+  // LOS range control (aware quick filter)
+  losRangeMeters?: number;
+  onLosRangeChange?: (v: number) => void;
   showMarkers: boolean;
   onShowMarkersChange: (show: boolean) => void;
   orientationMode: 'north' | 'heading';
@@ -61,7 +64,7 @@ const categoryLabels: Record<keyof CategoryFilter, string> = {
   isolated_dwelling: 'Enkeltbolig',
 };
 
-export default function FilterMenu({ categoryFilters, onCategoryChange, radius, onRadiusChange, showMarkers, onShowMarkersChange, orientationMode, onOrientationModeChange, categoryConfigs, showOnlyLastShot, onShowOnlyLastShotChange, mode, showAllTracksAndFinds, onShowAllTracksAndFindsChange, showObservations, onShowObservationsChange, showFinds, onShowFindsChange, showShots, onShowShotsChange, showTracks, onShowTracksChange, showHuntingBoundary, onShowHuntingBoundaryChange, onSync, showSearchTracks, onShowSearchTracksChange, showSearchFinds, onShowSearchFindsChange, batterySaver, onBatterySaverChange, targetRangeMeters, onTargetRangeChange }: FilterMenuProps) {
+export default function FilterMenu({ categoryFilters, onCategoryChange, radius, onRadiusChange, losRangeMeters, onLosRangeChange, showMarkers, onShowMarkersChange, orientationMode, onOrientationModeChange, categoryConfigs, showOnlyLastShot, onShowOnlyLastShotChange, mode, showAllTracksAndFinds, onShowAllTracksAndFindsChange, showObservations, onShowObservationsChange, showFinds, onShowFindsChange, showShots, onShowShotsChange, showTracks, onShowTracksChange, showHuntingBoundary, onShowHuntingBoundaryChange, onSync, showSearchTracks, onShowSearchTracksChange, showSearchFinds, onShowSearchFindsChange, batterySaver, onBatterySaverChange, targetRangeMeters, onTargetRangeChange }: FilterMenuProps) {
   return (
     <div className="bg-white rounded-lg shadow-lg p-4 min-w-[220px] max-w-xs">
       <div className="flex items-center justify-between mb-2">
@@ -72,7 +75,7 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
       {mode === 'aware' && (
         <div className="mb-3">
           <label className="text-xs font-medium text-gray-700 block mb-1">
-            Radius: {radius}m
+            Aware-range: {radius}m
           </label>
           <input
             type="range"
@@ -85,6 +88,23 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
             style={{
               background: 'linear-gradient(to right, #3b82f6 0%, #3b82f6 ' + ((radius - 1000) / 3000 * 100) + '%, #e5e7eb ' + ((radius - 1000) / 3000 * 100) + '%, #e5e7eb 100%)'
             }}
+          />
+        </div>
+      )}
+      {/* LOS range in aware quick filter */}
+      {mode === 'aware' && onLosRangeChange && (
+        <div className="mb-3">
+          <label className="text-xs font-medium text-gray-700 block mb-1">
+            LOS-range: {losRangeMeters ?? 350}m
+          </label>
+          <input
+            type="range"
+            min={100}
+            max={500}
+            step={10}
+            value={losRangeMeters ?? 350}
+            onChange={e => onLosRangeChange(Number(e.target.value))}
+            className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer hover:bg-gray-300 transition-colors"
           />
         </div>
       )}

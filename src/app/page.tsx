@@ -69,7 +69,7 @@ export default function Home() {
   const [batterySaver, setBatterySaver] = useState(false);
   // LOS settings
   const [losObserverHeightM, setLosObserverHeightM] = useState(5);
-  const [losRadiusM, setLosRadiusM] = useState(300);
+  const [losRadiusM, setLosRadiusM] = useState(350);
   
   // Hunting area state
   const [huntingAreas, setHuntingAreas] = useState<HuntingArea[]>([]);
@@ -637,6 +637,8 @@ export default function Home() {
           onCategoryChange={handleCategoryChange}
           radius={radius}
           onRadiusChange={handleRadiusChange}
+          losRangeMeters={losRadiusM}
+          onLosRangeChange={setLosRadiusM}
           showMarkers={showMarkers}
           onShowMarkersChange={handleShowMarkersChange}
           orientationMode={orientationMode}
