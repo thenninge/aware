@@ -60,6 +60,11 @@ select, select option {
   z-index: 1500; /* above map but below our top menus (z~2000) */
 }
 
+/* Hide zoom controls when toggled off via data attribute on container */
+[data-show-zoom='false'] .leaflet-control-zoom {
+  display: none !important;
+}
+
 /* Skjul Next.js Turbopack overlay-ikonet i dev */
 #__nextjs-turbopack-overlay { display: none !important; }
 
