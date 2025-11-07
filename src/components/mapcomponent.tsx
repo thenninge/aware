@@ -150,6 +150,7 @@ function MapController({
   onCenterChange,
   isLosAwaitingClick = false,
   onLosOriginSelected,
+  lockInteractions = false,
 }: { 
   onPositionChange?: (position: Position) => void; 
   radius: number;
@@ -174,6 +175,7 @@ function MapController({
   onCenterChange?: (center: { lat: number; lng: number }) => void;
   isLosAwaitingClick?: boolean;
   onLosOriginSelected?: (pos: Position) => void;
+  lockInteractions?: boolean;
 }) {
   const map = useMap();
   const [currentPosition, setCurrentPosition] = useState<Position>({ lat: 60.424834440433045, lng: 12.408766398367092 });
@@ -193,6 +195,32 @@ function MapController({
         });
     }
   }, []);
+
+  // Disable map interactions while modals/dialogs are open to prevent background panning during slider drag
+  useEffect(() => {
+    if (!map) return;
+    try {
+      if (lockInteractions) {
+        map.dragging.disable();
+        map.scrollWheelZoom.disable();
+        map.boxZoom.disable();
+        map.keyboard.disable();
+        // @ts-ignore
+        if (map.touchZoom) map.touchZoom.disable();
+        map.doubleClickZoom.disable();
+      } else {
+        map.dragging.enable();
+        map.scrollWheelZoom.enable();
+        map.boxZoom.enable();
+        map.keyboard.enable();
+        // @ts-ignore
+        if (map.touchZoom) map.touchZoom.enable();
+        map.doubleClickZoom.enable();
+      }
+    } catch (e) {
+      // no-op
+    }
+  }, [map, lockInteractions]);
 
   useEffect(() => {
     // Check if map and L are available
@@ -3161,6 +3189,7 @@ export default function MapComponent({
           onLoadingChange={setIsScanning}
           mode={mode}
           showOnlyLastShot={showOnlyLastShot}
+          lockInteractions={isAnyModalOpen}
           onSearchPositionChange={(pos) => {
             setSearchPosition(pos);
           }}
