@@ -2537,8 +2537,17 @@ export default function MapComponent({
           ...combinedPairsFallback,
           ...leftoverTreffpunktPairs,
         ];
-        
-        setSavedPairs(combinedPairs);
+        // 3) Dedupe by (id || coords) to avoid double-render after sync
+        const seen = new Set<string>();
+        const uniquePairs: PointPair[] = [];
+        for (const p of combinedPairs) {
+          const key = `${(p as any).id ?? ''}|${p.current ? `${p.current.lat},${p.current.lng}` : ''}|${p.target ? `${p.target.lat},${p.target.lng}` : ''}`;
+          if (!seen.has(key)) {
+            seen.add(key);
+            uniquePairs.push(p);
+          }
+        }
+        setSavedPairs(uniquePairs);
       }
     } catch (error) {
       console.error('Error fetching posts:', error);
@@ -3607,10 +3616,10 @@ export default function MapComponent({
                     <>
                         {last.current && (
                         <>
-                          <Circle
+                        <Circle
                               center={[last.current.lat, last.current.lng]}
                               radius={shotSize}
-                              pathOptions={{ color: shotColor, weight: 1.5, fillColor: shotColor, fillOpacity: 0.5 }}
+                              pathOptions={{ color: shotColor, weight: 1.5, opacity: 1, fillColor: shotColor, fillOpacity: 0.5 }}
                             >
                               {lastId && (
                                 <Popup>
@@ -3648,7 +3657,7 @@ export default function MapComponent({
                             <Circle
                               center={[last.target.lat, last.target.lng]}
                               radius={targetSize}
-                              pathOptions={{ color: targetColor, weight: 2, fillColor: targetColor, fillOpacity: 0.5 }}
+                              pathOptions={{ color: targetColor, weight: 2, opacity: 1, fillColor: targetColor, fillOpacity: 0.5 }}
                             >
                               {lastId && (
                                 <Popup>
@@ -3813,10 +3822,10 @@ export default function MapComponent({
                         <>
                           {last.current && (
                             <>
-                              <Circle
+                          <Circle
                                 center={[last.current.lat, last.current.lng]}
                                 radius={shotSize}
-                                pathOptions={{ color: shotColor, weight: 1.5, fillColor: shotColor, fillOpacity: 0.5 }}
+                          pathOptions={{ color: shotColor, weight: 1.5, opacity: 1, fillColor: shotColor, fillOpacity: 0.5 }}
                               >
                                 {lastId && (
                                   <Popup>
@@ -3854,7 +3863,7 @@ export default function MapComponent({
                               <Circle
                                 center={[last.target.lat, last.target.lng]}
                                 radius={targetSize}
-                                pathOptions={{ color: targetColor, weight: 2, fillColor: targetColor, fillOpacity: 0.5 }}
+                          pathOptions={{ color: targetColor, weight: 2, opacity: 1, fillColor: targetColor, fillOpacity: 0.5 }}
                               >
                                 {lastId && (
                                   <Popup>
@@ -4035,7 +4044,7 @@ export default function MapComponent({
                             <Circle
                               center={[last.current.lat, last.current.lng]}
                               radius={shotSize}
-                              pathOptions={{ color: shotColor, weight: 1.5, fillColor: shotColor, fillOpacity: 0.5 }}
+                          pathOptions={{ color: shotColor, weight: 1.5, opacity: 1, fillColor: shotColor, fillOpacity: 0.5 }}
                             >
                               {lastId && (
                                 <Popup>
@@ -4073,7 +4082,7 @@ export default function MapComponent({
                             <Circle
                               center={[last.target.lat, last.target.lng]}
                               radius={targetSize}
-                              pathOptions={{ color: targetColor, weight: 2, fillColor: targetColor, fillOpacity: 0.5 }}
+                          pathOptions={{ color: targetColor, weight: 2, opacity: 1, fillColor: targetColor, fillOpacity: 0.5 }}
                             >
                               {lastId && (
                                 <Popup>
