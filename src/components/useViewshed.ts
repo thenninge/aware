@@ -155,16 +155,27 @@ export function useViewshed(params: ViewshedParams) {
           for (let i = start; i < Math.min(start + batchSize, rays); i++) {
             const bearing = (i * 360) / rays;
             const end = destPoint(origin, bearing, radiusM);
-            jobs.push(
-              fetchProfile(origin as any, end as any, samples).then((p) => {
+            jobs.push((async () => {
+              let p;
+              const hasGoogle = typeof window !== 'undefined' && (window as any).google && (window as any).google.maps;
+              if (hasGoogle) {
+                p = await fetchProfile(origin as any, end as any, samples);
+              } else {
+                const url = new URL('/api/elevation', window.location.origin);
+                url.searchParams.set('path', `${origin.lat},${origin.lng}|${end.lat},${end.lng}`);
+                url.searchParams.set('samples', String(samples));
+                const r = await fetch(url.toString());
+                const j = await r.json();
+                if (j.status !== 'OK') throw new Error(j.status || 'ELEVATION_ERROR');
+                p = j.results as Array<{ location: LatLng; elevation: number }>;
+              }
                 endpoints[i] = visibleEndpoint(
                   origin,
-                  p,
+                p,
                   observerHeightM,
                   targetHeightM
                 );
-              })
-            );
+            })());
           }
           await Promise.all(jobs);
         }
