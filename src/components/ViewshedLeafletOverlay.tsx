@@ -25,7 +25,10 @@ export default function ViewshedLeafletOverlay({
       {data.path && data.path.length > 1 && (
         <Polygon
           positions={data.path.map((p) => [p.lat, p.lng]) as [number, number][]}
-          pathOptions={{ color, weight: 2, opacity: 0.8, fillOpacity: 0 }}
+          color={color}
+          weight={2}
+          opacity={0.8}
+          fillOpacity={0}
         />
       )}
       {/* Visible quads: fill only, no internal strokes */}
@@ -34,14 +37,22 @@ export default function ViewshedLeafletOverlay({
           <Polygon
             key={`los-quad-${idx}`}
             positions={quad.map(p => [p.lat, p.lng]) as [number, number][]}
-            pathOptions={{ color, weight: 0, opacity: 0, fillColor: color, fillOpacity: visibleOpacity }}
+            color={color}
+            weight={0}
+            opacity={0}
+            fillColor={color}
+            fillOpacity={visibleOpacity}
           />
         ))
       ) : (
         // Fallback: draw full wedge with stroke+fill (legacy)
         <Polygon
           positions={data.path.map((p) => [p.lat, p.lng]) as [number, number][]}
-          pathOptions={{ color, weight: 2, opacity: 0.8, fillColor: color, fillOpacity: visibleOpacity }}
+          color={color}
+          weight={2}
+          opacity={0.8}
+          fillColor={color}
+          fillOpacity={visibleOpacity}
         />
       )}
       {/* Non-visible holes: soft red fill, no stroke */}
@@ -49,7 +60,11 @@ export default function ViewshedLeafletOverlay({
         <Polygon
           key={`los-hole-${idx}`}
           positions={quad.map(p => [p.lat, p.lng]) as [number, number][]}
-          pathOptions={{ color: holeColor, weight: 0, opacity: 0, fillColor: holeColor, fillOpacity: holeOpacity }}
+          color={holeColor}
+          weight={0}
+          opacity={0}
+          fillColor={holeColor}
+          fillOpacity={holeOpacity}
         />
       ))}
       <CircleMarker
