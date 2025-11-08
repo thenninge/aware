@@ -8,11 +8,17 @@ export function ViewshedOverlay({
   data,
   strokeColor = '#00FFAA',
   fillColor = '#00FFAA',
+  fillOpacity = 0.25,
+  holeColor = '#ef4444',
+  holeOpacity = 0.12,
 }: {
   map: google.maps.Map | undefined;
   data: ViewshedData | null;
   strokeColor?: string;
   fillColor?: string;
+  fillOpacity?: number;
+  holeColor?: string;
+  holeOpacity?: number;
 }) {
   const outlineRef = useRef<google.maps.Polygon | null>(null);
   const quadRefs = useRef<google.maps.Polygon[]>([]);
@@ -50,7 +56,7 @@ export function ViewshedOverlay({
         strokeOpacity: 0,
         strokeWeight: 0,
         fillColor,
-        fillOpacity: 0.25,
+        fillOpacity,
         map
       }));
     } else {
@@ -60,7 +66,7 @@ export function ViewshedOverlay({
         strokeOpacity: 0.8,
         strokeWeight: 2,
         fillColor,
-        fillOpacity: 0.2,
+        fillOpacity,
         map,
       });
     }
@@ -71,8 +77,8 @@ export function ViewshedOverlay({
         paths: path,
         strokeOpacity: 0,
         strokeWeight: 0,
-        fillColor: '#ef4444',
-        fillOpacity: 0.12,
+        fillColor: holeColor,
+        fillOpacity: holeOpacity,
         map
       }));
     }

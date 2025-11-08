@@ -82,6 +82,12 @@ interface SettingsMenuProps {
   onLosRadiusChange?: (v: number) => void;
   losColor?: string;
   onLosColorChange?: (v: string) => void;
+  losHoleColor?: string;
+  onLosHoleColorChange?: (v: string) => void;
+  losOpacity?: number;
+  onLosOpacityChange?: (v: number) => void;
+  losHoleOpacity?: number;
+  onLosHoleOpacityChange?: (v: number) => void;
 }
 
 export interface HuntingArea {
@@ -157,7 +163,13 @@ export default function SettingsMenu({
   onLosObserverHeightChange,
   onLosRadiusChange,
   losColor,
-  onLosColorChange
+  onLosColorChange,
+  losHoleColor,
+  onLosHoleColorChange,
+  losOpacity,
+  onLosOpacityChange,
+  losHoleOpacity,
+  onLosHoleOpacityChange
 }: SettingsMenuProps & { currentCenter?: { lat: number, lng: number } }) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [showHomeSaved, setShowHomeSaved] = useState(false);
@@ -580,6 +592,51 @@ export default function SettingsMenu({
                   value={losColor ?? '#00FFAA'}
                   onChange={e => onLosColorChange(e.target.value)}
                   className="w-10 h-6 p-0 border rounded cursor-pointer"
+                />
+              </div>
+            )}
+            {onLosOpacityChange && (
+              <div className="mt-2">
+                <label className="text-xs font-medium text-gray-700 block mb-1">
+                  LOS opacity: {Math.round((losOpacity ?? 0.25) * 100)}%
+                </label>
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={losOpacity ?? 0.25}
+                  onChange={e => onLosOpacityChange(Number(e.target.value))}
+                  className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer hover:bg-gray-300 transition-colors"
+                />
+              </div>
+            )}
+            {onLosHoleColorChange && (
+              <div className="mt-3">
+                <label className="text-xs font-medium text-gray-700 block mb-1">
+                  Outside LOS color
+                </label>
+                <input
+                  type="color"
+                  value={losHoleColor ?? '#ef4444'}
+                  onChange={e => onLosHoleColorChange(e.target.value)}
+                  className="w-10 h-6 p-0 border rounded cursor-pointer"
+                />
+              </div>
+            )}
+            {onLosHoleOpacityChange && (
+              <div className="mt-2">
+                <label className="text-xs font-medium text-gray-700 block mb-1">
+                  Outside LOS opacity: {Math.round((losHoleOpacity ?? 0.12) * 100)}%
+                </label>
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={losHoleOpacity ?? 0.12}
+                  onChange={e => onLosHoleOpacityChange(Number(e.target.value))}
+                  className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer hover:bg-gray-300 transition-colors"
                 />
               </div>
             )}
@@ -1051,7 +1108,10 @@ export default function SettingsMenu({
             zoomButtonsSide,
             losObserverHeightM,
             losRadiusM,
-            losColor
+            losColor,
+            losHoleColor,
+            losOpacity,
+            losHoleOpacity
           };
           localStorage.setItem('aware_settings_defaults', JSON.stringify(defaults));
           setShowDefaultsSaved(true);

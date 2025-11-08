@@ -71,6 +71,9 @@ export default function Home() {
   const [losObserverHeightM, setLosObserverHeightM] = useState(5);
   const [losRadiusM, setLosRadiusM] = useState(350);
   const [losColor, setLosColor] = useState<string>('#00FFAA');
+  const [losHoleColor, setLosHoleColor] = useState<string>('#ef4444');
+  const [losOpacity, setLosOpacity] = useState<number>(0.25);
+  const [losHoleOpacity, setLosHoleOpacity] = useState<number>(0.12);
   
   // Hunting area state
   const [huntingAreas, setHuntingAreas] = useState<HuntingArea[]>([]);
@@ -182,6 +185,9 @@ export default function Home() {
         if (defaults.losObserverHeightM !== undefined) setLosObserverHeightM(defaults.losObserverHeightM);
         if (defaults.losRadiusM !== undefined) setLosRadiusM(defaults.losRadiusM);
         if (defaults.losColor !== undefined) setLosColor(defaults.losColor);
+        if (defaults.losHoleColor !== undefined) setLosHoleColor(defaults.losHoleColor);
+        if (defaults.losOpacity !== undefined) setLosOpacity(defaults.losOpacity);
+        if (defaults.losHoleOpacity !== undefined) setLosHoleOpacity(defaults.losHoleOpacity);
       } catch (e) {
         console.error('Error loading defaults:', e);
       }
@@ -631,6 +637,12 @@ export default function Home() {
           onLosRadiusChange={setLosRadiusM}
           losColor={losColor}
           onLosColorChange={setLosColor}
+            losHoleColor={losHoleColor}
+            onLosHoleColorChange={setLosHoleColor}
+            losOpacity={losOpacity}
+            onLosOpacityChange={setLosOpacity}
+            losHoleOpacity={losHoleOpacity}
+            onLosHoleOpacityChange={setLosHoleOpacity}
           />
         </div>
       )}

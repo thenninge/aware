@@ -108,6 +108,9 @@ interface MapComponentProps {
   losObserverHeightM?: number;
   losRadiusM?: number;
   losColor?: string;
+  losHoleColor?: string;
+  losOpacity?: number;
+  losHoleOpacity?: number;
 }
 
 interface CategoryFilter {
@@ -981,6 +984,9 @@ export default function MapComponent({
   losObserverHeightM = 5,
   losRadiusM = 300,
   losColor = '#00FFAA',
+  losHoleColor = '#ef4444',
+  losOpacity = 0.25,
+  losHoleOpacity = 0.12,
 }: MapComponentProps) {
   const [showTargetDialog, setShowTargetDialog] = useState(false);
   const instanceId = useRef(Math.random());
@@ -3222,7 +3228,13 @@ export default function MapComponent({
         
         {/* Viewshed overlay (Leaflet polygon) */}
         {mode === 'aware' && (
-          <ViewshedLeafletOverlay data={los.data} color={losColor} />
+          <ViewshedLeafletOverlay
+            data={los.data}
+            color={losColor}
+            holeColor={losHoleColor}
+            visibleOpacity={losOpacity}
+            holeOpacity={losHoleOpacity}
+          />
         )}
         
         {/* Tracking controller for søk-modus */}

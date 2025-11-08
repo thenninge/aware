@@ -107,6 +107,9 @@ interface AwareMapProps {
   losObserverHeightM?: number;
   losRadiusM?: number;
   losColor?: string;
+  losHoleColor?: string;
+  losOpacity?: number;
+  losHoleOpacity?: number;
 }
 
 export default function AwareMap({
@@ -180,6 +183,9 @@ export default function AwareMap({
   losObserverHeightM,
   losRadiusM,
   losColor,
+  losHoleColor,
+  losOpacity,
+  losHoleOpacity,
 }: AwareMapProps) {
   const [isClient, setIsClient] = useState(false);
   const [hasError, setHasError] = useState(false);
@@ -269,6 +275,9 @@ export default function AwareMap({
         losObserverHeightM={losObserverHeightM}
         losRadiusM={losRadiusM}
         losColor={losColor}
+        losHoleColor={losHoleColor}
+        losOpacity={losOpacity}
+        losHoleOpacity={losHoleOpacity}
         showHuntingBoundary={showHuntingBoundary}
         huntingAreas={huntingAreas}
         activeHuntingAreaId={activeHuntingAreaId}
