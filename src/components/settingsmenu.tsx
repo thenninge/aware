@@ -577,9 +577,6 @@ export default function SettingsMenu({
                   onChange={e => onLosRadiusChange(Number(e.target.value))}
                   className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer hover:bg-gray-300 transition-colors"
                 />
-                <div className="text-[11px] text-gray-500 mt-1">
-                  Radius for LOS‑beregning (ikke diameter)
-                </div>
               </div>
             )}
             {onLosColorChange && (
