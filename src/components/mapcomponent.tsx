@@ -1013,6 +1013,9 @@ export default function MapComponent({
   const [rotateMap, setRotateMap] = useState(false); // Ny state
 
   const [isScanning, setIsScanning] = useState(false);
+  const [activeScan, setActiveScan] = useState<'none' | 'normal' | 'invert'>('none');
+  const [isScanningNormal, setIsScanningNormal] = useState(false);
+  const [isScanningInvert, setIsScanningInvert] = useState(false);
   const prevLiveRef = useRef<boolean>(false);
   const prevCompassModeRef = useRef<'off' | 'on'>('off');
   const [invertSlices, setInvertSlices] = useState(false);
@@ -3206,7 +3209,23 @@ export default function MapComponent({
           angleRange={angleRange}
           showMarkers={showMarkers}
           isLiveMode={isLiveMode}
-          onLoadingChange={setIsScanning}
+          onLoadingChange={(loading) => {
+            setIsScanning(loading);
+            if (loading) {
+              if (activeScan === 'invert') {
+                setIsScanningInvert(true);
+              } else if (activeScan === 'normal') {
+                setIsScanningNormal(true);
+              }
+            } else {
+              if (activeScan === 'invert') {
+                setIsScanningInvert(false);
+              } else if (activeScan === 'normal') {
+                setIsScanningNormal(false);
+              }
+              setActiveScan('none');
+            }
+          }}
           mode={mode}
           showOnlyLastShot={showOnlyLastShot}
           lockInteractions={isModalSliderActive}
@@ -4748,31 +4767,31 @@ export default function MapComponent({
           {/* Invertert bebyggelses-scan knapp (❗) over 🔍 i aware-mode */}
           {mode === 'aware' && (
             <button
-              onClick={() => { setInvertSlices(true); onScanArea?.(); }}
+              onClick={() => { setActiveScan('invert'); setIsScanningInvert(true); setInvertSlices(true); onScanArea?.(); }}
               className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
-                isScanning 
+                isScanningInvert 
                   ? 'bg-gray-400 cursor-not-allowed text-white' 
                   : 'bg-gray-600 hover:bg-gray-700 text-white'
               }`}
-              title={isScanning ? 'Scanning...' : 'Invertert bebyggelses-søk'}
-              disabled={isScanning}
+              title={isScanningInvert ? 'Scanning...' : 'Invertert bebyggelses-søk'}
+              disabled={isScanningInvert}
             >
-              {isScanning ? '⏳' : '❗'}
+              {isScanningInvert ? '⏳' : '❗'}
             </button>
           )}
           {/* Scan-knapp kun i aware-mode */}
           {mode === 'aware' && (
           <button
-            onClick={() => { setInvertSlices(false); onScanArea?.(); }}
-              className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
-                isScanning 
-                  ? 'bg-gray-400 cursor-not-allowed text-white' 
-                  : 'bg-blue-600 hover:bg-blue-700 text-white'
-              }`}
-              title={isScanning ? 'Scanning...' : 'Scan område'}
-            >
-              {isScanning ? '⏳' : '🔍'}
-            </button>
+            onClick={() => { setActiveScan('normal'); setIsScanningNormal(true); setInvertSlices(false); onScanArea?.(); }}
+            className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
+              isScanningNormal 
+                ? 'bg-gray-400 cursor-not-allowed text-white' 
+                : 'bg-blue-600 hover:bg-blue-700 text-white'
+            }`}
+            title={isScanningNormal ? 'Scanning...' : 'Scan område'}
+          >
+            {isScanningNormal ? '⏳' : '🔍'}
+          </button>
           )}
           {/* Skuddpar-valgknapper - kun i søk-modus (deaktivert) */}
           {false && mode === 'søk' && (
