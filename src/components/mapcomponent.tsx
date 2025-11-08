@@ -4752,14 +4752,25 @@ export default function MapComponent({
           {/* LOS (Line of Sight) knapp over ❗ i aware-mode */}
           {mode === 'aware' && (
             <button
-              onClick={() => runLosAtCurrent()}
-              className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${(
-                isScanning || isLosLoadingSdk || los.status === 'running'
+              onClick={() => {
+                if (los.status === 'running') {
+                  try { los.cancel(); } catch {}
+                  los.clear();
+                  setIsLosLoadingSdk(false);
+                } else if (los.data) {
+                  // Toggle off if already visible
+                  los.clear();
+                } else {
+                  runLosAtCurrent();
+                }
+              }}
+              className={` w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
+                (isLosLoadingSdk || los.status === 'running')
                   ? 'bg-gray-400 cursor-not-allowed text-white'
                   : 'bg-gray-600 hover:bg-gray-700 text-white'
-              )}`}
-              title="LOS (Line of Sight) fra aktiv posisjon"
-              disabled={isScanning || isLosLoadingSdk || los.status === 'running'}
+              }`}
+              title={ (isLosLoadingSdk || los.status==='running') ? 'LOS: jobber…' : (los.data ? 'Skru av LOS' : 'LOS (Line of Sight)') }
+              disabled={isLosLoadingSdk || los.status === 'running'}
             >
               {(isLosLoadingSdk || los.status === 'running') ? '⏳' : '👁️'}
             </button>
@@ -4767,13 +4778,26 @@ export default function MapComponent({
           {/* Invertert bebyggelses-scan knapp (❗) over 🔍 i aware-mode */}
           {mode === 'aware' && (
             <button
-              onClick={() => { setActiveScan('invert'); setIsScanningInvert(true); setInvertSlices(true); onScanArea?.(); }}
+              onClick={() => {
+                if (!isScanningInvert && invertSlices && places.length > 0) {
+                  // Toggle off current invert view
+                  setPlaces([]);
+                  setClearPlaces(true);
+                  setSearchPosition(null);
+                  setInvertSlices(false);
+                  return;
+                }
+                setActiveScan('invert');
+                setIsScanningInvert(true);
+                setInvertSlices(true);
+                onScanArea?.();
+              }}
               className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
                 isScanningInvert 
                   ? 'bg-gray-400 cursor-not-allowed text-white' 
                   : 'bg-gray-600 hover:bg-gray-700 text-white'
               }`}
-              title={isScanningInvert ? 'Scanning...' : 'Invertert bebyggelses-søk'}
+              title={isScanningInvert ? 'Scanning...' : (invertSlices && places.length>0 ? 'Skru av Faresøk' : 'Invertert bebyggelses-søk')}
               disabled={isScanningInvert}
             >
               {isScanningInvert ? '⏳' : '❗'}
@@ -4782,16 +4806,28 @@ export default function MapComponent({
           {/* Scan-knapp kun i aware-mode */}
           {mode === 'aware' && (
           <button
-            onClick={() => { setActiveScan('normal'); setIsScanningNormal(true); setInvertSlices(false); onScanArea?.(); }}
-            className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
+            onClick={() => {
+              if (!isScanningNormal && !invertSlices && places.length > 0) {
+                // Toggle off normal scan display
+                setPlaces([]);
+                setClearPlaces(true);
+                setSearchPosition(null);
+                return;
+              }
+              setActiveScan('normal');
+              setIsScanningNormal(true);
+              setInvertSlices(false);
+              onScanArea?.();
+            }}
+              className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
               isScanningNormal 
-                ? 'bg-gray-400 cursor-not-allowed text-white' 
-                : 'bg-blue-600 hover:bg-blue-700 text-white'
-            }`}
-            title={isScanningNormal ? 'Scanning...' : 'Scan område'}
-          >
+                  ? 'bg-gray-400 cursor-not-allowed text-white' 
+                  : 'bg-blue-600 hover:bg-blue-700 text-white'
+              }`}
+            title={isScanningNormal ? 'Scanning...' : (!invertSlices && places.length>0 ? 'Skru av søk' : 'Scan område')}
+            >
             {isScanningNormal ? '⏳' : '🔍'}
-          </button>
+            </button>
           )}
           {/* Skuddpar-valgknapper - kun i søk-modus (deaktivert) */}
           {false && mode === 'søk' && (
