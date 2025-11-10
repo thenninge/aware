@@ -1268,26 +1268,47 @@ export default function MapComponent({
         const pathParam = pts.map(p => `${p.lat},${p.lng}`).join('|');
         const samples = Math.min(256, Math.max(32, pts.length * 64));
         console.log('[Elevation] Fetching profile', { points: pts.length, samples });
-        const res = await fetch(`/api/elevation?path=${pathParam}&samples=${samples}`);
-        const data = await res.json();
-        console.log('[Elevation] Response', { status: data.status, count: data.results?.length });
-        if (data.status && data.status !== 'OK' && !data.results) {
-          setElevError(data.error_message || data.status || 'ELEVATION_ERROR');
-          setElevSamples([]);
-          setElevLoading(false);
-          console.error('[Elevation] Error response', data);
-          return;
+        // Try client-side Google ElevationService first (avoids server key restrictions)
+        let results: any[] | null = null;
+        try {
+          if (!(window as any).google?.maps?.ElevationService) {
+            const loader = new Loader({ apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '', version: 'weekly' });
+            await loader.importLibrary('elevation');
+          }
+          const svc = new (window as any).google.maps.ElevationService();
+          const gPath = pts.map(p => ({ lat: p.lat, lng: p.lng }));
+          results = await new Promise<any[]>((resolve, reject) => {
+            svc.getElevationAlongPath({ path: gPath, samples }, (res: any[], status: string) => {
+              if (status === 'OK' && Array.isArray(res)) resolve(res);
+              else reject(new Error(status || 'CLIENT_ELEVATION_ERROR'));
+            });
+          });
+          console.log('[Elevation] Client ElevationService OK', { count: results.length });
+        } catch (e: any) {
+          console.warn('[Elevation] Client ElevationService failed, falling back to /api/elevation', e?.message || e);
         }
-        const results = data.results || [];
+        if (!results) {
+          const res = await fetch(`/api/elevation?path=${pathParam}&samples=${samples}`);
+          const data = await res.json();
+          console.log('[Elevation] Response', { status: data.status, count: data.results?.length });
+          if (data.status && data.status !== 'OK' && !data.results) {
+            setElevError(data.error_message || data.status || 'ELEVATION_ERROR');
+            setElevSamples([]);
+            setElevLoading(false);
+            console.error('[Elevation] Error response', data);
+            return;
+          }
+          results = data.results || [];
+        }
         // Compute distances along the polyline
-        const locs: Position[] = results.map((r: any) => ({ lat: r.location.lat, lng: r.location.lng }));
+        const locs: Position[] = (results as any[]).map((r: any) => ({ lat: r.location.lat, lng: r.location.lng }));
         let acc = 0;
         const dist: number[] = [0];
         for (let i = 1; i < locs.length; i++) {
           acc += calculateDistance(locs[i-1], locs[i]);
           dist.push(acc);
         }
-        const samplesArr = results.map((r: any, i: number) => ({ distance: dist[i], elevation: r.elevation }));
+        const samplesArr = (results as any[]).map((r: any, i: number) => ({ distance: dist[i], elevation: r.elevation }));
         setElevSamples(samplesArr);
       } catch (e: any) {
         setElevError(e?.message || 'ELEVATION_ERROR');
