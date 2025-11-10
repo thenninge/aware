@@ -1268,8 +1268,9 @@ export default function MapComponent({
         const pathParam = pts.map(p => `${p.lat},${p.lng}`).join('|');
         const samples = Math.min(256, Math.max(32, pts.length * 64));
         console.log('[Elevation] Fetching profile', { points: pts.length, samples });
-        const res = await fetch(`/api/elevation?path=${encodeURIComponent(pathParam)}&samples=${samples}`);
+        const res = await fetch(`/api/elevation?path=${pathParam}&samples=${samples}`);
         const data = await res.json();
+        console.log('[Elevation] Response', { status: data.status, count: data.results?.length });
         if (data.status && data.status !== 'OK' && !data.results) {
           setElevError(data.error_message || data.status || 'ELEVATION_ERROR');
           setElevSamples([]);
@@ -5170,6 +5171,8 @@ export default function MapComponent({
               return (
                 <svg width={width} height={height}>
                   <polyline points={points} fill="none" stroke="#1f2937" strokeWidth="2" />
+                  {/* Fill under curve for visibility */}
+                  <polyline points={`${padding},${height - padding} ${points} ${width - padding},${height - padding}`} fill="rgba(31,41,55,0.15)" stroke="none" />
                   {/* Baseline */}
                   <line x1={padding} y1={baselineY} x2={width - padding} y2={baselineY} stroke="#9ca3af" strokeDasharray="4 4" strokeWidth="1" />
                 </svg>
