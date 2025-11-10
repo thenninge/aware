@@ -2473,6 +2473,7 @@ export default function MapComponent({
   const [showShotPairNameDialog, setShowShotPairNameDialog] = useState(false);
   const [shotPairName, setShotPairName] = useState('');
   const [shotPairIncludeDTG, setShotPairIncludeDTG] = useState(true);
+  const [shotPairIncludeDistance, setShotPairIncludeDistance] = useState(true);
   const [pendingTargetPosition, setPendingTargetPosition] = useState<Position | null>(null);
   // State for Target-dialog
   const [targetDistance, setTargetDistance] = useState(250);
@@ -2741,12 +2742,15 @@ export default function MapComponent({
     setPendingTargetPosition(targetPosition);
     setShowTargetDirectionUI(false);
     setShowShotPairNameDialog(true);
+    setShotPairIncludeDTG(true);
+    setShotPairIncludeDistance(true);
   };
 
   const handleCancelShotPairName = () => {
     setShowShotPairNameDialog(false);
     setShotPairName('');
     setShotPairIncludeDTG(true);
+    setShotPairIncludeDistance(true);
     setPendingTargetPosition(null);
     setLockedShotPosition(null);
   };
@@ -2760,6 +2764,10 @@ export default function MapComponent({
       const time = now.toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit', hour12: false });
       const dtg = `${date} ${time}`;
       finalName = finalName ? `${finalName} - ${dtg}` : dtg;
+    }
+    if (shotPairIncludeDistance) {
+      const dist = Math.round(targetRange);
+      finalName = finalName ? `${finalName} - ${dist}m` : `${dist}m`;
     }
     if (!finalName) {
       alert('Vennligst skriv inn et navn eller aktiver "Legg til DTG"');
@@ -5112,6 +5120,15 @@ export default function MapComponent({
                 className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
               />
               <span className="font-medium text-gray-700">Legg til DTG (dato/tid)</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer text-sm">
+              <input
+                type="checkbox"
+                checked={shotPairIncludeDistance}
+                onChange={e => setShotPairIncludeDistance(e.target.checked)}
+                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+              />
+              <span className="font-medium text-gray-700">Legg til skuddavstand</span>
             </label>
 
             <div className="flex gap-2 justify-between mt-2">
