@@ -5239,7 +5239,8 @@ export default function MapComponent({
               const dmax = elevSamples[elevSamples.length - 1].distance || 0;
               const emin = Math.min(...elevSamples.map(s => s.elevation));
               const emax = Math.max(...elevSamples.map(s => s.elevation));
-              const erange = Math.max(1, emax - emin);
+              const delta = Math.max(0, emax - emin);
+              const erange = Math.max(1, delta); // avoid div-by-zero
               if (!Number.isFinite(dmax) || dmax <= 0) {
                 console.warn('[Elevation] dmax invalid', { dmax, samples: elevSamples.length, emin, emax });
                 return <div className="text-xs font-semibold text-gray-800">Høydeprofil: 0 m distanse</div>;
@@ -5264,12 +5265,18 @@ export default function MapComponent({
               return (
                 <div>
                   <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
+                    {/* Horizontal guide lines at 25%, 50%, 75% of elevation range */}
+                    {delta > 0 && [0.25, 0.5, 0.75].map((f, i) => {
+                      const y = padding + (1 - f) * (height - 2 * padding);
+                      return <line key={`h-guide-${i}`} x1={padding} y1={y} x2={width - padding} y2={y} stroke="#000" strokeDasharray="2 4" strokeWidth="1" />;
+                    })}
+                    {/* Baseline (0) at min elevation */}
+                    <line x1={padding} y1={padding + (height - 2 * padding)} x2={width - padding} y2={padding + (height - 2 * padding)} stroke="#9ca3af" strokeDasharray="4 4" strokeWidth="1" />
+                    {/* Elevation curve */}
                     <polyline points={points} fill="none" stroke="#1f2937" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
                     {/* Fill under curve for visibility */}
                     <polyline points={`${padding},${height - padding} ${points} ${width - padding},${height - padding}`} fill="rgba(31,41,55,0.15)" stroke="none" />
-                    {/* Baseline */}
-                    <line x1={padding} y1={baselineY} x2={width - padding} y2={baselineY} stroke="#9ca3af" strokeDasharray="4 4" strokeWidth="1" />
-                    {/* Segment separators */}
+                    {/* Vertical segment separators */}
                     {(() => {
                       if (!Array.isArray(measurementPoints) || measurementPoints.length < 3) return null;
                       // cumulative distances at each original point
@@ -5280,9 +5287,22 @@ export default function MapComponent({
                       const endX = width - padding;
                       return cum.slice(1, -1).map((cd, idx) => {
                         const x = padding + (Math.min(cd, dmax) / dmax) * (width - 2 * padding);
-                        // avoid drawing at the very end
                         if (!Number.isFinite(x) || Math.abs(x - endX) < 0.5) return null;
                         return <line key={`seg-v-${idx}`} x1={x} y1={padding} x2={x} y2={height - padding} stroke="#000000" strokeDasharray="2 4" strokeWidth="1" />;
+                      });
+                    })()}
+                    {/* Left-side relative elevation labels: 0 .. delta in 4 steps */}
+                    {(() => {
+                      const step = delta / 4;
+                      const labels = [0, 1, 2, 3, 4].map(k => Math.round(k * step));
+                      return labels.map((val, idx) => {
+                        const f = idx / 4; // 0..1
+                        const y = padding + (1 - f) * (height - 2 * padding);
+                        return (
+                          <text key={`lbl-${idx}`} x={padding - 6} y={y} textAnchor="end" alignmentBaseline="middle" fontSize="10" fill="#111">
+                            {val}
+                          </text>
+                        );
                       });
                     })()}
                   </svg>
