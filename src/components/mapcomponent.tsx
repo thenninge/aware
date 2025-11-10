@@ -5183,13 +5183,17 @@ export default function MapComponent({
               <div className="text-xs font-semibold text-red-700">Høydeprofil: {elevError}</div>
             )}
             {!elevLoading && !elevError && elevSamples.length > 1 && (() => {
-              const width = 320;
+              const width = 340;
               const height = 70;
               const padding = 6;
-              const dmax = elevSamples[elevSamples.length - 1].distance || 1;
+              const dmax = elevSamples[elevSamples.length - 1].distance || 0;
               const emin = Math.min(...elevSamples.map(s => s.elevation));
               const emax = Math.max(...elevSamples.map(s => s.elevation));
               const erange = Math.max(1, emax - emin);
+              if (!Number.isFinite(dmax) || dmax <= 0) {
+                console.warn('[Elevation] dmax invalid', { dmax, samples: elevSamples.length, emin, emax });
+                return <div className="text-xs font-semibold text-gray-800">Høydeprofil: 0 m distanse</div>;
+              }
               const pointList: string[] = [];
               for (const s of elevSamples) {
                 const x = padding + (s.distance / dmax) * (width - 2 * padding);
@@ -5204,8 +5208,8 @@ export default function MapComponent({
               const points = pointList.join(' ');
               const baselineY = padding + (1 - ((emin - emin) / erange)) * (height - 2 * padding);
               return (
-                <svg width={width} height={height}>
-                  <polyline points={points} fill="none" stroke="#1f2937" strokeWidth="2" />
+                <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
+                  <polyline points={points} fill="none" stroke="#1f2937" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
                   {/* Fill under curve for visibility */}
                   <polyline points={`${padding},${height - padding} ${points} ${width - padding},${height - padding}`} fill="rgba(31,41,55,0.15)" stroke="none" />
                   {/* Baseline */}
