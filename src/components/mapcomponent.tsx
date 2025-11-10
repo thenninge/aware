@@ -5232,9 +5232,9 @@ export default function MapComponent({
                   </svg>
                   <div className="mt-1 text-[10px] text-gray-800 font-semibold flex gap-3 justify-center">
                     <span>Start: {startMoh} moh</span>
-                    <span>Max: {maxMoh} moh</span>
                     <span>Min: {minMoh} moh</span>
-                    <span>Slutt: {endMoh} moh</span>
+                    <span>Max: {maxMoh} moh</span>
+                    <span>Stop: {endMoh} moh</span>
                   </div>
                 </div>
               );
