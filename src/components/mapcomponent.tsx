@@ -5291,18 +5291,17 @@ export default function MapComponent({
                         return <line key={`seg-v-${idx}`} x1={x} y1={padding} x2={x} y2={height - padding} stroke="#000000" strokeDasharray="2 4" strokeWidth="1" />;
                       });
                     })()}
-                    {/* Left-side relative elevation labels: 0 .. delta in 4 steps */}
+                    {/* Left-side relative elevation labels: 0, 50%, 100% of delta */}
                     {(() => {
-                      const step = delta / 4;
-                      const labels = [0, 1, 2, 3, 4].map(k => Math.round(k * step));
-                      return labels.map((val, idx) => {
-                        const f = idx / 4; // 0..1
-                        const y = padding + (1 - f) * (height - 2 * padding);
-                        return (
-                          <text key={`lbl-${idx}`} x={padding - 6} y={y} textAnchor="end" alignmentBaseline="middle" fontSize="10" fill="#111">
-                            {val}
-                          </text>
-                        );
+                      if (delta <= 0) return null;
+                      const labels = [
+                        { f: 0, val: 0 },
+                        { f: 0.5, val: Math.round(delta / 2) },
+                        { f: 1, val: Math.round(delta) },
+                      ];
+                      return labels.map((it, idx) => {
+                        const y = padding + (1 - it.f) * (height - 2 * padding);
+                        return <text key={`lbl-${idx}`} x={padding - 6} y={y} textAnchor="end" alignmentBaseline="middle" fontSize="10" fontWeight="600" fill="#111">{it.val}</text>;
                       });
                     })()}
                   </svg>
