@@ -3670,7 +3670,7 @@ export default function MapComponent({
               [measurementPoints[measurementPoints.length - 1].lat, measurementPoints[measurementPoints.length - 1].lng],
               [currentPosition.lat, currentPosition.lng],
             ]}
-            pathOptions={{ color: '#6b7280', weight: 1, dashArray: '4 6', opacity: 0.9 }}
+            pathOptions={{ color: '#ef4444', weight: 1, dashArray: '4 6', opacity: 0.9 }}
           />
         )}
 
