@@ -1301,7 +1301,17 @@ export default function MapComponent({
           results = data.results || [];
         }
         // Compute distances along the polyline
-        const locs: Position[] = (results as any[]).map((r: any) => ({ lat: r.location.lat, lng: r.location.lng }));
+        const toLatLng = (loc: any) => {
+          try {
+            if (loc && typeof loc.lat === 'function' && typeof loc.lng === 'function') {
+              return { lat: Number(loc.lat()), lng: Number(loc.lng()) };
+            }
+            return { lat: Number(loc?.lat), lng: Number(loc?.lng) };
+          } catch {
+            return { lat: NaN as any, lng: NaN as any };
+          }
+        };
+        const locs: Position[] = (results as any[]).map((r: any) => toLatLng(r.location));
         let acc = 0;
         const dist: number[] = [0];
         for (let i = 1; i < locs.length; i++) {
