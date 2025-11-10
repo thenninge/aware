@@ -5217,14 +5217,26 @@ export default function MapComponent({
               }
               const points = pointList.join(' ');
               const baselineY = padding + (1 - ((emin - emin) / erange)) * (height - 2 * padding);
+              const startMoh = Math.round(elevSamples[0].elevation);
+              const endMoh = Math.round(elevSamples[elevSamples.length - 1].elevation);
+              const minMoh = Math.round(emin);
+              const maxMoh = Math.round(emax);
               return (
-                <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
-                  <polyline points={points} fill="none" stroke="#1f2937" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
-                  {/* Fill under curve for visibility */}
-                  <polyline points={`${padding},${height - padding} ${points} ${width - padding},${height - padding}`} fill="rgba(31,41,55,0.15)" stroke="none" />
-                  {/* Baseline */}
-                  <line x1={padding} y1={baselineY} x2={width - padding} y2={baselineY} stroke="#9ca3af" strokeDasharray="4 4" strokeWidth="1" />
-                </svg>
+                <div>
+                  <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
+                    <polyline points={points} fill="none" stroke="#1f2937" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+                    {/* Fill under curve for visibility */}
+                    <polyline points={`${padding},${height - padding} ${points} ${width - padding},${height - padding}`} fill="rgba(31,41,55,0.15)" stroke="none" />
+                    {/* Baseline */}
+                    <line x1={padding} y1={baselineY} x2={width - padding} y2={baselineY} stroke="#9ca3af" strokeDasharray="4 4" strokeWidth="1" />
+                  </svg>
+                  <div className="mt-1 text-[10px] text-gray-800 font-semibold flex gap-3 justify-center">
+                    <span>Start: {startMoh} moh</span>
+                    <span>Max: {maxMoh} moh</span>
+                    <span>Min: {minMoh} moh</span>
+                    <span>Slutt: {endMoh} moh</span>
+                  </div>
+                </div>
               );
             })()}
           </div>
