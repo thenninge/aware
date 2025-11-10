@@ -1045,6 +1045,15 @@ export default function MapComponent({
   const [elevSamples, setElevSamples] = useState<Array<{ distance: number; elevation: number }>>([]);
   const [elevLoading, setElevLoading] = useState(false);
   const [elevError, setElevError] = useState<string | null>(null);
+
+  // --- Helpers for stable pair identity (for deletion) ---
+  const toFixed6 = (n: number | undefined) => (typeof n === 'number' && Number.isFinite(n) ? n.toFixed(6) : '');
+  const pairSignature = (p: any): string => {
+    const a = p?.current ? `${toFixed6(p.current.lat)},${toFixed6(p.current.lng)}` : '';
+    const b = p?.target ? `${toFixed6(p.target.lat)},${toFixed6(p.target.lng)}` : '';
+    // Normalize ordering for stability
+    return a <= b ? `${a}|${b}` : `${b}|${a}`;
+  };
   // LOS state
   const [isLosAwaitingClick, setIsLosAwaitingClick] = useState(false);
   const [isLosLoadingSdk, setIsLosLoadingSdk] = useState(false);
@@ -2434,6 +2443,13 @@ export default function MapComponent({
         const tsPostIds: number[] = JSON.parse(localStorage.getItem('deleted_post_ids') || '[]');
         const merged = Array.from(new Set([...tsPostIds, ...postIds]));
         localStorage.setItem('deleted_post_ids', JSON.stringify(merged));
+        // Also persist coordinate signature tombstone to catch fallback/heuristic pairs
+        const tsSigs: string[] = JSON.parse(localStorage.getItem('deleted_pair_signatures') || '[]');
+        const sig = pairSignature(clickedPair as any);
+        if (sig && !tsSigs.includes(sig)) {
+          tsSigs.push(sig);
+          localStorage.setItem('deleted_pair_signatures', JSON.stringify(tsSigs));
+        }
       } catch {}
       
       alert('Skuddpar slettet!');
@@ -2934,13 +2950,15 @@ export default function MapComponent({
         try {
           const tsLocalIds: string[] = JSON.parse(localStorage.getItem('deleted_pair_local_ids') || '[]');
           const tsPostIds: number[] = JSON.parse(localStorage.getItem('deleted_post_ids') || '[]');
-          if (tsLocalIds.length || tsPostIds.length) {
-            filtered = uniquePairs.filter((p: any) => {
-              if (p && p.pair_local_id && tsLocalIds.includes(String(p.pair_local_id))) return false;
-              if (p && (p.id != null) && tsPostIds.includes(Number(p.id))) return false;
-              return true;
-            });
-          }
+          const tsSigs: string[] = JSON.parse(localStorage.getItem('deleted_pair_signatures') || '[]');
+          filtered = uniquePairs.filter((p: any) => {
+            if (p && p.pair_local_id && tsLocalIds.includes(String(p.pair_local_id))) return false;
+            if (p && (p.id != null) && tsPostIds.includes(Number(p.id))) return false;
+            // Coordinate signature filtering (handles fallback pairs without local_id)
+            const sig = pairSignature(p);
+            if (sig && tsSigs.includes(sig)) return false;
+            return true;
+          });
         } catch {}
         setSavedPairs(filtered);
       }
