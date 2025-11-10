@@ -2280,7 +2280,31 @@ export default function MapComponent({
       postIds = Array.from(new Set(postIds.filter((x) => Number.isFinite(x))));
 
       if (postIds.length === 0) {
-        alert('Kunne ikke finne tilhørende poster');
+        // Fallback: slett lokalt selv om vi ikke fant DB-poster (f.eks. manglende team/ID-typer)
+        const clickedLocalIdForRemove = (clickedPair as any).pair_local_id || (clickedPair as any).local_id || null;
+        setSavedPairs(prev => prev.filter(pair => {
+          if (clickedLocalIdForRemove && (pair as any).pair_local_id && String((pair as any).pair_local_id) === String(clickedLocalIdForRemove)) return false;
+          // Fallback posisjonsmatch
+          const pc = (pair as any).current;
+          const pt = (pair as any).target;
+          const cc = clickedCurrent;
+          const ct = clickedTarget;
+          const near = (a?: {lat:number; lng:number}, b?: {lat:number; lng:number}) => {
+            if (!a || !b) return false;
+            const R = 6371000;
+            const dLat = (b.lat - a.lat) * Math.PI/180;
+            const dLng = (b.lng - a.lng) * Math.PI/180;
+            const s = Math.sin(dLat/2)**2 + Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLng/2)**2;
+            const d = 2*R*Math.asin(Math.sqrt(s));
+            return d < 3;
+          };
+          if (cc && near(pc, cc)) return false;
+          if (ct && near(pt, ct)) return false;
+          return true;
+        }));
+        setSavedTracks(prev => prev.filter(track => !track.shotPairId || track.shotPairId !== String((clickedPair as any).id)));
+        setSavedFinds(prev => prev.filter(find => !find.shotPairId || find.shotPairId !== String((clickedPair as any).id)));
+        alert('Skuddpar slettet!');
         return;
       }
 
