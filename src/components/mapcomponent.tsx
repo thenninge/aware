@@ -2424,6 +2424,18 @@ export default function MapComponent({
         !find.shotPairId || !postIds.includes(parseInt(find.shotPairId))
       ));
       
+      // Persist tombstone to keep hidden across reload if server delete failed or incomplete
+      try {
+        const tsLocalIds: string[] = JSON.parse(localStorage.getItem('deleted_pair_local_ids') || '[]');
+        if (clickedLocalId && !tsLocalIds.includes(String(clickedLocalId))) {
+          tsLocalIds.push(String(clickedLocalId));
+          localStorage.setItem('deleted_pair_local_ids', JSON.stringify(tsLocalIds));
+        }
+        const tsPostIds: number[] = JSON.parse(localStorage.getItem('deleted_post_ids') || '[]');
+        const merged = Array.from(new Set([...tsPostIds, ...postIds]));
+        localStorage.setItem('deleted_post_ids', JSON.stringify(merged));
+      } catch {}
+      
       alert('Skuddpar slettet!');
     } catch (error) {
       console.error('Feil ved sletting av skuddpar:', error);
@@ -2917,7 +2929,20 @@ export default function MapComponent({
             uniquePairs.push(p);
           }
         }
-        setSavedPairs(uniquePairs);
+        // Apply tombstones to hide deleted pairs across reloads
+        let filtered = uniquePairs;
+        try {
+          const tsLocalIds: string[] = JSON.parse(localStorage.getItem('deleted_pair_local_ids') || '[]');
+          const tsPostIds: number[] = JSON.parse(localStorage.getItem('deleted_post_ids') || '[]');
+          if (tsLocalIds.length || tsPostIds.length) {
+            filtered = uniquePairs.filter((p: any) => {
+              if (p && p.pair_local_id && tsLocalIds.includes(String(p.pair_local_id))) return false;
+              if (p && (p.id != null) && tsPostIds.includes(Number(p.id))) return false;
+              return true;
+            });
+          }
+        } catch {}
+        setSavedPairs(filtered);
       }
     } catch (error) {
       console.error('Error fetching posts:', error);
@@ -5239,7 +5264,7 @@ export default function MapComponent({
                         const x = padding + (Math.min(cd, dmax) / dmax) * (width - 2 * padding);
                         // avoid drawing at the very end
                         if (!Number.isFinite(x) || Math.abs(x - endX) < 0.5) return null;
-                        return <line key={`seg-v-${idx}`} x1={x} y1={padding} x2={x} y2={height - padding} stroke="#9ca3af" strokeDasharray="2 4" strokeWidth="1" />;
+                        return <line key={`seg-v-${idx}`} x1={x} y1={padding} x2={x} y2={height - padding} stroke="#000000" strokeDasharray="2 4" strokeWidth="1" />;
                       });
                     })()}
                   </svg>
