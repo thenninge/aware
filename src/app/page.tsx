@@ -387,11 +387,20 @@ export default function Home() {
           }));
           setHuntingAreas(normalizedAreas);
           
-          // Restore active hunting area ID from localStorage
+          // Velg aktivt jaktfelt uten å overstyre et gyldig valg:
+          // 1) Behold eksisterende state hvis den finnes i lista
+          // 2) Ellers bruk localStorage-verdien hvis den finnes i lista
+          // 3) Ellers: ikke tving et valg (la brukeren velge), eller fallback til første hvis det ikke finnes noe aktivt
+          const currentId = activeHuntingAreaId ? String(activeHuntingAreaId) : null;
           const savedActiveId = localStorage.getItem('active_hunting_area_id');
-          if (savedActiveId && normalizedAreas.some((a: HuntingArea) => String(a.id) === String(savedActiveId))) {
+          
+          if (currentId && normalizedAreas.some((a: HuntingArea) => String(a.id) === currentId)) {
+            // Behold gjeldende valg
+            setActiveHuntingAreaId(currentId);
+          } else if (savedActiveId && normalizedAreas.some((a: HuntingArea) => String(a.id) === String(savedActiveId))) {
             setActiveHuntingAreaId(String(savedActiveId));
-          } else if (normalizedAreas.length > 0) {
+          } else if (!currentId && normalizedAreas.length > 0) {
+            // Kun hvis vi ikke har et gjeldende valg: velg første (bevarer tidligere atferd)
             setActiveHuntingAreaId(String(normalizedAreas[0].id));
           }
           
