@@ -247,6 +247,7 @@ function MapController({
 
     try {
       // Handle map movement (pan/zoom) to update center position
+      let rafId: number | null = null;
       const handleMapMove = () => {
         if (isMapLocked) return; // Don't update position when map is locked
         
@@ -257,6 +258,15 @@ function MapController({
         };
         setCurrentPosition(newPosition);
         onPositionChange?.(newPosition); // Update parent component with center position
+      };
+
+      // Continuous update while moving (throttled with rAF)
+      const handleMove = () => {
+        if (rafId !== null) return;
+        rafId = requestAnimationFrame(() => {
+          rafId = null;
+          handleMapMove();
+        });
       };
 
       // Handle map clicks for manual position selection
@@ -279,6 +289,7 @@ function MapController({
       const handleMoveEnd = () => {
         handleMapMove();
       };
+      map.on('move', handleMove);
       map.on('moveend', handleMoveEnd);
       map.on('click', handleMapClick);
       const handleZoomEnd = () => {
@@ -289,6 +300,11 @@ function MapController({
       onZoomChange?.(map.getZoom());
 
       return () => {
+        if (rafId !== null) {
+          cancelAnimationFrame(rafId);
+          rafId = null;
+        }
+        map.off('move', handleMove);
         map.off('moveend', handleMoveEnd);
         map.off('click', handleMapClick);
         map.off('zoomend', handleZoomEnd);
@@ -3647,6 +3663,17 @@ export default function MapComponent({
           </>
         )}
         
+        {/* Live måle-forhåndsvisning: tynn grå stiplet linje fra siste punkt til nåværende posisjon */}
+        {mode === 'aware' && isMeasuring && measurementPoints.length > 0 && currentPosition && (
+          <Polyline
+            positions={[
+              [measurementPoints[measurementPoints.length - 1].lat, measurementPoints[measurementPoints.length - 1].lng],
+              [currentPosition.lat, currentPosition.lng],
+            ]}
+            pathOptions={{ color: '#6b7280', weight: 1, dashArray: '4 6', opacity: 0.9 }}
+          />
+        )}
+
         {/* Alle lagrede observasjoner i søk-modus */}
         {((mode === 'søk' && showObservations) || (mode === 'aware' && showObservations) || (mode === 'track' && showObservations)) && savedObservations && savedObservations.length > 0 && (
           <>
