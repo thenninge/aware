@@ -10,17 +10,21 @@ interface MSRRetikkelProps {
   verticalPosition?: number; // 0-100, kun for ivar-style
   currentPosition?: { lat: number; lng: number; heading?: number };
   compassMode?: 'off' | 'arrow' | 'map';
+  sizeRatio?: number; // 0..1 of min(screenWidth, screenHeight)
 }
 
-export default function MSRRetikkel({ isVisible, opacity, style, verticalPosition = 50, currentPosition, compassMode = 'off' }: MSRRetikkelProps) {
+export default function MSRRetikkel({ isVisible, opacity, style, verticalPosition = 50, currentPosition, compassMode = 'off', sizeRatio = 0.3 }: MSRRetikkelProps) {
   const map = useMap();
   const [scaleValues, setScaleValues] = useState({ x: 0, y: 0 });
   const [screenSize, setScreenSize] = useState({ width: 0, height: 0 });
   
-  // Fast piksel-størrelse for L-en (200px x 200px)
-  const L_SIZE_PIXELS = 200;
-  const CIRCLE_DIAMETER_PIXELS = 200;
-  const CIRCLE_RADIUS_PIXELS = CIRCLE_DIAMETER_PIXELS / 2;
+  // Dynamisk piksel-størrelse basert på skjermen og valgt sizeRatio
+  const minScreen = Math.max(1, Math.min(screenSize.width, screenSize.height));
+  const clampedRatio = Math.max(0.1, Math.min(sizeRatio, 0.9));
+  const DYNAMIC_SIZE = Math.round(minScreen * clampedRatio);
+  const L_SIZE_PIXELS = DYNAMIC_SIZE;
+  const CIRCLE_DIAMETER_PIXELS = DYNAMIC_SIZE;
+  const CIRCLE_RADIUS_PIXELS = Math.round(CIRCLE_DIAMETER_PIXELS / 2);
   
   // Hent skjermstørrelse og oppdater ved resize
   useEffect(() => {
@@ -57,7 +61,7 @@ export default function MSRRetikkel({ isVisible, opacity, style, verticalPositio
     const yDistanceMeters = Math.round(L_SIZE_PIXELS * metersPerPixel);
     
     setScaleValues({ x: xDistanceMeters, y: yDistanceMeters });
-  }, [map, currentPosition, isVisible, map?.getZoom()]);
+  }, [map, currentPosition, isVisible, map?.getZoom(), L_SIZE_PIXELS]);
   
   // Early return ETTER alle hooks er kalt
   if (!isVisible || !currentPosition) return null;

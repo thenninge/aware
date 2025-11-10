@@ -1233,6 +1233,8 @@ export default function MapComponent({
   const [localShowMSRRetikkel, setLocalShowMSRRetikkel] = useState(showMSRRetikkel);
   const [localMSRRetikkelOpacity, setLocalMSRRetikkelOpacity] = useState(msrRetikkelOpacity);
   const [localMSRRetikkelStyle, setLocalMSRRetikkelStyle] = useState(msrRetikkelStyle);
+  // Dynamisk størrelse for MSR-retikkel (andel av min(screenW, screenH))
+  const [msrSizeRatio, setMsrSizeRatio] = useState<number>(0.3);
   
   // Avstandsmåling funksjoner
   const calculateDistance = (point1: Position, point2: Position): number => {
@@ -3387,6 +3389,7 @@ export default function MapComponent({
           style={localMSRRetikkelStyle}
           verticalPosition={msrRetikkelVerticalPosition}
           currentPosition={(typeof searchPosition !== 'undefined' && searchPosition) ? searchPosition : currentPosition}
+          sizeRatio={msrSizeRatio}
         />
         
         {/* Jaktgrenser - render active hunting area boundary */}
@@ -4732,6 +4735,36 @@ export default function MapComponent({
       {/* Avstandsmåling knapper - kun i aware-modus */}
       {mode === 'aware' && (
         <div className="fixed bottom-4 inset-x-0 z-[2001] flex flex-wrap justify-center items-center gap-2 px-2" style={{ pointerEvents: 'none' }}>
+          {/* MSR-size slider: vises når retikkel er på */}
+          {localShowMSRRetikkel && (
+            <div
+              className="fixed"
+              style={{
+                bottom: '64px',
+                left: 0,
+                right: 0,
+                display: 'flex',
+                justifyContent: 'center',
+                pointerEvents: 'none',
+              }}
+            >
+              <div
+                className="bg-white border rounded-full shadow-lg px-3 py-2"
+                style={{ width: 'calc(100% - 160px)', maxWidth: '640px', pointerEvents: 'auto' }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <input
+                  type="range"
+                  min={0.1}
+                  max={0.9}
+                  step={0.01}
+                  value={msrSizeRatio}
+                  onChange={(e) => setMsrSizeRatio(Number(e.target.value))}
+                  className="w-full"
+                />
+              </div>
+            </div>
+          )}
           {/* Reset-knapp - alltid synlig */}
             <button
             onClick={handleResetMeasurement}
