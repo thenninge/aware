@@ -1308,7 +1308,14 @@ export default function MapComponent({
           acc += calculateDistance(locs[i-1], locs[i]);
           dist.push(acc);
         }
-        const samplesArr = (results as any[]).map((r: any, i: number) => ({ distance: dist[i], elevation: r.elevation }));
+        const samplesArr: Array<{ distance: number; elevation: number }> = [];
+        (results as any[]).forEach((r: any, i: number) => {
+          const d = dist[i];
+          const e = r?.elevation;
+          if (Number.isFinite(d) && Number.isFinite(e)) {
+            samplesArr.push({ distance: d, elevation: e });
+          }
+        });
         setElevSamples(samplesArr);
       } catch (e: any) {
         setElevError(e?.message || 'ELEVATION_ERROR');
@@ -5183,11 +5190,18 @@ export default function MapComponent({
               const emin = Math.min(...elevSamples.map(s => s.elevation));
               const emax = Math.max(...elevSamples.map(s => s.elevation));
               const erange = Math.max(1, emax - emin);
-              const points = elevSamples.map(s => {
+              const pointList: string[] = [];
+              for (const s of elevSamples) {
                 const x = padding + (s.distance / dmax) * (width - 2 * padding);
                 const y = padding + (1 - ((s.elevation - emin) / erange)) * (height - 2 * padding);
-                return `${x},${y}`;
-              }).join(' ');
+                if (Number.isFinite(x) && Number.isFinite(y)) {
+                  pointList.push(`${x},${y}`);
+                }
+              }
+              if (pointList.length < 2) {
+                return <div className="text-xs font-semibold text-gray-800">Høydeprofil: Ingen gyldige datapunkter</div>;
+              }
+              const points = pointList.join(' ');
               const baselineY = padding + (1 - ((emin - emin) / erange)) * (height - 2 * padding);
               return (
                 <svg width={width} height={height}>
