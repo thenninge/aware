@@ -5139,10 +5139,16 @@ export default function MapComponent({
             </button>
           
       {/* Elevation HUD */}
-      {mode === 'aware' && showElevationProfile && elevSamples.length > 1 && (
-        <div className="fixed z-[2001]" style={{ top: '64px', left: '50%', transform: 'translateX(-50%)', pointerEvents: 'none' }}>
+      {mode === 'aware' && showElevationProfile && (elevLoading || elevError || elevSamples.length > 1) && (
+        <div className="fixed z-[3000]" style={{ top: 'calc(env(safe-area-inset-top) + 56px)', left: '50%', transform: 'translateX(-50%)', pointerEvents: 'none' }}>
           <div style={{ background: 'rgba(255,255,255,0.6)', borderRadius: 8, padding: '6px 10px', boxShadow: '0 1px 4px rgba(0,0,0,0.15)' }}>
-            {(() => {
+            {elevLoading && (
+              <div className="text-xs font-semibold text-gray-800">Høydeprofil: Laster…</div>
+            )}
+            {!elevLoading && elevError && (
+              <div className="text-xs font-semibold text-red-700">Høydeprofil: {elevError}</div>
+            )}
+            {!elevLoading && !elevError && elevSamples.length > 1 && (() => {
               const width = 320;
               const height = 70;
               const padding = 6;
