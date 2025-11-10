@@ -188,6 +188,14 @@ export default function Home() {
         if (defaults.losHoleColor !== undefined) setLosHoleColor(defaults.losHoleColor);
         if (defaults.losOpacity !== undefined) setLosOpacity(defaults.losOpacity);
         if (defaults.losHoleOpacity !== undefined) setLosHoleOpacity(defaults.losHoleOpacity);
+        if (defaults.activeHuntingAreaId !== undefined) {
+          setActiveHuntingAreaId(defaults.activeHuntingAreaId);
+          if (defaults.activeHuntingAreaId) {
+            localStorage.setItem('active_hunting_area_id', defaults.activeHuntingAreaId);
+          } else {
+            localStorage.removeItem('active_hunting_area_id');
+          }
+        }
       } catch (e) {
         console.error('Error loading defaults:', e);
       }

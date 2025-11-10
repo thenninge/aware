@@ -1089,6 +1089,7 @@ export default function SettingsMenu({
             showTracks,
             showObservations,
             showHuntingBoundary,
+            activeHuntingAreaId,
             targetSize,
             shotSize,
             observationSize,
