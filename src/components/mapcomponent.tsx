@@ -2453,12 +2453,20 @@ export default function MapComponent({
   const [showTargetRadiusModal, setShowTargetRadiusModal] = useState(false);
   const [showTargetDirectionUI, setShowTargetDirectionUI] = useState(false);
   const [targetRange, setTargetRange] = useState(500); // Default 500m
+  const [targetRangeInput, setTargetRangeInput] = useState<string>('500');
+  const [isTargetRangeInputFocused, setIsTargetRangeInputFocused] = useState(false);
   const [isModalSliderActive, setIsModalSliderActive] = useState(false);
   useEffect(() => {
     const min = 100;
     const max = Math.max(min, Math.min(1000, targetRangeSetting || 1000));
-    if (targetRange > max) setTargetRange(max);
-    if (targetRange < min) setTargetRange(min);
+    let next = targetRange;
+    if (next > max) next = max;
+    if (next < min) next = min;
+    if (next !== targetRange) setTargetRange(next);
+    // Hold tekstfelt synkronisert når det ikke er i fokus
+    if (!isTargetRangeInputFocused) {
+      setTargetRangeInput(String(next));
+    }
   }, [targetRangeSetting]);
   const [targetDirection, setTargetDirection] = useState(0); // Startverdi 0 (nord)
   const [previewTarget, setPreviewTarget] = useState<Position | null>(null);
@@ -2485,6 +2493,8 @@ export default function MapComponent({
     const max = Math.max(min, Math.min(1000, targetRangeSetting || 1000));
     const mid = Math.round((min + max) / 2);
     setTargetRange(mid);
+    setTargetRangeInput(String(mid));
+    setIsTargetRangeInputFocused(false);
     setShowTargetRadiusModal(true);
     setShowTargetDirectionUI(false);
     setShowTargetDialog(false); // Skjul gammel dialog
@@ -4976,12 +4986,42 @@ export default function MapComponent({
             <div className="text-base font-semibold text-black mb-1">Sett skuddavstand:</div>
             <div className="flex items-center gap-2">
               <input
-                type="number"
-                min={100}
-                max={Math.max(100, Math.min(1000, targetRangeSetting || 1000))}
-                step={5}
-                value={targetRange}
-                onChange={e => setTargetRange(Number(e.target.value))}
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={isTargetRangeInputFocused ? targetRangeInput : String(targetRange)}
+                onFocus={() => { setIsTargetRangeInputFocused(true); setTargetRangeInput(String(targetRange)); }}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (/^[0-9]*$/.test(v)) {
+                    setTargetRangeInput(v);
+                    if (v !== '') {
+                      const min = 100;
+                      const max = Math.max(min, Math.min(1000, targetRangeSetting || 1000));
+                      let n = parseInt(v, 10);
+                      if (Number.isFinite(n)) {
+                        if (n < min) n = min;
+                        if (n > max) n = max;
+                        setTargetRange(n);
+                      }
+                    }
+                  }
+                }}
+                onBlur={() => {
+                  const min = 100;
+                  const max = Math.max(min, Math.min(1000, targetRangeSetting || 1000));
+                  let n = targetRange;
+                  if (targetRangeInput !== '' && /^[0-9]+$/.test(targetRangeInput)) {
+                    n = parseInt(targetRangeInput, 10);
+                    // snap til 5m steg
+                    n = Math.round(n / 5) * 5;
+                    if (n < min) n = min;
+                    if (n > max) n = max;
+                    setTargetRange(n);
+                  }
+                  setTargetRangeInput(String(n));
+                  setIsTargetRangeInputFocused(false);
+                }}
                 className="w-16 border rounded px-2 py-1 text-[16px] text-black"
               />
               <span className="text-xs text-black">m</span>
@@ -4991,7 +5031,13 @@ export default function MapComponent({
                 max={Math.max(100, Math.min(1000, targetRangeSetting || 1000))}
                 step={5}
                 value={targetRange}
-                onChange={e => setTargetRange(Number(e.target.value))}
+                onChange={e => {
+                  const val = Number(e.target.value);
+                  setTargetRange(val);
+                  if (!isTargetRangeInputFocused) {
+                    setTargetRangeInput(String(val));
+                  }
+                }}
                 className="flex-1 touch-manipulation slider-thumb-25"
                 style={{ 
                   padding: '12px 0',
