@@ -3393,6 +3393,20 @@ export default function MapComponent({
           sizeRatio={msrSizeRatio}
         />
         
+        {/* GPS-posisjon: vis alltid når GPS er aktiv, uavhengig av modus */}
+        {isLiveMode && gpsPosition && (
+          <Marker
+            key={`gps-position-${gpsPosition.lat}-${gpsPosition.lng}`}
+            position={[gpsPosition.lat, gpsPosition.lng]}
+            icon={L.divIcon({
+              className: 'custom-marker gps-position-marker',
+              html: `<div style="width: 12px; height: 12px; background-color: #2563eb; opacity: 1; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 4px rgba(0,0,0,0.5);"></div>`,
+              iconSize: [12, 12],
+              iconAnchor: [6, 6],
+            })}
+          />
+        )}
+        
         {/* Jaktgrenser - render active hunting area boundary */}
         {showHuntingBoundary && activeHuntingAreaId && huntingAreas && huntingAreas.length > 0 && (() => {
           const activeArea = huntingAreas.find(area => area.id === activeHuntingAreaId);
