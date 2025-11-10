@@ -4749,8 +4749,8 @@ export default function MapComponent({
               }}
             >
               <div
-                className="bg-white border rounded-full shadow-lg px-3 py-2"
-                style={{ width: 'calc(100% - 160px)', maxWidth: '640px', pointerEvents: 'auto' }}
+                className="px-3 py-2"
+                style={{ width: 'calc(100% - 160px)', maxWidth: '640px', pointerEvents: 'auto', background: 'transparent', border: 'none', boxShadow: 'none' }}
                 onClick={(e) => e.stopPropagation()}
               >
                 <input
