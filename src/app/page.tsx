@@ -380,17 +380,22 @@ export default function Home() {
         const response = await fetch(`/api/hunting-areas?teamId=${authState.activeTeam.id}`);
         if (response.ok) {
           const areas = await response.json();
-          setHuntingAreas(areas);
+          // Normaliser ID til string for stabil sammenligning
+          const normalizedAreas = (areas || []).map((a: any) => ({
+            ...a,
+            id: String(a.id),
+          }));
+          setHuntingAreas(normalizedAreas);
           
           // Restore active hunting area ID from localStorage
           const savedActiveId = localStorage.getItem('active_hunting_area_id');
-          if (savedActiveId && areas.some((a: HuntingArea) => a.id === savedActiveId)) {
-            setActiveHuntingAreaId(savedActiveId);
-          } else if (areas.length > 0) {
-            setActiveHuntingAreaId(areas[0].id);
+          if (savedActiveId && normalizedAreas.some((a: HuntingArea) => String(a.id) === String(savedActiveId))) {
+            setActiveHuntingAreaId(String(savedActiveId));
+          } else if (normalizedAreas.length > 0) {
+            setActiveHuntingAreaId(String(normalizedAreas[0].id));
           }
           
-          console.log(`Loaded ${areas.length} hunting areas from Supabase`);
+          console.log(`Loaded ${normalizedAreas.length} hunting areas from Supabase`);
         } else {
           console.error('Failed to load hunting areas from Supabase');
           setHuntingAreas([]);
