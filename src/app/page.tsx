@@ -64,6 +64,7 @@ export default function Home() {
   const [showTracks, setShowTracks] = useState(true); // For Aware-mode
   const [showHuntingBoundaryByMode, setShowHuntingBoundaryByMode] = useState<Record<'aware' | 'track' | 'søk', boolean>>({ aware: true, track: true, søk: true });
   const showHuntingBoundary = showHuntingBoundaryByMode[mode]; // mode-specific
+  const [showElevationProfile, setShowElevationProfile] = useState(false);
   const [isTracking, setIsTracking] = useState(false);
   const [trackingPoints, setTrackingPoints] = useState<Position[]>([]);
   const [batterySaver, setBatterySaver] = useState(false);
@@ -712,6 +713,8 @@ export default function Home() {
           onLosRangeChange={setLosRadiusM}
           losHeightMeters={losObserverHeightM}
           onLosHeightChange={setLosObserverHeightM}
+          showElevationProfile={showElevationProfile}
+          onShowElevationProfileChange={setShowElevationProfile}
         />
         </div>
       )}

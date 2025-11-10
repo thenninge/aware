@@ -111,6 +111,7 @@ interface MapComponentProps {
   losHoleColor?: string;
   losOpacity?: number;
   losHoleOpacity?: number;
+  showElevationProfile?: boolean;
 }
 
 interface CategoryFilter {
@@ -1006,6 +1007,7 @@ export default function MapComponent({
   losHoleColor = '#ef4444',
   losOpacity = 0.25,
   losHoleOpacity = 0.12,
+  showElevationProfile = false,
 }: MapComponentProps) {
   const [showTargetDialog, setShowTargetDialog] = useState(false);
   const instanceId = useRef(Math.random());
@@ -1039,6 +1041,10 @@ export default function MapComponent({
   const prevCompassModeRef = useRef<'off' | 'on'>('off');
   const [invertSlices, setInvertSlices] = useState(false);
   const [savedPairs, setSavedPairs] = useState<PointPair[]>([]);
+  // Elevation profile state
+  const [elevSamples, setElevSamples] = useState<Array<{ distance: number; elevation: number }>>([]);
+  const [elevLoading, setElevLoading] = useState(false);
+  const [elevError, setElevError] = useState<string | null>(null);
   // LOS state
   const [isLosAwaitingClick, setIsLosAwaitingClick] = useState(false);
   const [isLosLoadingSdk, setIsLosLoadingSdk] = useState(false);
@@ -1248,6 +1254,47 @@ export default function MapComponent({
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     return R * c;
   };
+
+  // Elevation profile: fetch when profile is enabled and there are >= 2 points
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!showElevationProfile) { setElevSamples([]); setElevError(null); return; }
+      const pts = measurementPoints;
+      if (!pts || pts.length < 2) { setElevSamples([]); setElevError(null); return; }
+      try {
+        setElevLoading(true);
+        setElevError(null);
+        // Build path string
+        const pathParam = pts.map(p => `${p.lat},${p.lng}`).join('|');
+        const samples = Math.min(256, Math.max(32, pts.length * 64));
+        const res = await fetch(`/api/elevation?path=${encodeURIComponent(pathParam)}&samples=${samples}`);
+        const data = await res.json();
+        if (data.status && data.status !== 'OK' && !data.results) {
+          setElevError(data.error_message || data.status || 'ELEVATION_ERROR');
+          setElevSamples([]);
+          setElevLoading(false);
+          return;
+        }
+        const results = data.results || [];
+        // Compute distances along the polyline
+        const locs: Position[] = results.map((r: any) => ({ lat: r.location.lat, lng: r.location.lng }));
+        let acc = 0;
+        const dist: number[] = [0];
+        for (let i = 1; i < locs.length; i++) {
+          acc += calculateDistance(locs[i-1], locs[i]);
+          dist.push(acc);
+        }
+        const samplesArr = results.map((r: any, i: number) => ({ distance: dist[i], elevation: r.elevation }));
+        setElevSamples(samplesArr);
+      } catch (e: any) {
+        setElevError(e?.message || 'ELEVATION_ERROR');
+        setElevSamples([]);
+      } finally {
+        setElevLoading(false);
+      }
+    };
+    fetchProfile();
+  }, [showElevationProfile, measurementPoints]);
 
   const handleMeasureClick = () => {
     if (!currentPosition) return;
@@ -3715,7 +3762,7 @@ export default function MapComponent({
             pathOptions={{ color: '#ef4444', weight: 1, dashArray: '4 6', opacity: 0.9 }}
           />
         )}
-
+        
         {/* Alle lagrede observasjoner i søk-modus */}
         {((mode === 'søk' && showObservations) || (mode === 'aware' && showObservations) || (mode === 'track' && showObservations)) && savedObservations && savedObservations.length > 0 && (
           <>
@@ -5091,6 +5138,35 @@ export default function MapComponent({
               🧭
             </button>
           
+      {/* Elevation HUD */}
+      {mode === 'aware' && showElevationProfile && elevSamples.length > 1 && (
+        <div className="fixed z-[2001]" style={{ top: '64px', left: '50%', transform: 'translateX(-50%)', pointerEvents: 'none' }}>
+          <div style={{ background: 'rgba(255,255,255,0.6)', borderRadius: 8, padding: '6px 10px', boxShadow: '0 1px 4px rgba(0,0,0,0.15)' }}>
+            {(() => {
+              const width = 320;
+              const height = 70;
+              const padding = 6;
+              const dmax = elevSamples[elevSamples.length - 1].distance || 1;
+              const emin = Math.min(...elevSamples.map(s => s.elevation));
+              const emax = Math.max(...elevSamples.map(s => s.elevation));
+              const erange = Math.max(1, emax - emin);
+              const points = elevSamples.map(s => {
+                const x = padding + (s.distance / dmax) * (width - 2 * padding);
+                const y = padding + (1 - ((s.elevation - emin) / erange)) * (height - 2 * padding);
+                return `${x},${y}`;
+              }).join(' ');
+              const baselineY = padding + (1 - ((emin - emin) / erange)) * (height - 2 * padding);
+              return (
+                <svg width={width} height={height}>
+                  <polyline points={points} fill="none" stroke="#1f2937" strokeWidth="2" />
+                  {/* Baseline */}
+                  <line x1={padding} y1={baselineY} x2={width - padding} y2={baselineY} stroke="#9ca3af" strokeDasharray="4 4" strokeWidth="1" />
+                </svg>
+              );
+            })()}
+          </div>
+        </div>
+      )}
           
           {/* Kalibreringsknapp flyttet ut av denne gruppen */}
           
@@ -5123,8 +5199,8 @@ export default function MapComponent({
             style={{ pointerEvents: 'auto' }}
           >
             📍
-          </button>
-
+            </button>
+          
           {/* Pan lock button - always visible */}
           <button
             onClick={() => {

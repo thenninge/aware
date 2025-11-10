@@ -110,6 +110,7 @@ interface AwareMapProps {
   losHoleColor?: string;
   losOpacity?: number;
   losHoleOpacity?: number;
+  showElevationProfile?: boolean;
 }
 
 export default function AwareMap({
@@ -186,6 +187,7 @@ export default function AwareMap({
   losHoleColor,
   losOpacity,
   losHoleOpacity,
+  showElevationProfile,
 }: AwareMapProps) {
   const [isClient, setIsClient] = useState(false);
   const [hasError, setHasError] = useState(false);
@@ -278,6 +280,7 @@ export default function AwareMap({
         losHoleColor={losHoleColor}
         losOpacity={losOpacity}
         losHoleOpacity={losHoleOpacity}
+        showElevationProfile={showElevationProfile}
         showHuntingBoundary={showHuntingBoundary}
         huntingAreas={huntingAreas}
         activeHuntingAreaId={activeHuntingAreaId}

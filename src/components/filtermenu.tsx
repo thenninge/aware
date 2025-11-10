@@ -56,6 +56,9 @@ interface FilterMenuProps {
   // Shoot quick filter
   targetRangeMeters?: number;
   onTargetRangeChange?: (v: number) => void;
+  // Elevation profile
+  showElevationProfile?: boolean;
+  onShowElevationProfileChange?: (v: boolean) => void;
 }
 
 const categoryLabels: Record<keyof CategoryFilter, string> = {
@@ -67,7 +70,7 @@ const categoryLabels: Record<keyof CategoryFilter, string> = {
   isolated_dwelling: 'Enkeltbolig',
 };
 
-export default function FilterMenu({ categoryFilters, onCategoryChange, radius, onRadiusChange, losRangeMeters, onLosRangeChange, losHeightMeters, onLosHeightChange, showMarkers, onShowMarkersChange, orientationMode, onOrientationModeChange, categoryConfigs, showOnlyLastShot, onShowOnlyLastShotChange, mode, showAllTracksAndFinds, onShowAllTracksAndFindsChange, showObservations, onShowObservationsChange, showFinds, onShowFindsChange, showShots, onShowShotsChange, showTracks, onShowTracksChange, showHuntingBoundary, onShowHuntingBoundaryChange, onSync, showSearchTracks, onShowSearchTracksChange, showSearchFinds, onShowSearchFindsChange, batterySaver, onBatterySaverChange, targetRangeMeters, onTargetRangeChange }: FilterMenuProps) {
+export default function FilterMenu({ categoryFilters, onCategoryChange, radius, onRadiusChange, losRangeMeters, onLosRangeChange, losHeightMeters, onLosHeightChange, showMarkers, onShowMarkersChange, orientationMode, onOrientationModeChange, categoryConfigs, showOnlyLastShot, onShowOnlyLastShotChange, mode, showAllTracksAndFinds, onShowAllTracksAndFindsChange, showObservations, onShowObservationsChange, showFinds, onShowFindsChange, showShots, onShowShotsChange, showTracks, onShowTracksChange, showHuntingBoundary, onShowHuntingBoundaryChange, onSync, showSearchTracks, onShowSearchTracksChange, showSearchFinds, onShowSearchFindsChange, batterySaver, onBatterySaverChange, targetRangeMeters, onTargetRangeChange, showElevationProfile, onShowElevationProfileChange }: FilterMenuProps) {
   return (
     <div className="bg-white rounded-lg shadow-lg p-4 min-w-[220px] max-w-xs">
       <div className="flex items-center justify-between mb-2">
@@ -126,6 +129,22 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
             onChange={e => onLosHeightChange(Number(e.target.value))}
             className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer hover:bg-gray-300 transition-colors"
           />
+        </div>
+      )}
+      {/* Elevation profile toggle */}
+      {mode === 'aware' && onShowElevationProfileChange && (
+        <div className="mb-3">
+          <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+            <input
+              type="checkbox"
+              checked={!!showElevationProfile}
+              onChange={e => onShowElevationProfileChange(e.target.checked)}
+              className="w-3 h-3 text-blue-600 rounded focus:ring-blue-500"
+            />
+            <span className="font-medium text-gray-700">
+              Vis høydeprofil
+            </span>
+          </label>
         </div>
       )}
       
