@@ -770,6 +770,7 @@ export default function Home() {
         zoomButtonsSide={zoomButtonsSide}
         losObserverHeightM={losObserverHeightM}
         losRadiusM={losRadiusM}
+        showElevationProfile={showElevationProfile}
         showHuntingBoundary={showHuntingBoundary}
         huntingAreas={huntingAreas}
         activeHuntingAreaId={activeHuntingAreaId}
