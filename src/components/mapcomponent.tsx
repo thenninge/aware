@@ -3548,19 +3548,16 @@ export default function MapComponent({
         {((mode === 'søk' && showSearchFinds) || (mode === 'aware' && showFinds) || (mode === 'track' && showFinds)) && savedFinds && savedFinds.length > 0 && (
           <>
             {savedFinds.map((find) => (
-              <Marker
+              <Circle
                 key={`saved-find-${find.id}`}
-                position={[find.position.lat, find.position.lng]}
-                icon={L.divIcon({
-                  className: 'custom-marker find-marker',
-                  html: `<div style="width: 16px; height: 16px; position: relative;">
-                    <div style="width: 2px; height: 16px; background-color: ${find.color}; position: absolute; left: 7px; top: 0;"></div>
-                    <div style="width: 16px; height: 2px; background-color: ${find.color}; position: absolute; left: 0; top: 7px;"></div>
-                  </div>`,
-                  iconSize: [16, 16],
-                  iconAnchor: [8, 8],
-                })}
-                
+                center={[find.position.lat, find.position.lng]}
+                radius={observationSize}
+                pathOptions={{
+                  color: find.color,
+                  fillColor: 'transparent',
+                  fillOpacity: 0,
+                  weight: 2,
+                }}
               >
                 <Popup>
                   <div className="text-center">
@@ -3574,7 +3571,7 @@ export default function MapComponent({
                     >Slett funn</button>
                   </div>
                 </Popup>
-              </Marker>
+              </Circle>
             ))}
           </>
         )}
