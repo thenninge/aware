@@ -1258,21 +1258,23 @@ export default function MapComponent({
   // Elevation profile: fetch when profile is enabled and there are >= 2 points
   useEffect(() => {
     const fetchProfile = async () => {
-      if (!showElevationProfile) { setElevSamples([]); setElevError(null); return; }
+      if (!showElevationProfile) { setElevSamples([]); setElevError(null); setElevLoading(false); return; }
       const pts = measurementPoints;
-      if (!pts || pts.length < 2) { setElevSamples([]); setElevError(null); return; }
+      if (!pts || pts.length < 2) { setElevSamples([]); setElevError(null); setElevLoading(false); return; }
       try {
         setElevLoading(true);
         setElevError(null);
         // Build path string
         const pathParam = pts.map(p => `${p.lat},${p.lng}`).join('|');
         const samples = Math.min(256, Math.max(32, pts.length * 64));
+        console.log('[Elevation] Fetching profile', { points: pts.length, samples });
         const res = await fetch(`/api/elevation?path=${encodeURIComponent(pathParam)}&samples=${samples}`);
         const data = await res.json();
         if (data.status && data.status !== 'OK' && !data.results) {
           setElevError(data.error_message || data.status || 'ELEVATION_ERROR');
           setElevSamples([]);
           setElevLoading(false);
+          console.error('[Elevation] Error response', data);
           return;
         }
         const results = data.results || [];
@@ -5139,9 +5141,12 @@ export default function MapComponent({
             </button>
           
       {/* Elevation HUD */}
-      {mode === 'aware' && showElevationProfile && (elevLoading || elevError || elevSamples.length > 1) && (
+      {mode === 'aware' && showElevationProfile && (
         <div className="fixed z-[3000]" style={{ top: 'calc(env(safe-area-inset-top) + 56px)', left: '50%', transform: 'translateX(-50%)', pointerEvents: 'none' }}>
           <div style={{ background: 'rgba(255,255,255,0.6)', borderRadius: 8, padding: '6px 10px', boxShadow: '0 1px 4px rgba(0,0,0,0.15)' }}>
+            {measurementPoints.length < 2 && !elevLoading && !elevError && (
+              <div className="text-xs font-semibold text-gray-800">Høydeprofil: Velg minst 2 punkter</div>
+            )}
             {elevLoading && (
               <div className="text-xs font-semibold text-gray-800">Høydeprofil: Laster…</div>
             )}
