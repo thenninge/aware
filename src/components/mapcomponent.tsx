@@ -2757,18 +2757,21 @@ export default function MapComponent({
 
   const handleSaveShotPairWithName = async () => {
     if (!lockedShotPosition || !pendingTargetPosition) return;
-    let finalName = shotPairName.trim();
+    let base = shotPairName.trim();
+    const parts: string[] = [];
+    if (base) parts.push(base);
+    if (shotPairIncludeDistance) {
+      const dist = Math.round(targetRange);
+      parts.push(`${dist}m`);
+    }
     if (shotPairIncludeDTG) {
       const now = new Date();
       const date = now.toLocaleDateString('nb-NO', { day: '2-digit', month: '2-digit' });
       const time = now.toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit', hour12: false });
       const dtg = `${date} ${time}`;
-      finalName = finalName ? `${finalName} - ${dtg}` : dtg;
+      parts.push(dtg);
     }
-    if (shotPairIncludeDistance) {
-      const dist = Math.round(targetRange);
-      finalName = finalName ? `${finalName} - ${dist}m` : `${dist}m`;
-    }
+    const finalName = parts.join(' - ');
     if (!finalName) {
       alert('Vennligst skriv inn et navn eller aktiver "Legg til DTG"');
       return;
