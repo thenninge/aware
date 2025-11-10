@@ -387,14 +387,18 @@ export default function Home() {
           }));
           setHuntingAreas(normalizedAreas);
           
-          // Velg aktivt jaktfelt uten å overstyre et gyldig valg:
-          // 1) Behold eksisterende state hvis den finnes i lista
-          // 2) Ellers bruk localStorage-verdien hvis den finnes i lista
-          // 3) Ellers: ikke tving et valg (la brukeren velge), eller fallback til første hvis det ikke finnes noe aktivt
+          // Velg aktivt jaktfelt med tydelig prioritet:
+          // 1) Standardvalg fra "Lagre som standard"
+          // 2) Behold nåværende state hvis gyldig
+          // 3) Ellers bruk forrige aktive (session) fra localStorage
+          // 4) Ellers: kun hvis ingenting valgt, fallback til første
           const currentId = activeHuntingAreaId ? String(activeHuntingAreaId) : null;
+          const defaultActiveId = localStorage.getItem('default_active_hunting_area_id');
           const savedActiveId = localStorage.getItem('active_hunting_area_id');
           
-          if (currentId && normalizedAreas.some((a: HuntingArea) => String(a.id) === currentId)) {
+          if (defaultActiveId && normalizedAreas.some((a: HuntingArea) => String(a.id) === String(defaultActiveId))) {
+            setActiveHuntingAreaId(String(defaultActiveId));
+          } else if (currentId && normalizedAreas.some((a: HuntingArea) => String(a.id) === currentId)) {
             // Behold gjeldende valg
             setActiveHuntingAreaId(currentId);
           } else if (savedActiveId && normalizedAreas.some((a: HuntingArea) => String(a.id) === String(savedActiveId))) {
