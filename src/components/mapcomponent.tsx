@@ -5236,6 +5236,9 @@ export default function MapComponent({
               const width = 340;
               const height = 70;
               const padding = 6;
+              const leftGutter = 44; // space for left-side labels
+              const padL = padding + leftGutter;
+              const padR = padding;
               const dmax = elevSamples[elevSamples.length - 1].distance || 0;
               const emin = Math.min(...elevSamples.map(s => s.elevation));
               const emax = Math.max(...elevSamples.map(s => s.elevation));
@@ -5247,7 +5250,7 @@ export default function MapComponent({
               }
               const pointList: string[] = [];
               for (const s of elevSamples) {
-                const x = padding + (s.distance / dmax) * (width - 2 * padding);
+                const x = padL + (s.distance / dmax) * (width - padL - padR);
                 const y = padding + (1 - ((s.elevation - emin) / erange)) * (height - 2 * padding);
                 if (Number.isFinite(x) && Number.isFinite(y)) {
                   pointList.push(`${x},${y}`);
@@ -5257,7 +5260,7 @@ export default function MapComponent({
                 return <div className="text-xs font-semibold text-gray-800">Høydeprofil: Ingen gyldige datapunkter</div>;
               }
               const points = pointList.join(' ');
-              const baselineY = padding + (1 - ((emin - emin) / erange)) * (height - 2 * padding);
+              const baselineY = padding + (1 - ((emin - emin) / erange)) * (height - 2 * padding); // bottom line
               const startMoh = Math.round(elevSamples[0].elevation);
               const endMoh = Math.round(elevSamples[elevSamples.length - 1].elevation);
               const minMoh = Math.round(emin);
@@ -5268,14 +5271,14 @@ export default function MapComponent({
                     {/* Horizontal guide lines at 25%, 50%, 75% of elevation range */}
                     {delta > 0 && [0.25, 0.5, 0.75].map((f, i) => {
                       const y = padding + (1 - f) * (height - 2 * padding);
-                      return <line key={`h-guide-${i}`} x1={padding} y1={y} x2={width - padding} y2={y} stroke="#000" strokeDasharray="2 4" strokeWidth="1" />;
+                      return <line key={`h-guide-${i}`} x1={padL} y1={y} x2={width - padR} y2={y} stroke="#000" strokeDasharray="2 4" strokeWidth="1" />;
                     })}
                     {/* Baseline (0) at min elevation */}
-                    <line x1={padding} y1={padding + (height - 2 * padding)} x2={width - padding} y2={padding + (height - 2 * padding)} stroke="#9ca3af" strokeDasharray="4 4" strokeWidth="1" />
+                    <line x1={padL} y1={padding + (height - 2 * padding)} x2={width - padR} y2={padding + (height - 2 * padding)} stroke="#9ca3af" strokeDasharray="4 4" strokeWidth="1" />
                     {/* Elevation curve */}
                     <polyline points={points} fill="none" stroke="#1f2937" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
                     {/* Fill under curve for visibility */}
-                    <polyline points={`${padding},${height - padding} ${points} ${width - padding},${height - padding}`} fill="rgba(31,41,55,0.15)" stroke="none" />
+                    <polyline points={`${padL},${height - padding} ${points} ${width - padR},${height - padding}`} fill="rgba(31,41,55,0.15)" stroke="none" />
                     {/* Vertical segment separators */}
                     {(() => {
                       if (!Array.isArray(measurementPoints) || measurementPoints.length < 3) return null;
@@ -5284,11 +5287,11 @@ export default function MapComponent({
                       for (let i = 1; i < measurementPoints.length; i++) {
                         cum[i] = cum[i - 1] + calculateDistance(measurementPoints[i - 1], measurementPoints[i]);
                       }
-                      const endX = width - padding;
+                      const endX = width - padR;
                       return cum.slice(1, -1).map((cd, idx) => {
-                        const x = padding + (Math.min(cd, dmax) / dmax) * (width - 2 * padding);
+                        const x = padL + (Math.min(cd, dmax) / dmax) * (width - padL - padR);
                         if (!Number.isFinite(x) || Math.abs(x - endX) < 0.5) return null;
-                        return <line key={`seg-v-${idx}`} x1={x} y1={padding} x2={x} y2={height - padding} stroke="#000000" strokeDasharray="2 4" strokeWidth="1" />;
+                        return <line key={`seg-v-${idx}`} x1={x} y1={padding} x2={x} y2={height - 2 * padding + padding} stroke="#000000" strokeDasharray="2 4" strokeWidth="1" />;
                       });
                     })()}
                     {/* Left-side relative elevation labels: 0, 50%, 100% of delta */}
@@ -5301,7 +5304,23 @@ export default function MapComponent({
                       ];
                       return labels.map((it, idx) => {
                         const y = padding + (1 - it.f) * (height - 2 * padding);
-                        return <text key={`lbl-${idx}`} x={padding - 6} y={y} textAnchor="end" alignmentBaseline="middle" fontSize="10" fontWeight="600" fill="#111">{it.val}</text>;
+                        return (
+                          <text
+                            key={`lbl-${idx}`}
+                            x={padL - 6}
+                            y={y}
+                            textAnchor="end"
+                            dominantBaseline="middle"
+                            fontSize="11"
+                            fontWeight="700"
+                            fill="#111"
+                            stroke="#ffffff"
+                            strokeWidth="2"
+                            style={{ paintOrder: 'stroke' }}
+                          >
+                            {it.val}
+                          </text>
+                        );
                       });
                     })()}
                   </svg>
