@@ -1192,10 +1192,19 @@ export default function MapComponent({
   const [showObservationRangeModal, setShowObservationRangeModal] = useState(false);
   const [showObservationDirectionUI, setShowObservationDirectionUI] = useState(false);
   const [observationRange, setObservationRange] = useState(250);
+  const [observationRangeInput, setObservationRangeInput] = useState<string>('250');
+  const [isObservationRangeInputFocused, setIsObservationRangeInputFocused] = useState(false);
   const [observationDirection, setObservationDirection] = useState(0);
   const [previewObservation, setPreviewObservation] = useState<Position | null>(null);
   const [pendingObservationPosition, setPendingObservationPosition] = useState<Position | null>(null);
   const [lockedObservationPosition, setLockedObservationPosition] = useState<Position | null>(null);
+
+  // Hold observationRangeInput i sync når ikke i fokus
+  useEffect(() => {
+    if (!isObservationRangeInputFocused) {
+      setObservationRangeInput(String(observationRange));
+    }
+  }, [observationRange, isObservationRangeInputFocused]);
 
   // Avstandsmåling state
   const [isMeasuring, setIsMeasuring] = useState(false);
@@ -5212,12 +5221,42 @@ export default function MapComponent({
             <div className="text-base font-semibold text-black mb-1">Avstand til observasjon:</div>
             <div className="flex items-center gap-2">
               <input
-                type="number"
-                min={50}
-                max={1000}
-                step={5}
-                value={observationRange}
-                onChange={e => setObservationRange(Number(e.target.value))}
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={isObservationRangeInputFocused ? observationRangeInput : String(observationRange)}
+                onFocus={() => { setIsObservationRangeInputFocused(true); setObservationRangeInput(String(observationRange)); }}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (/^[0-9]*$/.test(v)) {
+                    setObservationRangeInput(v);
+                    if (v !== '') {
+                      const min = 50;
+                      const max = 1000;
+                      let n = parseInt(v, 10);
+                      if (Number.isFinite(n)) {
+                        if (n < min) n = min;
+                        if (n > max) n = max;
+                        setObservationRange(n);
+                      }
+                    }
+                  }
+                }}
+                onBlur={() => {
+                  const min = 50;
+                  const max = 1000;
+                  let n = observationRange;
+                  if (observationRangeInput !== '' && /^[0-9]+$/.test(observationRangeInput)) {
+                    n = parseInt(observationRangeInput, 10);
+                    // snap til 5m steg
+                    n = Math.round(n / 5) * 5;
+                    if (n < min) n = min;
+                    if (n > max) n = max;
+                    setObservationRange(n);
+                  }
+                  setObservationRangeInput(String(n));
+                  setIsObservationRangeInputFocused(false);
+                }}
                 className="w-16 border rounded px-2 py-1 text-[16px] text-black"
               />
               <span className="text-xs text-black">m</span>
@@ -5227,7 +5266,13 @@ export default function MapComponent({
                 max={1000}
                 step={5}
                 value={observationRange}
-                onChange={e => setObservationRange(Number(e.target.value))}
+                onChange={e => {
+                  const val = Number(e.target.value);
+                  setObservationRange(val);
+                  if (!isObservationRangeInputFocused) {
+                    setObservationRangeInput(String(val));
+                  }
+                }}
                 className="flex-1 touch-manipulation slider-thumb-25"
                 style={{ 
                   padding: '12px 0',
