@@ -1123,6 +1123,12 @@ export default function SettingsMenu({
             losHoleOpacity
           };
           localStorage.setItem('aware_settings_defaults', JSON.stringify(defaults));
+          // Speil aktivt jaktfelt til egen nøkkel slik at lastingen kan hente riktig felt uten å være avhengig av defaults-rekkefølge
+          if (activeHuntingAreaId) {
+            localStorage.setItem('active_hunting_area_id', activeHuntingAreaId);
+          } else {
+            localStorage.removeItem('active_hunting_area_id');
+          }
           setShowDefaultsSaved(true);
           setTimeout(() => setShowDefaultsSaved(false), 1200);
         }}
