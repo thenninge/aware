@@ -54,7 +54,7 @@ export default function Home() {
   const [isFilterExpanded, setIsFilterExpanded] = useState(false);
   const [isAdminExpanded, setIsAdminExpanded] = useState(false);
   const [orientationMode, setOrientationMode] = useState<'north' | 'heading'>('north');
-  const [showOnlyLastShot, setShowOnlyLastShot] = useState(true);
+  const [showOnlyLastShot, setShowOnlyLastShot] = useState(false);
   const [showAllTracksAndFinds, setShowAllTracksAndFinds] = useState(false);
   const [showSearchTracks, setShowSearchTracks] = useState(true);
   const [showSearchFinds, setShowSearchFinds] = useState(true);
