@@ -3547,32 +3547,42 @@ export default function MapComponent({
         {/* Alle lagrede funn i søk-modus */}
         {((mode === 'søk' && showSearchFinds) || (mode === 'aware' && showFinds) || (mode === 'track' && showFinds)) && savedFinds && savedFinds.length > 0 && (
           <>
-            {savedFinds.map((find) => (
-              <Circle
-                key={`saved-find-${find.id}`}
-                center={[find.position.lat, find.position.lng]}
-                radius={observationSize}
-                pathOptions={{
-                  color: find.color,
-                  fillColor: 'transparent',
-                  fillOpacity: 0,
-                  weight: 2,
-                }}
-              >
-                <Popup>
-                  <div className="text-center">
-                    <div className="font-semibold text-sm">{find.name}</div>
-                    <div className="text-xs text-gray-600 mt-1">
-                      {new Date(find.createdAt).toLocaleDateString('nb-NO')}
-                    </div>
-                    <button
-                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteFind(find.id); }}
-                      className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
-                    >Slett funn</button>
+            {savedFinds.map((find) => {
+              // Skaler "+"-symbolet i piksel basert på nåværende zoom slik at det oppfører seg som sirkel (meter-basert)
+              const metersPerPixel = 156543.03392 * Math.cos(find.position.lat * Math.PI / 180) / Math.pow(2, leafletZoom);
+              const pxSize = Math.max(2, (2 * observationSize) / Math.max(metersPerPixel, 1e-6)); // diameter i piksler
+              const icon = L.divIcon({
+                className: 'custom-marker find-plus',
+                html: `
+                  <div style="position:relative;width:${pxSize}px;height:${pxSize}px;">
+                    <div style="position:absolute;left:0;top:50%;width:100%;height:2px;background:${find.color};transform:translateY(-50%);"></div>
+                    <div style="position:absolute;top:0;left:50%;width:2px;height:100%;background:${find.color};transform:translateX(-50%);"></div>
                   </div>
-                </Popup>
-              </Circle>
-            ))}
+                `,
+                iconSize: [pxSize, pxSize] as any,
+                iconAnchor: [pxSize / 2, pxSize / 2] as any,
+              });
+              return (
+                <Marker
+                  key={`saved-find-${find.id}`}
+                  position={[find.position.lat, find.position.lng]}
+                  icon={icon}
+                >
+                  <Popup>
+                    <div className="text-center">
+                      <div className="font-semibold text-sm">{find.name}</div>
+                      <div className="text-xs text-gray-600 mt-1">
+                        {new Date(find.createdAt).toLocaleDateString('nb-NO')}
+                      </div>
+                      <button
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteFind(find.id); }}
+                        className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
+                      >Slett funn</button>
+                    </div>
+                  </Popup>
+                </Marker>
+              );
+            })}
           </>
         )}
         
