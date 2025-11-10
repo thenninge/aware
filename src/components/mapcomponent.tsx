@@ -3309,7 +3309,7 @@ export default function MapComponent({
           opacity={localMSRRetikkelOpacity}
           style={localMSRRetikkelStyle}
           verticalPosition={msrRetikkelVerticalPosition}
-          currentPosition={currentPosition}
+          currentPosition={(typeof searchPosition !== 'undefined' && searchPosition) ? searchPosition : currentPosition}
         />
         
         {/* Jaktgrenser - render active hunting area boundary */}

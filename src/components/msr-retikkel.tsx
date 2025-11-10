@@ -72,13 +72,15 @@ export default function MSRRetikkel({ isVisible, opacity, style, verticalPositio
     const center = map.getCenter();
     const metersPerPixel = 156543.03392 * Math.cos(center.lat * Math.PI / 180) / Math.pow(2, zoom);
     const circleRadiusMeters = Math.round(CIRCLE_RADIUS_PIXELS * metersPerPixel);
+    // position ring around active map point (currentPosition)
+    const p = map.latLngToContainerPoint([currentPosition.lat, currentPosition.lng]);
 
     return (
       <div
         className="absolute pointer-events-none z-[1000]"
         style={{
-          left: `${screenSize.width / 2 + 0}px`,
-          top: `${screenSize.height / 2 + 40}px`,
+          left: `${p.x}px`,
+          top: `${p.y}px`,
           transform: 'translate(-50%, -50%)',
           width: `${CIRCLE_DIAMETER_PIXELS}px`,
           height: `${CIRCLE_DIAMETER_PIXELS}px`,
