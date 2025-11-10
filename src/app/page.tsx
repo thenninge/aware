@@ -64,7 +64,7 @@ export default function Home() {
   const [showTracks, setShowTracks] = useState(true); // For Aware-mode
   const [showHuntingBoundaryByMode, setShowHuntingBoundaryByMode] = useState<Record<'aware' | 'track' | 'søk', boolean>>({ aware: true, track: true, søk: true });
   const showHuntingBoundary = showHuntingBoundaryByMode[mode]; // mode-specific
-  const [showElevationProfile, setShowElevationProfile] = useState(false);
+  const [showElevationProfile, setShowElevationProfile] = useState(true);
   const [isTracking, setIsTracking] = useState(false);
   const [trackingPoints, setTrackingPoints] = useState<Position[]>([]);
   const [batterySaver, setBatterySaver] = useState(false);
@@ -189,6 +189,7 @@ export default function Home() {
         if (defaults.losHoleColor !== undefined) setLosHoleColor(defaults.losHoleColor);
         if (defaults.losOpacity !== undefined) setLosOpacity(defaults.losOpacity);
         if (defaults.losHoleOpacity !== undefined) setLosHoleOpacity(defaults.losHoleOpacity);
+        if (defaults.showElevationProfile !== undefined) setShowElevationProfile(defaults.showElevationProfile);
         if (defaults.activeHuntingAreaId !== undefined) {
           setActiveHuntingAreaId(defaults.activeHuntingAreaId);
           if (defaults.activeHuntingAreaId) {
@@ -608,6 +609,7 @@ export default function Home() {
             onAngleRangeChange={handleAngleRangeChange}
             onDeleteAllShots={handleDeleteAllShots}
             currentCenter={currentCenter || undefined}
+            showElevationProfile={showElevationProfile}
             showMSRRetikkel={showMSRRetikkel}
             msrRetikkelOpacity={msrRetikkelOpacity}
             msrRetikkelStyle={msrRetikkelStyle}

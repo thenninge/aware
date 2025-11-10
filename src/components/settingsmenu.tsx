@@ -75,6 +75,8 @@ interface SettingsMenuProps {
   onZoomButtonsYChange?: (v: number) => void;
   zoomButtonsSide?: 'left' | 'right';
   onZoomButtonsSideChange?: (v: 'left' | 'right') => void;
+  // Elevation HUD default
+  showElevationProfile?: boolean;
   // LOS settings
   losObserverHeightM?: number;
   losRadiusM?: number;
@@ -158,6 +160,7 @@ export default function SettingsMenu({
   onZoomButtonsYChange,
   zoomButtonsSide,
   onZoomButtonsSideChange,
+  showElevationProfile,
   losObserverHeightM,
   losRadiusM,
   onLosObserverHeightChange,
@@ -1100,6 +1103,7 @@ export default function SettingsMenu({
             showTracks,
             showObservations,
             showHuntingBoundary,
+            showElevationProfile,
             activeHuntingAreaId,
             targetSize,
             shotSize,
