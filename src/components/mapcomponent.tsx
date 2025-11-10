@@ -203,7 +203,8 @@ function MapController({
   useEffect(() => {
     if (!map) return;
     try {
-      if (lockInteractions) {
+      const shouldLock = lockInteractions || isMapLocked;
+      if (shouldLock) {
         // prevent body scroll/bounce on mobile while modal open
         const prevOverflow = document.body.style.overflow;
         document.body.style.overflow = 'hidden';
@@ -236,7 +237,7 @@ function MapController({
     } catch (e) {
       // no-op
     }
-  }, [map, lockInteractions]);
+  }, [map, lockInteractions, isMapLocked]);
 
   useEffect(() => {
     // Check if map and L are available
@@ -5076,20 +5077,29 @@ export default function MapComponent({
               onClick={() => {
               const next = !isLiveMode;
               onLiveModeChange?.(next);
-              // Auto-lock map when GPS is enabled, unlock when disabled
-              if (next) {
-                setIsMapLocked(true);
-              } else {
-                setIsMapLocked(false);
-              }
             }}
             className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
               isLiveMode ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-gray-600 hover:bg-gray-700 text-white'
             }`}
-            title={isLiveMode ? 'Live GPS ON (locked)' : 'Live GPS'}
+            title={isLiveMode ? 'Live GPS' : 'Live GPS'}
             style={{ pointerEvents: 'auto' }}
           >
             📍
+          </button>
+
+          {/* Pan lock button - always visible */}
+          <button
+            onClick={() => {
+              const next = !isMapLocked;
+              setIsMapLocked(next);
+            }}
+            className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
+              isMapLocked ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-gray-600 hover:bg-gray-700 text-white'
+            }`}
+            title={isMapLocked ? 'Lås på: pan er låst til GPS' : 'Lås av: pan er tillatt'}
+            style={{ pointerEvents: 'auto' }}
+          >
+            {isMapLocked ? '🔒' : '🔓'}
           </button>
         </div>
 
