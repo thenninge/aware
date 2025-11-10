@@ -5226,6 +5226,22 @@ export default function MapComponent({
                     <polyline points={`${padding},${height - padding} ${points} ${width - padding},${height - padding}`} fill="rgba(31,41,55,0.15)" stroke="none" />
                     {/* Baseline */}
                     <line x1={padding} y1={baselineY} x2={width - padding} y2={baselineY} stroke="#9ca3af" strokeDasharray="4 4" strokeWidth="1" />
+                    {/* Segment separators */}
+                    {(() => {
+                      if (!Array.isArray(measurementPoints) || measurementPoints.length < 3) return null;
+                      // cumulative distances at each original point
+                      const cum: number[] = [0];
+                      for (let i = 1; i < measurementPoints.length; i++) {
+                        cum[i] = cum[i - 1] + calculateDistance(measurementPoints[i - 1], measurementPoints[i]);
+                      }
+                      const endX = width - padding;
+                      return cum.slice(1, -1).map((cd, idx) => {
+                        const x = padding + (Math.min(cd, dmax) / dmax) * (width - 2 * padding);
+                        // avoid drawing at the very end
+                        if (!Number.isFinite(x) || Math.abs(x - endX) < 0.5) return null;
+                        return <line key={`seg-v-${idx}`} x1={x} y1={padding} x2={x} y2={height - padding} stroke="#9ca3af" strokeDasharray="2 4" strokeWidth="1" />;
+                      });
+                    })()}
                   </svg>
                   <div className="mt-1 text-[10px] text-gray-800 font-semibold flex gap-3 justify-center">
                     <span>Start: {startMoh} moh</span>
