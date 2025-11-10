@@ -704,6 +704,8 @@ function TrackingController({
     return R * c;
   };
 
+  // (flyttet lenger ned) Hjelper for sletting ved indeks
+
   // GPS-based tracking when GPS is enabled
   useEffect(() => {
     if (!isTracking || mode !== 'søk' || !isLiveMode || !gpsPosition) return;
@@ -2156,45 +2158,145 @@ export default function MapComponent({
     }
   };
 
-  const handleDeleteShotPairByIndex = async (idx: number) => {
+  const handleDeleteShotPair = async (clickedPairId: number) => {
+    if (!window.confirm('Er du sikker på at du vil slette dette skuddparet?')) return;
+    
     try {
-      const item = safeSavedPairs[idx];
-      if (!item) return;
-      let shotId: string | number | undefined;
-      let targetId: string | number | undefined;
-      if (item.category === 'Skyteplass') {
-        shotId = item.id;
-        // Finn første treffpunkt etter denne
-        for (let j = idx + 1; j < safeSavedPairs.length; j++) {
-          const cand = safeSavedPairs[j];
-          if (cand && cand.category === 'Treffpunkt') { targetId = cand.id; break; }
-        }
-      } else if (item.category === 'Treffpunkt') {
-        targetId = item.id;
-        // Finn siste skyteplass før denne
-        for (let j = idx - 1; j >= 0; j--) {
-          const cand = safeSavedPairs[j];
-          if (cand && cand.category === 'Skyteplass') { shotId = cand.id; break; }
+      // Finn skuddparet vi klikket
+      const clickedPair = savedPairs.find(p => p.id === clickedPairId);
+      if (!clickedPair) {
+        alert('Kunne ikke finne skuddparet');
+        return;
+      }
+
+      // Hent alle posts for teamet for robust matching
+      let posts: any[] = [];
+      if (activeTeam) {
+        try {
+          const res = await fetch(`/api/posts?teamId=${activeTeam}`);
+          if (res.ok) {
+            posts = await res.json();
+          }
+        } catch (e) {
+          console.error('Kunne ikke hente poster for sletting:', e);
         }
       }
-      const ids: string[] = [];
-      if (shotId !== undefined) ids.push(String(shotId));
-      if (targetId !== undefined) ids.push(String(targetId));
-      if (ids.length === 0) return;
 
-      // Slett i databasen (best-effort)
+      // Bygg liste over post-IDer som skal slettes (alltid poste-IDer)
+      let postIds: number[] = [];
+      const clickedLocalId = (clickedPair as any).pair_local_id || (clickedPair as any).local_id || null;
+      const clickedName = (clickedPair as any).name || null;
+      const clickedCurrent = (clickedPair as any).current || null;
+      const clickedTarget = (clickedPair as any).target || null;
+
+      // 1) Foretrukket: local_id (eksplisitt relasjon)
+      if (clickedLocalId && posts.length > 0) {
+        const toDelete = posts.filter((p: any) => String(p.local_id || '') === String(clickedLocalId));
+        postIds = toDelete.map((p: any) => Number(p.id)).filter((id: number) => Number.isFinite(id));
+      }
+
+      // 2) Fallback: match på felles navn (både Skyteplass og Treffpunkt fikk samme Name)
+      if (postIds.length === 0 && clickedName && posts.length > 0) {
+        const toDelete = posts.filter((p: any) => {
+          const content = p.content || '';
+          const nameMatch = content.match(/Name:\s*([^,]+)(?:,|$)/);
+          const categoryMatch = content.match(/Category:\s*(\w+)/);
+          const name = nameMatch ? nameMatch[1].trim() : null;
+          const cat = categoryMatch ? categoryMatch[1] : null;
+          return name && name === clickedName && (cat === 'Skyteplass' || cat === 'Treffpunkt');
+        });
+        postIds = toDelete.map((p: any) => Number(p.id)).filter((id: number) => Number.isFinite(id));
+      }
+
+      // 3) Fallback: posisjonsnærhet til current/target (innen ca. 3 meter)
+      if (postIds.length === 0 && posts.length > 0 && (clickedCurrent || clickedTarget)) {
+        const near = (a: {lat:number; lng:number}, b:{lat:number; lng:number}) => {
+          const R = 6371000;
+          const dLat = (b.lat - a.lat) * Math.PI/180;
+          const dLng = (b.lng - a.lng) * Math.PI/180;
+          const s = Math.sin(dLat/2)**2 + Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLng/2)**2;
+          const d = 2*R*Math.asin(Math.sqrt(s));
+          return d < 3; // 3 meter terskel
+        };
+        const parsed = posts.map(p => {
+          const content = p.content || '';
+          const latMatch = content.match(/Lat: ([\d.-]+)/);
+          const lngMatch = content.match(/Lng: ([\d.-]+)/);
+          const targetLatMatch = content.match(/Target: ([\d.-]+), ([\d.-]+)/);
+          const categoryMatch = content.match(/Category: (\w+)/);
+          return {
+            id: p.id,
+            category: categoryMatch ? categoryMatch[1] : null,
+            current: latMatch && lngMatch ? { lat: parseFloat(latMatch[1]), lng: parseFloat(lngMatch[2] || latMatch[1]) } : null,
+            target: targetLatMatch ? { lat: parseFloat(targetLatMatch[1]), lng: parseFloat(targetLatMatch[2]) } : null,
+          };
+        });
+        const candidates: number[] = [];
+        for (const p of parsed) {
+          if (p.category === 'Skyteplass' && p.current && clickedCurrent && near(p.current, clickedCurrent)) {
+            candidates.push(p.id);
+          }
+          if (p.category === 'Treffpunkt' && p.target && clickedTarget && near(p.target, clickedTarget)) {
+            candidates.push(p.id);
+          }
+        }
+        if (candidates.length > 0) postIds = candidates;
+      }
+
+      // 4) Fallback: tid-basert heuristikk (som før)
+      if (postIds.length === 0 && (clickedPair as any).created_at) {
+        const clickedTime = new Date((clickedPair as any).created_at).getTime();
+        const timeWindow = 5 * 60 * 1000; // 5 minutter vindu
+        const relatedPairs = savedPairs.filter(p => {
+          const pairTime = new Date((p as any).created_at || '').getTime();
+          return Math.abs(pairTime - clickedTime) < timeWindow;
+        });
+        postIds = relatedPairs.map((p: any) => p.id);
+      }
+
+      // Alltid inkluder klikket postId selv om vi kun fant én partner
+      if (!postIds.includes(clickedPairId)) postIds.push(clickedPairId);
+
+      // Dedup
+      postIds = Array.from(new Set(postIds.filter((x) => Number.isFinite(x))));
+
+      if (postIds.length === 0) {
+        alert('Kunne ikke finne tilhørende poster');
+        return;
+      }
+
+      // Slett alle relaterte poster fra API
       try {
-        await fetch(`/api/posts?ids=${ids.join(',')}`, { method: 'DELETE' });
+        const response = await fetch(`/api/posts?ids=${postIds.join(',')}`, {
+          method: 'DELETE',
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to delete posts');
+        }
       } catch (e) {
         console.error('Sletting av skuddpar i DB feilet:', e);
       }
 
-      // Oppdater lokal state
-      setSavedPairs(prev => prev.filter(p => !ids.includes(String(p.id))));
-      // Hent på nytt fra server for konsistens
-      fetchPosts();
-    } catch (e) {
-      console.error('Sletting av skuddpar feilet:', e);
+      // Oppdater lokal state: fjern alle synlige par som enten har en av IDene, eller deler samme pair_local_id
+      setSavedPairs(prev => prev.filter(pair => {
+        if (postIds.includes((pair as any).id)) return false;
+        if (clickedLocalId && (pair as any).pair_local_id && String((pair as any).pair_local_id) === String(clickedLocalId)) return false;
+        return true;
+      }));
+      
+      // Oppdater spor og funn state
+      setSavedTracks(prev => prev.filter(track => 
+        !track.shotPairId || !postIds.includes(parseInt(track.shotPairId))
+      ));
+      setSavedFinds(prev => prev.filter(find => 
+        !find.shotPairId || !postIds.includes(parseInt(find.shotPairId))
+      ));
+      
+      alert('Skuddpar slettet!');
+    } catch (error) {
+      console.error('Feil ved sletting av skuddpar:', error);
+      alert('Feil ved sletting av skuddpar');
     }
   };
 
@@ -2921,6 +3023,23 @@ export default function MapComponent({
   const hasSavedPairs = safeSavedPairs.length > 0;
   // Reverser rekkefølgen slik at index 0 = nyeste, index 1 = nest nyeste, etc.
   const reversedPairs = hasSavedPairs ? [...safeSavedPairs].reverse() : [];
+  // Hjelper: slett skuddpar ved indeks i safeSavedPairs
+  const handleDeleteShotPairByIndex = (idx: number) => {
+    const pair: any = safeSavedPairs[idx];
+    if (!pair) return;
+    const id = pair.id as number | undefined;
+    if (Number.isFinite(id)) {
+      void handleDeleteShotPair(id as number);
+      return;
+    }
+    const localId = pair.pair_local_id || pair.local_id;
+    if (localId) {
+      const candidate = savedPairs.find((p: any) => ((p as any).pair_local_id || (p as any).local_id) === localId && (p as any).id);
+      if (candidate && (candidate as any).id) {
+        void handleDeleteShotPair((candidate as any).id as number);
+      }
+    }
+  };
   // Siste komplette skuddpar (med både skyteplass og treffpunkt)
   const lastFullPair = hasSavedPairs
     ? (() => {
@@ -3001,84 +3120,7 @@ export default function MapComponent({
     setSavedObservations(observations);
   }, [mode, adjustedSelectedTargetIndex, lastPair?.id, showAllTracksAndFinds]); // Reager på endringer i modus, valgt treffpunkt, skuddpar og visningsmodus
 
-  // Funksjon for å slette et spesifikt skuddpar
-  const handleDeleteShotPair = async (clickedPairId: number) => {
-    if (!window.confirm('Er du sikker på at du vil slette dette skuddparet?')) return;
-    
-    try {
-      // Finn hele skuddparet basert på timestamp
-      const clickedPair = savedPairs.find(p => p.id === clickedPairId);
-      if (!clickedPair || !clickedPair.created_at) {
-        alert('Kunne ikke finne skuddparet');
-        return;
-      }
-      
-      // Finn skyteplass og treffpunkt som tilhører samme skuddpar
-      const clickedTime = new Date(clickedPair.created_at).getTime();
-      const timeWindow = 5 * 60 * 1000; // 5 minutter vindu
-      
-      const relatedPairs = savedPairs.filter(p => {
-        const pairTime = new Date(p.created_at || '').getTime();
-        return Math.abs(pairTime - clickedTime) < timeWindow;
-      });
-      
-      if (relatedPairs.length === 0) {
-        alert('Kunne ikke finne tilhørende poster');
-        return;
-      }
-      
-      // Slett alle relaterte poster fra API
-      const pairIds = relatedPairs.map(p => p.id);
-      try {
-        const response = await fetch(`/api/posts?ids=${pairIds.join(',')}`, {
-          method: 'DELETE',
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to delete posts');
-        }
-      } catch (error) {
-        alert('Feil ved sletting: ' + (error as Error).message);
-        return;
-      }
-      
-      // Slett tilhørende spor og funn fra localStorage
-      const existingTracks = JSON.parse(localStorage.getItem('searchTracks') || '{}');
-      const existingFinds = JSON.parse(localStorage.getItem('searchFinds') || '{}');
-      
-      // Fjern spor med matching shotPairId
-      Object.keys(existingTracks).forEach(trackId => {
-        if (existingTracks[trackId].shotPairId && pairIds.includes(parseInt(existingTracks[trackId].shotPairId))) {
-          delete existingTracks[trackId];
-        }
-      });
-      localStorage.setItem('searchTracks', JSON.stringify(existingTracks));
-      
-      // Fjern funn med matching shotPairId
-      Object.keys(existingFinds).forEach(findId => {
-        if (existingFinds[findId].shotPairId && pairIds.includes(parseInt(existingFinds[findId].shotPairId))) {
-          delete existingFinds[findId];
-        }
-      });
-      localStorage.setItem('searchFinds', JSON.stringify(existingFinds));
-      
-      // Oppdater lokal state
-      setSavedPairs(prev => prev.filter(pair => !pairIds.includes(pair.id)));
-      
-      // Oppdater spor og funn state
-      setSavedTracks(prev => prev.filter(track => 
-        !track.shotPairId || !pairIds.includes(parseInt(track.shotPairId))
-      ));
-      setSavedFinds(prev => prev.filter(find => 
-        !find.shotPairId || !pairIds.includes(parseInt(find.shotPairId))
-      ));
-      
-      alert('Skuddpar slettet!');
-    } catch (error) {
-      console.error('Feil ved sletting av skuddpar:', error);
-      alert('Feil ved sletting av skuddpar');
-    }
-  };
+  // (duplikat fjernet) Slettefunksjon definert tidligere i filen
 
   // Legg til funksjon for å slette alle skuddpar
   type ShotCategory = 'Skyteplass' | 'Treffpunkt';
@@ -3582,24 +3624,24 @@ export default function MapComponent({
                 iconAnchor: [pxSize / 2, pxSize / 2] as any,
               });
               return (
-                <Marker
-                  key={`saved-find-${find.id}`}
-                  position={[find.position.lat, find.position.lng]}
+              <Marker
+                key={`saved-find-${find.id}`}
+                position={[find.position.lat, find.position.lng]}
                   icon={icon}
-                >
-                  <Popup>
-                    <div className="text-center">
-                      <div className="font-semibold text-sm">{find.name}</div>
-                      <div className="text-xs text-gray-600 mt-1">
-                        {new Date(find.createdAt).toLocaleDateString('nb-NO')}
-                      </div>
+              >
+                <Popup>
+                  <div className="text-center">
+                    <div className="font-semibold text-sm">{find.name}</div>
+                    <div className="text-xs text-gray-600 mt-1">
+                      {new Date(find.createdAt).toLocaleDateString('nb-NO')}
+                    </div>
                       <button
                         onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteFind(find.id); }}
                         className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
                       >Slett funn</button>
-                    </div>
-                  </Popup>
-                </Marker>
+                  </div>
+                </Popup>
+              </Marker>
               );
             })}
           </>
