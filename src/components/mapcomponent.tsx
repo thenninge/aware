@@ -61,7 +61,7 @@ interface MapComponentProps {
   onTrackingPointsChange?: (points: Position[]) => void;
   showMSRRetikkel?: boolean;
   msrRetikkelOpacity?: number;
-  msrRetikkelStyle?: 'msr' | 'ivar';
+  msrRetikkelStyle?: 'msr' | 'ivar' | 'circle';
   msrRetikkelVerticalPosition?: number;
   selectedTargetIndex?: number;
   onPreviousTarget?: () => void;

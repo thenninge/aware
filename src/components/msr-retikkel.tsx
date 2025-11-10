@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 interface MSRRetikkelProps {
   isVisible: boolean;
   opacity: number;
-  style: 'msr' | 'ivar';
+  style: 'msr' | 'ivar' | 'circle';
   verticalPosition?: number; // 0-100, kun for ivar-style
   currentPosition?: { lat: number; lng: number; heading?: number };
   compassMode?: 'off' | 'arrow' | 'map';
@@ -19,6 +19,8 @@ export default function MSRRetikkel({ isVisible, opacity, style, verticalPositio
   
   // Fast piksel-størrelse for L-en (200px x 200px)
   const L_SIZE_PIXELS = 200;
+  const CIRCLE_DIAMETER_PIXELS = 200;
+  const CIRCLE_RADIUS_PIXELS = CIRCLE_DIAMETER_PIXELS / 2;
   
   // Hent skjermstørrelse og oppdater ved resize
   useEffect(() => {
@@ -63,6 +65,62 @@ export default function MSRRetikkel({ isVisible, opacity, style, verticalPositio
   // Konverter slider-verdi (0-100) til faktisk skjermposisjon (60-85%)
   const actualVerticalPosition = 60 + (verticalPosition / 100) * 25;
   
+  // Circle-style rendering
+  if (isVisible && currentPosition && style === 'circle') {
+    // meters per pixel for HUD display
+    const zoom = map.getZoom();
+    const center = map.getCenter();
+    const metersPerPixel = 156543.03392 * Math.cos(center.lat * Math.PI / 180) / Math.pow(2, zoom);
+    const circleRadiusMeters = Math.round(CIRCLE_RADIUS_PIXELS * metersPerPixel);
+
+    return (
+      <div
+        className="absolute pointer-events-none z-[1000]"
+        style={{
+          left: `${screenSize.width / 2 + 0}px`,
+          top: `${screenSize.height / 2 + 40}px`,
+          transform: 'translate(-50%, -50%)',
+          width: `${CIRCLE_DIAMETER_PIXELS}px`,
+          height: `${CIRCLE_DIAMETER_PIXELS}px`,
+        }}
+      >
+        {/* Circle ring */}
+        <div
+          className="absolute rounded-full border-2 border-red-600"
+          style={{
+            left: '0',
+            top: '0',
+            width: `${CIRCLE_DIAMETER_PIXELS}px`,
+            height: `${CIRCLE_DIAMETER_PIXELS}px`,
+            opacity: opacity / 100,
+          }}
+        />
+        {/* Center red dot */}
+        <div
+          className="absolute w-2 h-2 rounded-full bg-red-600 border-2 border-white shadow"
+          style={{
+            left: '50%',
+            top: '50%',
+            transform: 'translate(-50%, -50%)',
+            opacity: opacity / 100,
+          }}
+        />
+        {/* HUD at ~225 degrees */}
+        <div
+          className="absolute text-xs font-bold text-red-600 bg-white/85 px-1 py-0.5 rounded shadow-sm"
+          style={{
+            left: `${50 - (CIRCLE_RADIUS_PIXELS / Math.SQRT2) * 100 / CIRCLE_DIAMETER_PIXELS}%`,
+            top: `${50 + (CIRCLE_RADIUS_PIXELS / Math.SQRT2) * 100 / CIRCLE_DIAMETER_PIXELS}%`,
+            transform: 'translate(-50%, -50%)',
+            opacity: opacity / 100,
+          }}
+        >
+          {circleRadiusMeters}m
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div 
       className="absolute pointer-events-none z-[1000]"

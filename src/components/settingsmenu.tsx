@@ -26,11 +26,11 @@ interface SettingsMenuProps {
   onDeleteAllShots?: () => void;
   showMSRRetikkel?: boolean;
   msrRetikkelOpacity?: number;
-  msrRetikkelStyle?: 'msr' | 'ivar';
+  msrRetikkelStyle?: 'msr' | 'ivar' | 'circle';
   msrRetikkelVerticalPosition?: number;
   onShowMSRRetikkelChange?: (show: boolean) => void;
   onMSRRetikkelOpacityChange?: (opacity: number) => void;
-  onMSRRetikkelStyleChange?: (style: 'msr' | 'ivar') => void;
+  onMSRRetikkelStyleChange?: (style: 'msr' | 'ivar' | 'circle') => void;
   onMSRRetikkelVerticalPositionChange?: (position: number) => void;
   categoryFilters?: CategoryFilter;
   onCategoryChange?: (category: keyof CategoryFilter) => void;
@@ -388,6 +388,17 @@ export default function SettingsMenu({
                       }`}
                     >
                       Ivar-style
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onMSRRetikkelStyleChange('circle')}
+                      className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                        msrRetikkelStyle === 'circle'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      Circle
                     </button>
                   </div>
                 </div>

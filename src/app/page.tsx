@@ -100,7 +100,7 @@ export default function Home() {
   const [angleRange, setAngleRange] = useState(5);
   const [showMSRRetikkel, setShowMSRRetikkel] = useState(false);
   const [msrRetikkelOpacity, setMSRRetikkelOpacity] = useState(80);
-  const [msrRetikkelStyle, setMSRRetikkelStyle] = useState<'msr' | 'ivar'>('ivar');
+  const [msrRetikkelStyle, setMSRRetikkelStyle] = useState<'msr' | 'ivar' | 'circle'>('ivar');
   const [msrRetikkelVerticalPosition, setMSRRetikkelVerticalPosition] = useState(50);
   // Zoom buttons
   const [showZoomButtons, setShowZoomButtons] = useState(true);
