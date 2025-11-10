@@ -4751,16 +4751,20 @@ export default function MapComponent({
           <div className="bg-white rounded-full px-3 h-12 shadow-lg border min-w-[60px] flex items-center justify-center">
             <span className="text-base font-semibold text-black">
               {(() => {
-                // Løpende oppdatering: hvis vi måler og har minst ett punkt, vis total + distanse til nåværende punkt (skjermsenter)
-                let display = totalDistance;
+                // Ny logikk:
+                // - Mens du panorerer mellom målepunkter: vis LØPENDE DISTANSE fra siste punkt til nåværende (skjermsenter)
+                // - Når du bekrefter nytt punkt (segmentet blir 0): vis AKKUMULERT totalDistance
+                let segment = 0;
                 if (isMeasuring && measurementPoints.length > 0 && currentPosition) {
                   const lastPt = measurementPoints[measurementPoints.length - 1];
-                  display = totalDistance + calculateDistance(lastPt, currentPosition);
+                  segment = calculateDistance(lastPt, currentPosition);
                 }
-                return display > 0
-                  ? (display < 1000
-                      ? `${Math.round(display)}m`
-                      : `${(display / 1000).toFixed(2)}km`)
+                // Vis segment hvis > 0 (aktiv pan), ellers vis total
+                const value = segment > 0 ? segment : totalDistance;
+                return value > 0
+                  ? (value < 1000
+                      ? `${Math.round(value)}m`
+                      : `${(value / 1000).toFixed(2)}km`)
                   : '0m';
               })()}
                      </span>
