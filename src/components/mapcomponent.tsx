@@ -4723,12 +4723,19 @@ export default function MapComponent({
           {/* Avstandstekst - alltid synlig */}
           <div className="bg-white rounded-full px-3 h-12 shadow-lg border min-w-[60px] flex items-center justify-center">
             <span className="text-base font-semibold text-black">
-              {totalDistance > 0 
-                ? (totalDistance < 1000 
-                    ? `${Math.round(totalDistance)}m` 
-                    : `${(totalDistance / 1000).toFixed(2)}km`)
-                : '0m'
-              }
+              {(() => {
+                // Løpende oppdatering: hvis vi måler og har minst ett punkt, vis total + distanse til nåværende punkt (skjermsenter)
+                let display = totalDistance;
+                if (isMeasuring && measurementPoints.length > 0 && currentPosition) {
+                  const lastPt = measurementPoints[measurementPoints.length - 1];
+                  display = totalDistance + calculateDistance(lastPt, currentPosition);
+                }
+                return display > 0
+                  ? (display < 1000
+                      ? `${Math.round(display)}m`
+                      : `${(display / 1000).toFixed(2)}km`)
+                  : '0m';
+              })()}
                      </span>
              </div>
 
