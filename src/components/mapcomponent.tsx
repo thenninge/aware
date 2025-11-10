@@ -5236,7 +5236,7 @@ export default function MapComponent({
               const width = 340;
               const height = 70;
               const padding = 6;
-              const leftGutter = 44; // space for left-side labels
+              const leftGutter = 28; // space for left-side labels
               const padL = padding + leftGutter;
               const padR = padding;
               const dmax = elevSamples[elevSamples.length - 1].distance || 0;
@@ -5307,16 +5307,13 @@ export default function MapComponent({
                         return (
                           <text
                             key={`lbl-${idx}`}
-                            x={padL - 6}
+                            x={padding + 4}
                             y={y}
-                            textAnchor="end"
+                            textAnchor="start"
                             dominantBaseline="middle"
                             fontSize="11"
                             fontWeight="700"
                             fill="#111"
-                            stroke="#ffffff"
-                            strokeWidth="2"
-                            style={{ paintOrder: 'stroke' }}
                           >
                             {it.val}
                           </text>
