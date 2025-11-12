@@ -136,4 +136,115 @@ export function simplifyPathLatLng(
   return out;
 }
 
+// Merge many grid-aligned quads into fewer closed rings by removing shared edges.
+export function unifyQuadsToRings(
+  quads: google.maps.LatLngLiteral[][],
+  simplifyToleranceMeters = 3
+): google.maps.LatLngLiteral[][] {
+  if (!quads || quads.length === 0) return [];
+  const fmt = (p: google.maps.LatLngLiteral) => `${p.lat.toFixed(7)},${p.lng.toFixed(7)}`;
+  const edgeKey = (a: google.maps.LatLngLiteral, b: google.maps.LatLngLiteral) => {
+    const ka = fmt(a), kb = fmt(b);
+    return ka < kb ? `${ka}|${kb}` : `${kb}|${ka}`;
+  };
+  type Edge = { a: google.maps.LatLngLiteral; b: google.maps.LatLngLiteral };
+  const edgeCount = new Map<string, number>();
+  const edgeDir = new Map<string, Edge>(); // store one representative orientation
+
+  for (const q of quads) {
+    if (!q || q.length < 4) continue;
+    const pts = [q[0], q[1], q[2], q[3]];
+    const edges: Edge[] = [
+      { a: pts[0], b: pts[1] },
+      { a: pts[1], b: pts[2] },
+      { a: pts[2], b: pts[3] },
+      { a: pts[3], b: pts[0] },
+    ];
+    for (const e of edges) {
+      const k = edgeKey(e.a, e.b);
+      edgeCount.set(k, (edgeCount.get(k) || 0) + 1);
+      if (!edgeDir.has(k)) edgeDir.set(k, e);
+    }
+  }
+
+  // Keep only boundary edges (count === 1)
+  const boundaryEdges: Edge[] = [];
+  for (const [k, cnt] of edgeCount.entries()) {
+    if (cnt === 1) {
+      const e = edgeDir.get(k)!;
+      boundaryEdges.push(e);
+    }
+  }
+  if (boundaryEdges.length === 0) return [];
+
+  // Build adjacency graph
+  const toKey = fmt;
+  const neighbors = new Map<string, Array<google.maps.LatLngLiteral>>();
+  for (const e of boundaryEdges) {
+    const ka = toKey(e.a);
+    const kb = toKey(e.b);
+    if (!neighbors.has(ka)) neighbors.set(ka, []);
+    if (!neighbors.has(kb)) neighbors.set(kb, []);
+    neighbors.get(ka)!.push(e.b);
+    neighbors.get(kb)!.push(e.a);
+  }
+
+  // Walk rings
+  const visitedEdge = new Set<string>();
+  const rings: google.maps.LatLngLiteral[][] = [];
+
+  const dirEdgeKey = (a: google.maps.LatLngLiteral, b: google.maps.LatLngLiteral) =>
+    `${toKey(a)}->${toKey(b)}`;
+
+  for (const e of boundaryEdges) {
+    const startKey = dirEdgeKey(e.a, e.b);
+    if (visitedEdge.has(startKey)) continue;
+    // Start a ring following e.a -> e.b
+    const ring: google.maps.LatLngLiteral[] = [];
+    let prev = e.a;
+    let cur = e.b;
+    ring.push(prev);
+    ring.push(cur);
+    visitedEdge.add(startKey);
+
+    while (true) {
+      const curNei = neighbors.get(toKey(cur)) || [];
+      // choose next neighbor not equal to prev
+      let next: google.maps.LatLngLiteral | null = null;
+      for (const n of curNei) {
+        if (toKey(n) !== toKey(prev)) {
+          const k = dirEdgeKey(cur, n);
+          if (!visitedEdge.has(k)) {
+            next = n;
+            visitedEdge.add(k);
+            break;
+          }
+        }
+      }
+      if (!next) {
+        // Closed when next back to start
+        if (toKey(cur) !== toKey(ring[0])) {
+          // Try to close explicitly
+          ring.push({ ...ring[0] });
+        }
+        break;
+      }
+      if (toKey(next) === toKey(ring[0])) {
+        // Complete
+        ring.push(next);
+        break;
+      }
+      ring.push(next);
+      prev = cur;
+      cur = next;
+      // safety
+      if (ring.length > boundaryEdges.length + 5) break;
+    }
+    if (ring.length >= 4) {
+      rings.push(simplifyPathLatLng(ring, simplifyToleranceMeters));
+    }
+  }
+  return rings;
+}
+
 

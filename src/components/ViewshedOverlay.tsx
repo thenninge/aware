@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import type { ViewshedData } from './useViewshed';
-import { extractContours, contoursToLatLng, simplifyPathLatLng } from './viewshedContours';
+import { extractContours, contoursToLatLng, simplifyPathLatLng, unifyQuadsToRings } from './viewshedContours';
 
 export function ViewshedOverlay({
   map,
@@ -49,8 +49,8 @@ export function ViewshedOverlay({
     }
 
     if (rings.length > 0) {
-      // Include hole rings as polygon holes (diff)
-      const holeRings = (data.holes || []).map(path => path.slice());
+      // Build hole contours as merged rings to avoid many small quads
+      const holeRings = unifyQuadsToRings((data.holes || []), simplifyToleranceM);
       polyRef.current = new google.maps.Polygon({
         paths: [...rings, ...holeRings],
         strokeColor,
@@ -62,9 +62,10 @@ export function ViewshedOverlay({
       });
     }
 
-    // Draw holes (non-visible quads) as lightweight fill-only polygons on top for visibility.
-    if (data.holes && data.holes.length > 0) {
-      holeRefs.current = data.holes.map(path => new google.maps.Polygon({
+    // Draw merged hole rings on top for visibility (fill-only).
+    const mergedHoleRings = unifyQuadsToRings((data.holes || []), simplifyToleranceM);
+    if (mergedHoleRings.length > 0) {
+      holeRefs.current = mergedHoleRings.map(path => new google.maps.Polygon({
         paths: path,
         strokeOpacity: 0,
         strokeWeight: 0,

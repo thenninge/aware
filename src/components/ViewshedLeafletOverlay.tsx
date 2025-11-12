@@ -2,7 +2,7 @@
 
 import { Polygon, CircleMarker } from 'react-leaflet';
 import type { ViewshedData } from './useViewshed';
-import { extractContours, contoursToLatLng, simplifyPathLatLng } from './viewshedContours';
+import { extractContours, contoursToLatLng, simplifyPathLatLng, unifyQuadsToRings } from './viewshedContours';
 
 export default function ViewshedLeafletOverlay({
   data,
@@ -38,8 +38,9 @@ export default function ViewshedLeafletOverlay({
   }
 
   // Prepare hole rings for diff rendering
+  const holeRingsLatLng = unifyQuadsToRings((data.holes || []), simplifyToleranceM);
   const holeRings: Array<Array<[number, number]>> =
-    (data.holes || []).map(poly => poly.map(p => [p.lat, p.lng]) as [number, number][]);
+    holeRingsLatLng.map(poly => poly.map(p => [p.lat, p.lng]) as [number, number][]);
 
   return (
     <>
