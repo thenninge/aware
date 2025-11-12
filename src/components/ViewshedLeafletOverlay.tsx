@@ -37,20 +37,27 @@ export default function ViewshedLeafletOverlay({
     rings = [path.map(p => [p.lat, p.lng]) as [number, number][]];
   }
 
+  // Prepare hole rings for diff rendering
+  const holeRings: Array<Array<[number, number]>> =
+    (data.holes || []).map(poly => poly.map(p => [p.lat, p.lng]) as [number, number][]);
+
   return (
     <>
-      {/* Visible area as one or few simplified rings with stroke + fill */}
-      {rings.map((ring, idx) => (
-        <Polygon
-          key={`los-ring-${idx}`}
-          positions={ring}
-          color={color}
-          weight={2}
-          opacity={0.8}
-          fillColor={color}
-          fillOpacity={visibleOpacity}
-        />
-      ))}
+      {/* Visible area as one or few simplified rings with stroke + fill; include holes as "cutouts" */}
+      {rings.map((ring, idx) => {
+        const positions = [ring, ...holeRings] as unknown as Array<Array<[number, number]>>;
+        return (
+          <Polygon
+            key={`los-ring-${idx}`}
+            positions={positions}
+            color={color}
+            weight={2}
+            opacity={0.8}
+            fillColor={color}
+            fillOpacity={visibleOpacity}
+          />
+        );
+      })}
 
       {/* Non-visible holes: soft red fill, no stroke */}
       {data.holes && data.holes.map((quad, idx) => (

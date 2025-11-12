@@ -49,8 +49,10 @@ export function ViewshedOverlay({
     }
 
     if (rings.length > 0) {
+      // Include hole rings as polygon holes (diff)
+      const holeRings = (data.holes || []).map(path => path.slice());
       polyRef.current = new google.maps.Polygon({
-        paths: rings,
+        paths: [...rings, ...holeRings],
         strokeColor,
         strokeOpacity: 0.8,
         strokeWeight: 2,
@@ -60,7 +62,7 @@ export function ViewshedOverlay({
       });
     }
 
-    // Draw holes (non-visible quads) as lightweight fill-only polygons.
+    // Draw holes (non-visible quads) as lightweight fill-only polygons on top for visibility.
     if (data.holes && data.holes.length > 0) {
       holeRefs.current = data.holes.map(path => new google.maps.Polygon({
         paths: path,
