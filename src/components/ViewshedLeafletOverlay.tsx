@@ -46,41 +46,24 @@ export default function ViewshedLeafletOverlay({
     rings = [path.map(p => [p.lat, p.lng]) as [number, number][]];
   }
 
-  // Prepare hole rings for diff rendering
-  const holeRingsLatLng = unifyQuadsToRings((data.holes || []), simplifyToleranceM);
-  const holeRings: Array<Array<[number, number]>> =
-    holeRingsLatLng.map(poly => poly.map(p => [p.lat, p.lng]) as [number, number][]);
+  // Focus on drawing only green visible area; non-visible inside circle is transparent
 
   return (
     <>
-      {/* Visible area as one or few simplified rings with stroke + fill; include holes as "cutouts" */}
-      {rings.map((ring, idx) => {
-        const positions = [ring, ...holeRings] as unknown as Array<Array<[number, number]>>;
-        return (
-          <Polygon
-            key={`los-ring-${idx}`}
-            positions={positions}
-            color={color}
-            weight={2}
-            opacity={0.8}
-            fillColor={color}
-            fillOpacity={visibleOpacity}
-          />
-        );
-      })}
-
-      {/* Non-visible holes: soft red fill, no stroke */}
-      {data.holes && data.holes.map((quad, idx) => (
+      {/* Visible area as one or few simplified rings with stroke + fill */}
+      {rings.map((ring, idx) => (
         <Polygon
-          key={`los-hole-${idx}`}
-          positions={quad.map(p => [p.lat, p.lng]) as [number, number][]}
-          color={holeColor}
-          weight={0}
-          opacity={0}
-          fillColor={holeColor}
-          fillOpacity={holeOpacity}
+          key={`los-ring-${idx}`}
+          positions={ring}
+          color={color}
+          weight={2}
+          opacity={0.8}
+          fillColor={color}
+          fillOpacity={visibleOpacity}
         />
       ))}
+
+      {/* No red hole overlays – transparency shows where LOS is missing */}
 
       {/* Center dot */}
       <CircleMarker
