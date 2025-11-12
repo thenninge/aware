@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import type { ViewshedData } from './useViewshed';
+import { extractContours, contoursToLatLng, simplifyPathLatLng } from './viewshedContours';
 
 export function ViewshedOverlay({
   map,
@@ -9,59 +10,41 @@ export function ViewshedOverlay({
   strokeColor = '#00FFAA',
   fillColor = '#00FFAA',
   fillOpacity = 0.25,
-  holeColor = '#ef4444',
-  holeOpacity = 0.12,
+  simplifyToleranceM = 3,
 }: {
   map: google.maps.Map | undefined;
   data: ViewshedData | null;
   strokeColor?: string;
   fillColor?: string;
   fillOpacity?: number;
-  holeColor?: string;
-  holeOpacity?: number;
+  simplifyToleranceM?: number;
 }) {
-  const outlineRef = useRef<google.maps.Polygon | null>(null);
-  const quadRefs = useRef<google.maps.Polygon[]>([]);
-  const wedgeRef = useRef<google.maps.Polygon | null>(null);
-  const internalOutlineRefs = useRef<google.maps.Polygon[]>([]);
-  const holeRefs = useRef<google.maps.Polygon[]>([]);
+  const polyRef = useRef<google.maps.Polygon | null>(null);
   const dotRef = useRef<google.maps.Marker | null>(null);
 
   useEffect(() => {
     if (!map) return;
     // clear old
-    outlineRef.current?.setMap(null); outlineRef.current = null;
-    quadRefs.current.forEach(p => p.setMap(null)); quadRefs.current = [];
-    wedgeRef.current?.setMap(null); wedgeRef.current = null;
-    internalOutlineRefs.current.forEach(p => p.setMap(null)); internalOutlineRefs.current = [];
-    holeRefs.current.forEach(p => p.setMap(null)); holeRefs.current = [];
-    dotRef.current?.setMap(null);
-    dotRef.current = null;
+    polyRef.current?.setMap(null); polyRef.current = null;
+    dotRef.current?.setMap(null); dotRef.current = null;
 
     if (!data) return;
-    // Outer outline stroke only
-    if (data.path && data.path.length > 1) {
-      outlineRef.current = new google.maps.Polygon({
-        paths: data.path,
-        strokeColor,
-        strokeOpacity: 0.8,
-        strokeWeight: 2,
-        fillOpacity: 0,
-        map,
-      });
+
+    let rings: google.maps.LatLngLiteral[][] = [];
+    if (data.profiles && data.profiles.length > 0) {
+      const mask = data.profiles.map(p => p.visible.slice());
+      const contours = extractContours(mask, true);
+      const latlngRings = contoursToLatLng(contours, data.profiles);
+      rings = latlngRings.map(r => simplifyPathLatLng(r, simplifyToleranceM));
+    } else if (data.path && data.path.length > 1) {
+      // Fallback to endpoints ring
+      const path = data.path.slice();
+      rings = [simplifyPathLatLng(path, simplifyToleranceM)];
     }
-    if (data.quads && data.quads.length > 0) {
-      quadRefs.current = data.quads.map(path => new google.maps.Polygon({
-        paths: path,
-        strokeOpacity: 0,
-        strokeWeight: 0,
-        fillColor,
-        fillOpacity,
-        map
-      }));
-    } else {
-      wedgeRef.current = new google.maps.Polygon({
-        paths: data.path,
+
+    if (rings.length > 0) {
+      polyRef.current = new google.maps.Polygon({
+        paths: rings,
         strokeColor,
         strokeOpacity: 0.8,
         strokeWeight: 2,
@@ -70,18 +53,7 @@ export function ViewshedOverlay({
         map,
       });
     }
-    // Internal hole outlines (stroke only)
-    // Replaced by holes fill
-    if (data.holes && data.holes.length > 0) {
-      holeRefs.current = data.holes.map(path => new google.maps.Polygon({
-        paths: path,
-        strokeOpacity: 0,
-        strokeWeight: 0,
-        fillColor: holeColor,
-        fillOpacity: holeOpacity,
-        map
-      }));
-    }
+
     // center dot using a symbol circle marker
     dotRef.current = new google.maps.Marker({
       position: data.origin,
@@ -96,15 +68,10 @@ export function ViewshedOverlay({
       map,
     });
     return () => {
-      outlineRef.current?.setMap(null); outlineRef.current = null;
-      quadRefs.current.forEach(p => p.setMap(null)); quadRefs.current = [];
-      wedgeRef.current?.setMap(null); wedgeRef.current = null;
-      internalOutlineRefs.current.forEach(p => p.setMap(null)); internalOutlineRefs.current = [];
-      holeRefs.current.forEach(p => p.setMap(null)); holeRefs.current = [];
-      dotRef.current?.setMap(null);
-      dotRef.current = null;
+      polyRef.current?.setMap(null); polyRef.current = null;
+      dotRef.current?.setMap(null); dotRef.current = null;
     };
-  }, [map, data, strokeColor, fillColor]);
+  }, [map, data, strokeColor, fillColor, fillOpacity, simplifyToleranceM]);
 
   return null;
 }

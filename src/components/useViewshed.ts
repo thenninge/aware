@@ -170,6 +170,8 @@ export type ViewshedData = {
   path: LatLng[];
   quads?: LatLng[][];
   holes?: LatLng[][];
+  // Expose per-ray profiles for downstream contouring (optional to retain API stability)
+  profiles?: Array<{ locations: LatLng[]; visible: boolean[] }>;
 };
 
 export function useViewshed(params: ViewshedParams) {
@@ -255,7 +257,7 @@ export function useViewshed(params: ViewshedParams) {
           }
           return res;
         })(profiles);
-        setData({ origin, endpoints, path, quads, holes });
+        setData({ origin, endpoints, path, quads, holes, profiles });
         setStatus('done');
       } catch (e: any) {
         if (e?.message === 'aborted') return;
