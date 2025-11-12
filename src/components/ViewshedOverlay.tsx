@@ -10,6 +10,8 @@ export function ViewshedOverlay({
   strokeColor = '#00FFAA',
   fillColor = '#00FFAA',
   fillOpacity = 0.25,
+  holeColor = '#ef4444',
+  holeOpacity = 0.12,
   simplifyToleranceM = 3,
 }: {
   map: google.maps.Map | undefined;
@@ -17,15 +19,19 @@ export function ViewshedOverlay({
   strokeColor?: string;
   fillColor?: string;
   fillOpacity?: number;
+  holeColor?: string;
+  holeOpacity?: number;
   simplifyToleranceM?: number;
 }) {
   const polyRef = useRef<google.maps.Polygon | null>(null);
   const dotRef = useRef<google.maps.Marker | null>(null);
+  const holeRefs = useRef<google.maps.Polygon[]>([]);
 
   useEffect(() => {
     if (!map) return;
     // clear old
     polyRef.current?.setMap(null); polyRef.current = null;
+    holeRefs.current.forEach(p => p.setMap(null)); holeRefs.current = [];
     dotRef.current?.setMap(null); dotRef.current = null;
 
     if (!data) return;
@@ -54,6 +60,18 @@ export function ViewshedOverlay({
       });
     }
 
+    // Draw holes (non-visible quads) as lightweight fill-only polygons.
+    if (data.holes && data.holes.length > 0) {
+      holeRefs.current = data.holes.map(path => new google.maps.Polygon({
+        paths: path,
+        strokeOpacity: 0,
+        strokeWeight: 0,
+        fillColor: holeColor,
+        fillOpacity: holeOpacity,
+        map,
+      }));
+    }
+
     // center dot using a symbol circle marker
     dotRef.current = new google.maps.Marker({
       position: data.origin,
@@ -69,9 +87,10 @@ export function ViewshedOverlay({
     });
     return () => {
       polyRef.current?.setMap(null); polyRef.current = null;
+      holeRefs.current.forEach(p => p.setMap(null)); holeRefs.current = [];
       dotRef.current?.setMap(null); dotRef.current = null;
     };
-  }, [map, data, strokeColor, fillColor, fillOpacity, simplifyToleranceM]);
+  }, [map, data, strokeColor, fillColor, fillOpacity, holeColor, holeOpacity, simplifyToleranceM]);
 
   return null;
 }
