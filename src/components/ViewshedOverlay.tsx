@@ -37,7 +37,10 @@ export function ViewshedOverlay({
     if (!data) return;
 
     let rings: google.maps.LatLngLiteral[][] = [];
-    if (data.profiles && data.profiles.length > 0) {
+    if (data.quads && data.quads.length > 0) {
+      // Build accurate visible area from quads, but collapse to few rings
+      rings = unifyQuadsToRings(data.quads, simplifyToleranceM);
+    } else if (data.profiles && data.profiles.length > 0) {
       const mask = data.profiles.map(p => p.visible.slice());
       const contours = extractContours(mask, true);
       const latlngRings = contoursToLatLng(contours, data.profiles);
