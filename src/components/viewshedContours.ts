@@ -142,109 +142,156 @@ export function unifyQuadsToRings(
   simplifyToleranceMeters = 3
 ): google.maps.LatLngLiteral[][] {
   if (!quads || quads.length === 0) return [];
-  const fmt = (p: google.maps.LatLngLiteral) => `${p.lat.toFixed(7)},${p.lng.toFixed(7)}`;
-  const edgeKey = (a: google.maps.LatLngLiteral, b: google.maps.LatLngLiteral) => {
-    const ka = fmt(a), kb = fmt(b);
-    return ka < kb ? `${ka}|${kb}` : `${kb}|${ka}`;
+
+  // Local projection and snapping for robust node matching
+  const R = 6371000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const ref = quads[0][0];
+  const lat0 = toRad(ref.lat);
+  const lon0 = toRad(ref.lng);
+  const cosLat0 = Math.cos(lat0);
+  const toXY = (p: google.maps.LatLngLiteral) => ({
+    x: R * (toRad(p.lng) - lon0) * cosLat0,
+    y: R * (toRad(p.lat) - lat0),
+  });
+  const toLL = (x: number, y: number): google.maps.LatLngLiteral => ({
+    lat: (y / R) * 180 / Math.PI + (lat0 * 180) / Math.PI,
+    lng: ((x / (R * cosLat0)) * 180) / Math.PI + (lon0 * 180) / Math.PI,
+  });
+  const snap = (v: number, grid = 0.2) => Math.round(v / grid) * grid; // 20 cm grid
+  const keyXY = (x: number, y: number) => `${x.toFixed(2)},${y.toFixed(2)}`;
+
+  type Node = { x: number; y: number; count: number };
+  const nodeMap = new Map<string, Node>();
+  const nodeKeyForLL = (p: google.maps.LatLngLiteral) => {
+    const xy = toXY(p);
+    const xs = snap(xy.x);
+    const ys = snap(xy.y);
+    const k = keyXY(xs, ys);
+    let n = nodeMap.get(k);
+    if (!n) {
+      n = { x: xs, y: ys, count: 0 };
+      nodeMap.set(k, n);
+    }
+    n.count++;
+    return k;
   };
-  type Edge = { a: google.maps.LatLngLiteral; b: google.maps.LatLngLiteral };
+
+  type Edge = { a: string; b: string };
+  const undirectedKey = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
   const edgeCount = new Map<string, number>();
-  const edgeDir = new Map<string, Edge>(); // store one representative orientation
+  const edgeDir = new Map<string, Edge>();
 
   for (const q of quads) {
     if (!q || q.length < 4) continue;
-    const pts = [q[0], q[1], q[2], q[3]];
+    const n0 = nodeKeyForLL(q[0]);
+    const n1 = nodeKeyForLL(q[1]);
+    const n2 = nodeKeyForLL(q[2]);
+    const n3 = nodeKeyForLL(q[3]);
     const edges: Edge[] = [
-      { a: pts[0], b: pts[1] },
-      { a: pts[1], b: pts[2] },
-      { a: pts[2], b: pts[3] },
-      { a: pts[3], b: pts[0] },
+      { a: n0, b: n1 },
+      { a: n1, b: n2 },
+      { a: n2, b: n3 },
+      { a: n3, b: n0 },
     ];
     for (const e of edges) {
-      const k = edgeKey(e.a, e.b);
+      const k = undirectedKey(e.a, e.b);
       edgeCount.set(k, (edgeCount.get(k) || 0) + 1);
       if (!edgeDir.has(k)) edgeDir.set(k, e);
     }
   }
 
-  // Keep only boundary edges (count === 1)
-  const boundaryEdges: Edge[] = [];
-  for (const [k, cnt] of edgeCount.entries()) {
-    if (cnt === 1) {
-      const e = edgeDir.get(k)!;
-      boundaryEdges.push(e);
-    }
+  // Keep boundary edges
+  const boundary: Edge[] = [];
+  for (const [k, c] of edgeCount.entries()) {
+    if (c === 1) boundary.push(edgeDir.get(k)!);
   }
-  if (boundaryEdges.length === 0) return [];
+  if (boundary.length === 0) return [];
 
-  // Build adjacency graph
-  const toKey = fmt;
-  const neighbors = new Map<string, Array<google.maps.LatLngLiteral>>();
-  for (const e of boundaryEdges) {
-    const ka = toKey(e.a);
-    const kb = toKey(e.b);
-    if (!neighbors.has(ka)) neighbors.set(ka, []);
-    if (!neighbors.has(kb)) neighbors.set(kb, []);
-    neighbors.get(ka)!.push(e.b);
-    neighbors.get(kb)!.push(e.a);
+  // Build neighbor lists
+  const neighbors = new Map<string, string[]>();
+  for (const e of boundary) {
+    if (!neighbors.has(e.a)) neighbors.set(e.a, []);
+    if (!neighbors.has(e.b)) neighbors.set(e.b, []);
+    neighbors.get(e.a)!.push(e.b);
+    neighbors.get(e.b)!.push(e.a);
   }
 
-  // Walk rings
-  const visitedEdge = new Set<string>();
+  // Convert node key -> average lat/lng (from snapped xy)
+  const nodeLL = new Map<string, google.maps.LatLngLiteral>();
+  for (const [k, n] of nodeMap.entries()) {
+    nodeLL.set(k, toLL(n.x, n.y));
+  }
+
+  // Utilities for angle-based traversal
+  const vec = (fromK: string, toK: string) => {
+    const a = nodeMap.get(fromK)!;
+    const b = nodeMap.get(toK)!;
+    return { x: b.x - a.x, y: b.y - a.y };
+  };
+  const angle = (vx: number, vy: number) => Math.atan2(vy, vx);
+  const normAngle = (a: number) => {
+    while (a <= -Math.PI) a += 2 * Math.PI;
+    while (a > Math.PI) a -= 2 * Math.PI;
+    return a;
+  };
+
+  // Walk rings with right-hand rule (choose smallest clockwise turn)
+  const visited = new Set<string>(); // directed edges
   const rings: google.maps.LatLngLiteral[][] = [];
 
-  const dirEdgeKey = (a: google.maps.LatLngLiteral, b: google.maps.LatLngLiteral) =>
-    `${toKey(a)}->${toKey(b)}`;
+  const dirKey = (a: string, b: string) => `${a}->${b}`;
 
-  for (const e of boundaryEdges) {
-    const startKey = dirEdgeKey(e.a, e.b);
-    if (visitedEdge.has(startKey)) continue;
-    // Start a ring following e.a -> e.b
-    const ring: google.maps.LatLngLiteral[] = [];
-    let prev = e.a;
-    let cur = e.b;
-    ring.push(prev);
-    ring.push(cur);
-    visitedEdge.add(startKey);
+  for (const e of boundary) {
+    if (visited.has(dirKey(e.a, e.b))) continue;
+    let startA = e.a;
+    let startB = e.b;
+    const out: google.maps.LatLngLiteral[] = [];
+    out.push(nodeLL.get(startA)!);
+    out.push(nodeLL.get(startB)!);
+    visited.add(dirKey(startA, startB));
 
+    let prev = startA;
+    let cur = startB;
     while (true) {
-      const curNei = neighbors.get(toKey(cur)) || [];
-      // choose next neighbor not equal to prev
-      let next: google.maps.LatLngLiteral | null = null;
-      for (const n of curNei) {
-        if (toKey(n) !== toKey(prev)) {
-          const k = dirEdgeKey(cur, n);
-          if (!visitedEdge.has(k)) {
-            next = n;
-            visitedEdge.add(k);
-            break;
+      const nbrs = (neighbors.get(cur) || []).filter(n => n !== prev);
+      if (nbrs.length === 0) break;
+      let next = nbrs[0];
+      if (nbrs.length > 1) {
+        // choose neighbor that yields smallest clockwise turn
+        const base = vec(prev, cur);
+        const baseAng = angle(base.x, base.y);
+        let bestDelta = Infinity;
+        for (const cand of nbrs) {
+          const v = vec(cur, cand);
+          const a = angle(v.x, v.y);
+          let d = normAngle(a - baseAng);
+          // prefer right turn: map [-pi, pi] -> [0, 2pi) clockwise
+          if (d > 0) d = d - 2 * Math.PI;
+          if (d < bestDelta) {
+            bestDelta = d;
+            next = cand;
           }
         }
       }
-      if (!next) {
-        // Closed when next back to start
-        if (toKey(cur) !== toKey(ring[0])) {
-          // Try to close explicitly
-          ring.push({ ...ring[0] });
-        }
+      if (next === startA) {
+        out.push(nodeLL.get(next)!);
         break;
       }
-      if (toKey(next) === toKey(ring[0])) {
-        // Complete
-        ring.push(next);
-        break;
-      }
-      ring.push(next);
+      out.push(nodeLL.get(next)!);
+      visited.add(dirKey(cur, next));
       prev = cur;
       cur = next;
-      // safety
-      if (ring.length > boundaryEdges.length + 5) break;
+      if (out.length > boundary.length + 5) break; // safety
     }
-    if (ring.length >= 4) {
-      rings.push(simplifyPathLatLng(ring, simplifyToleranceMeters));
+    if (out.length >= 4) {
+      rings.push(simplifyPathLatLng(out, simplifyToleranceMeters));
     }
   }
+
   return rings;
 }
+
+
 
 
