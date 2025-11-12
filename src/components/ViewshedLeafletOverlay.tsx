@@ -26,8 +26,14 @@ export default function ViewshedLeafletOverlay({
   // Build simplified contour rings (visible area)
   let rings: Array<Array<[number, number]>> = [];
   if (data.quads && data.quads.length > 0) {
-    rings = unifyQuadsToRings(data.quads, simplifyToleranceM)
-      .map(r => r.map(p => [p.lat, p.lng]) as [number, number][]);
+    const merged = unifyQuadsToRings(data.quads, simplifyToleranceM);
+    // Sanity: if merged is empty, fallback to endpoint ring
+    if (merged.length === 0 && data.path && data.path.length > 1) {
+      const path = simplifyPathLatLng(data.path, simplifyToleranceM);
+      rings = [path.map(p => [p.lat, p.lng]) as [number, number][]];
+    } else {
+      rings = merged.map(r => r.map(p => [p.lat, p.lng]) as [number, number][]);
+    }
   } else if (data.profiles && data.profiles.length > 0) {
     const mask = data.profiles.map(p => p.visible.slice());
     const contours = extractContours(mask, true);

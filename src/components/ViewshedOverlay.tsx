@@ -27,6 +27,29 @@ export function ViewshedOverlay({
   const dotRef = useRef<google.maps.Marker | null>(null);
   const holeRefs = useRef<google.maps.Polygon[]>([]);
 
+  function estimateAreaMeters2(rings: google.maps.LatLngLiteral[][], origin: google.maps.LatLngLiteral) {
+    if (!rings || rings.length === 0) return 0;
+    const R = 6371000;
+    const toRad = (d: number) => (d * Math.PI) / 180;
+    const lat0 = toRad(origin.lat);
+    const lon0 = toRad(origin.lng);
+    const cosLat0 = Math.cos(lat0);
+    const toXY = (p: google.maps.LatLngLiteral) => ({
+      x: R * (toRad(p.lng) - lon0) * cosLat0,
+      y: R * (toRad(p.lat) - lat0),
+    });
+    const polyArea = (pts: google.maps.LatLngLiteral[]) => {
+      let a = 0;
+      for (let i = 0; i < pts.length - 1; i++) {
+        const p = toXY(pts[i]);
+        const q = toXY(pts[i + 1]);
+        a += p.x * q.y - q.x * p.y;
+      }
+      return Math.abs(a) / 2;
+    };
+    return rings.reduce((acc, r) => acc + polyArea(r), 0);
+  }
+
   useEffect(() => {
     if (!map) return;
     // clear old
@@ -49,6 +72,26 @@ export function ViewshedOverlay({
       // Fallback to endpoints ring
       const path = data.path.slice();
       rings = [simplifyPathLatLng(path, simplifyToleranceM)];
+    }
+
+    // Sanity: fallback to endpoint ring if merged rings look suspicious (area too big)
+    if (rings.length > 0 && data.path && data.path.length > 2) {
+      const areaRings = estimateAreaMeters2(rings, data.origin);
+      const R = 6371000;
+      const toRad = (d: number) => (d * Math.PI) / 180;
+      const lat0 = toRad(data.origin.lat);
+      const lon0 = toRad(data.origin.lng);
+      const cosLat0 = Math.cos(lat0);
+      const toXY = (p: google.maps.LatLngLiteral) => ({
+        x: R * (toRad(p.lng) - lon0) * cosLat0,
+        y: R * (toRad(p.lat) - lat0),
+      });
+      const first = data.path[0];
+      const dist = Math.hypot(toXY(first).x - 0, toXY(first).y - 0);
+      const circleArea = Math.PI * dist * dist;
+      if (!Number.isFinite(areaRings) || areaRings <= 0 || areaRings > circleArea * 1.2) {
+        rings = [simplifyPathLatLng(data.path.slice(), simplifyToleranceM)];
+      }
     }
 
     if (rings.length > 0) {
