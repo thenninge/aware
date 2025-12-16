@@ -5372,6 +5372,17 @@ export default function MapComponent({
             onClick={() => {
               const next = !isMapLocked;
               setIsMapLocked(next);
+              // When enabling lock, persist current location as home position
+              if (next) {
+                try {
+                  const posToSave = gpsPosition || currentPosition;
+                  if (posToSave && typeof window !== 'undefined') {
+                    localStorage.setItem('aware_default_position', JSON.stringify({ lat: posToSave.lat, lng: posToSave.lng }));
+                  }
+                } catch {
+                  // ignore storage errors
+                }
+              }
             }}
             className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
               isMapLocked ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-gray-600 hover:bg-gray-700 text-white'
