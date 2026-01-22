@@ -3616,36 +3616,20 @@ export default function MapComponent({
           />
         )}
         
-        {/* Jaktgrenser - render active hunting area boundary + optional fill with no-hunt holes */}
+        {/* Jaktgrenser - render active hunting area boundary (no fill) + filled no-hunt zones */}
         {showHuntingBoundary && activeHuntingAreaId && huntingAreas && huntingAreas.length > 0 && (() => {
           const activeArea = huntingAreas.find(area => area.id === activeHuntingAreaId);
           if (!activeArea || !activeArea.coordinates || activeArea.coordinates.length < 3) return null;
           const holes = (noHuntZones || []).filter(z => String(z.hunting_area_id) === String(activeArea.id));
-          const positions: any = [activeArea.coordinates, ...holes.map(h => h.coordinates)];
           const color = huntingBoundaryColor || activeArea.color || '#00ff00';
           const weight = huntingBoundaryWeight || activeArea.lineWeight || 3;
           const opacity = (huntingBoundaryOpacity || 80) / 100;
           return (
             <>
-              {/* Filled polygon with holes (very light fill) */}
-              <Polygon
-                key={`hunting-area-fill-${activeArea.id}`}
-                positions={positions}
-              pathOptions={{
-                  color,
-                  weight: 0,
-                  opacity,
-                  fill: true,
-                  fillColor: color,
-                  fillOpacity: 0.08,
-                  // @ts-ignore - fillRule is supported by Leaflet
-                  fillRule: 'evenodd',
-                }}
-              />
-              {/* Boundary stroke on top for crisp outline */}
-              <Polyline
+              {/* Boundary stroke only (no fill for legal area) */}
+            <Polyline
                 key={`hunting-area-stroke-${activeArea.id}`}
-                positions={activeArea.coordinates}
+              positions={activeArea.coordinates}
                 pathOptions={{ color, weight, opacity }}
             >
               <Popup>
@@ -3655,12 +3639,19 @@ export default function MapComponent({
                 </div>
               </Popup>
             </Polyline>
-              {/* Optional: outline holes subtly */}
+              {/* Filled no-hunt zones inside area */}
               {holes.map((h, idx) => (
-                <Polyline
-                  key={`nohunt-outline-${h.id}-${idx}`}
+                <Polygon
+                  key={`nohunt-fill-${h.id}-${idx}`}
                   positions={h.coordinates}
-                  pathOptions={{ color: '#ef4444', weight: 2, opacity: 0.6, dashArray: '4,4' }}
+                  pathOptions={{
+                    color: '#ef4444',
+                    weight: 2,
+                    opacity: 0.6,
+                    fill: true,
+                    fillColor: '#ef4444',
+                    fillOpacity: 0.12,
+                  }}
                 />
               ))}
             </>
