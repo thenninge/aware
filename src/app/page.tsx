@@ -81,6 +81,7 @@ export default function Home() {
   const [activeHuntingAreaId, setActiveHuntingAreaId] = useState<string | null>(null);
   const [isDefiningHuntingArea, setIsDefiningHuntingArea] = useState(false);
   const [isDefiningNoHuntZone, setIsDefiningNoHuntZone] = useState(false);
+  const [noHuntZones, setNoHuntZones] = useState<Array<{ id: string; hunting_area_id: string; teamid: string; name?: string; coordinates: [number, number][] }>>([]);
   const [huntingBoundaryColor, setHuntingBoundaryColor] = useState('#00ff00'); // green
   const [huntingBoundaryWeight, setHuntingBoundaryWeight] = useState(3); // pixels
   const [huntingBoundaryOpacity, setHuntingBoundaryOpacity] = useState(80); // 0-100
@@ -381,14 +382,16 @@ export default function Home() {
       } else {
         const saved = await res.json().catch(() => null);
         console.log('No-hunt-zone saved:', saved);
-        // Verifiser lagring ved å hente tilbake antall for aktivt jaktfelt
-        try {
-          const verifyRes = await fetch(`/api/no-hunt-zones?teamId=${authState.activeTeam.id}&huntingAreaId=${encodeURIComponent(payload.huntingAreaId)}`);
-          const zones = await verifyRes.json().catch(() => []);
-          console.log(`No-hunt-zones for area ${payload.huntingAreaId}:`, Array.isArray(zones) ? zones.length : zones);
-        } catch (e) {
-          console.warn('Verification fetch for no-hunt-zones failed', e);
-        }
+        // Refresh zones locally
+        await (async () => {
+          try {
+            const response = await fetch(`/api/no-hunt-zones?teamId=${authState.activeTeam!.id}`);
+            const zones = await response.json();
+            setNoHuntZones(Array.isArray(zones) ? zones : []);
+          } catch (e) {
+            console.warn('Failed to refresh no-hunt-zones after save', e);
+          }
+        })();
       }
     } catch (e: any) {
       console.error('Error saving no-hunt-zone', e);
@@ -484,6 +487,18 @@ export default function Home() {
   // Load hunting areas when team changes
   useEffect(() => {
     loadHuntingAreas();
+    // also load no-hunt-zones
+    (async () => {
+      if (!authState.activeTeam?.id) { setNoHuntZones([]); return; }
+      try {
+        const response = await fetch(`/api/no-hunt-zones?teamId=${authState.activeTeam.id}`);
+        const zones = await response.json();
+        setNoHuntZones(Array.isArray(zones) ? zones : []);
+      } catch (e) {
+        console.error('Error loading no-hunt-zones:', e);
+        setNoHuntZones([]);
+      }
+    })();
   }, [authState.activeTeam?.id]);
   
   // Save active hunting area ID to localStorage when it changes
@@ -837,6 +852,7 @@ export default function Home() {
         huntingBoundaryOpacity={huntingBoundaryOpacity}
         isDefiningHuntingArea={isDefiningHuntingArea}
         isDefiningNoHuntZone={isDefiningNoHuntZone}
+        noHuntZones={noHuntZones}
         onHuntingAreaDefined={handleHuntingAreaDefined}
         onCancelHuntingAreaDefinition={handleCancelHuntingAreaDefinition}
         onNoHuntZoneDefined={handleNoHuntZoneDefined}

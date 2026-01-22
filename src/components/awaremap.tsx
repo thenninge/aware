@@ -89,6 +89,7 @@ interface AwareMapProps {
   huntingBoundaryOpacity?: number;
   isDefiningHuntingArea?: boolean;
   isDefiningNoHuntZone?: boolean;
+  noHuntZones?: Array<{ id: string; hunting_area_id: string; teamid: string; name?: string; coordinates: [number, number][] }>;
   onHuntingAreaDefined?: (area: HuntingArea) => void;
   onCancelHuntingAreaDefinition?: () => void;
   onNoHuntZoneDefined?: (payload: { huntingAreaId: string; coordinates: [number, number][]; name?: string }) => void;
@@ -169,6 +170,7 @@ export default function AwareMap({
   huntingBoundaryOpacity,
   isDefiningHuntingArea,
   isDefiningNoHuntZone,
+  noHuntZones,
   onHuntingAreaDefined,
   onCancelHuntingAreaDefinition,
   onNoHuntZoneDefined,
@@ -295,6 +297,7 @@ export default function AwareMap({
         huntingBoundaryOpacity={huntingBoundaryOpacity}
         isDefiningHuntingArea={isDefiningHuntingArea}
         isDefiningNoHuntZone={isDefiningNoHuntZone}
+        noHuntZones={noHuntZones}
         onHuntingAreaDefined={onHuntingAreaDefined}
         onCancelHuntingAreaDefinition={onCancelHuntingAreaDefinition}
         onNoHuntZoneDefined={onNoHuntZoneDefined}

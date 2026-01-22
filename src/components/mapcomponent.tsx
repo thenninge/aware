@@ -115,6 +115,7 @@ interface MapComponentProps {
   losOpacity?: number;
   losHoleOpacity?: number;
   showElevationProfile?: boolean;
+  noHuntZones?: Array<{ id: string; hunting_area_id: string; teamid: string; name?: string; coordinates: [number, number][] }>;
 }
 
 interface CategoryFilter {
@@ -1014,6 +1015,7 @@ export default function MapComponent({
   losOpacity = 0.25,
   losHoleOpacity = 0.12,
   showElevationProfile = false,
+  noHuntZones = [],
 }: MapComponentProps) {
   const [showTargetDialog, setShowTargetDialog] = useState(false);
   const instanceId = useRef(Math.random());
@@ -3614,20 +3616,37 @@ export default function MapComponent({
           />
         )}
         
-        {/* Jaktgrenser - render active hunting area boundary */}
+        {/* Jaktgrenser - render active hunting area boundary + optional fill with no-hunt holes */}
         {showHuntingBoundary && activeHuntingAreaId && huntingAreas && huntingAreas.length > 0 && (() => {
           const activeArea = huntingAreas.find(area => area.id === activeHuntingAreaId);
           if (!activeArea || !activeArea.coordinates || activeArea.coordinates.length < 3) return null;
-          
+          const holes = (noHuntZones || []).filter(z => String(z.hunting_area_id) === String(activeArea.id));
+          const positions: any = [activeArea.coordinates, ...holes.map(h => h.coordinates)];
+          const color = huntingBoundaryColor || activeArea.color || '#00ff00';
+          const weight = huntingBoundaryWeight || activeArea.lineWeight || 3;
+          const opacity = (huntingBoundaryOpacity || 80) / 100;
           return (
-            <Polyline
-              key={`hunting-area-${activeArea.id}`}
-              positions={activeArea.coordinates}
+            <>
+              {/* Filled polygon with holes (very light fill) */}
+              <Polygon
+                key={`hunting-area-fill-${activeArea.id}`}
+                positions={positions}
               pathOptions={{
-                color: huntingBoundaryColor || activeArea.color || '#00ff00',
-                weight: huntingBoundaryWeight || activeArea.lineWeight || 3,
-                opacity: (huntingBoundaryOpacity || 80) / 100,
-              }}
+                  color,
+                  weight: 0,
+                  opacity,
+                  fill: true,
+                  fillColor: color,
+                  fillOpacity: 0.08,
+                  // @ts-ignore - fillRule is supported by Leaflet
+                  fillRule: 'evenodd',
+                }}
+              />
+              {/* Boundary stroke on top for crisp outline */}
+              <Polyline
+                key={`hunting-area-stroke-${activeArea.id}`}
+                positions={activeArea.coordinates}
+                pathOptions={{ color, weight, opacity }}
             >
               <Popup>
                 <div className="text-center">
@@ -3636,6 +3655,15 @@ export default function MapComponent({
                 </div>
               </Popup>
             </Polyline>
+              {/* Optional: outline holes subtly */}
+              {holes.map((h, idx) => (
+                <Polyline
+                  key={`nohunt-outline-${h.id}-${idx}`}
+                  positions={h.coordinates}
+                  pathOptions={{ color: '#ef4444', weight: 2, opacity: 0.6, dashArray: '4,4' }}
+                />
+              ))}
+            </>
           );
         })()}
         
