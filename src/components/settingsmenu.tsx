@@ -318,20 +318,6 @@ export default function SettingsMenu({
               </div>
             )}
             
-            {/* Vis No-hunt zones */}
-            {onShowNoHuntZonesChange && (
-              <div className="mb-3">
-                <label className="flex items-center gap-2 cursor-pointer text-sm">
-                  <input
-                    type="checkbox"
-                    checked={!!showNoHuntZones}
-                    onChange={e => onShowNoHuntZonesChange(e.target.checked)}
-                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                  />
-                  Vis No-hunt zones
-                </label>
-              </div>
-            )}
           </div>
         )}
       </div>
@@ -1006,6 +992,21 @@ export default function SettingsMenu({
                   onChange={(e) => onHuntingBoundaryOpacityChange(Number(e.target.value))}
                   className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer hover:bg-gray-300 transition-colors"
                 />
+              </div>
+            )}
+            
+            {/* Vis No-hunt zones */}
+            {onShowNoHuntZonesChange && (
+              <div className="mb-1">
+                <label className="flex items-center gap-2 cursor-pointer text-sm">
+                  <input
+                    type="checkbox"
+                    checked={!!showNoHuntZones}
+                    onChange={e => onShowNoHuntZonesChange(e.target.checked)}
+                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                  />
+                  Vis No-hunt zones
+                </label>
               </div>
             )}
           </div>
