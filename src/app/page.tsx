@@ -82,6 +82,7 @@ export default function Home() {
   const [isDefiningHuntingArea, setIsDefiningHuntingArea] = useState(false);
   const [isDefiningNoHuntZone, setIsDefiningNoHuntZone] = useState(false);
   const [noHuntZones, setNoHuntZones] = useState<Array<{ id: string; hunting_area_id: string; teamid: string; name?: string; coordinates: [number, number][] }>>([]);
+  const [showNoHuntZones, setShowNoHuntZones] = useState(true);
   const [huntingBoundaryColor, setHuntingBoundaryColor] = useState('#00ff00'); // green
   const [huntingBoundaryWeight, setHuntingBoundaryWeight] = useState(3); // pixels
   const [huntingBoundaryOpacity, setHuntingBoundaryOpacity] = useState(80); // 0-100
@@ -721,6 +722,8 @@ export default function Home() {
             onHuntingBoundaryColorChange={setHuntingBoundaryColor}
             onHuntingBoundaryWeightChange={setHuntingBoundaryWeight}
             onHuntingBoundaryOpacityChange={setHuntingBoundaryOpacity}
+            showNoHuntZones={showNoHuntZones}
+            onShowNoHuntZonesChange={setShowNoHuntZones}
             compassSliceLength={compassSliceLength}
             onCompassSliceLengthChange={setCompassSliceLength}
             showZoomButtons={showZoomButtons}
@@ -853,6 +856,7 @@ export default function Home() {
         isDefiningHuntingArea={isDefiningHuntingArea}
         isDefiningNoHuntZone={isDefiningNoHuntZone}
         noHuntZones={noHuntZones}
+        showNoHuntZones={showNoHuntZones}
         onHuntingAreaDefined={handleHuntingAreaDefined}
         onCancelHuntingAreaDefinition={handleCancelHuntingAreaDefinition}
         onNoHuntZoneDefined={handleNoHuntZoneDefined}

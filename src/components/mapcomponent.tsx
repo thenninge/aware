@@ -116,6 +116,7 @@ interface MapComponentProps {
   losHoleOpacity?: number;
   showElevationProfile?: boolean;
   noHuntZones?: Array<{ id: string; hunting_area_id: string; teamid: string; name?: string; coordinates: [number, number][] }>;
+  showNoHuntZones?: boolean;
 }
 
 interface CategoryFilter {
@@ -1016,6 +1017,7 @@ export default function MapComponent({
   losHoleOpacity = 0.12,
   showElevationProfile = false,
   noHuntZones = [],
+  showNoHuntZones = true,
 }: MapComponentProps) {
   const [showTargetDialog, setShowTargetDialog] = useState(false);
   const instanceId = useRef(Math.random());
@@ -3620,7 +3622,7 @@ export default function MapComponent({
         {showHuntingBoundary && activeHuntingAreaId && huntingAreas && huntingAreas.length > 0 && (() => {
           const activeArea = huntingAreas.find(area => area.id === activeHuntingAreaId);
           if (!activeArea || !activeArea.coordinates || activeArea.coordinates.length < 3) return null;
-          const holes = (noHuntZones || []).filter(z => String(z.hunting_area_id) === String(activeArea.id));
+          const holes = showNoHuntZones ? (noHuntZones || []).filter(z => String(z.hunting_area_id) === String(activeArea.id)) : [];
           const color = huntingBoundaryColor || activeArea.color || '#00ff00';
           const weight = huntingBoundaryWeight || activeArea.lineWeight || 3;
           const opacity = (huntingBoundaryOpacity || 80) / 100;

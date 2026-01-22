@@ -66,6 +66,8 @@ interface SettingsMenuProps {
   onHuntingBoundaryColorChange?: (color: string) => void;
   onHuntingBoundaryWeightChange?: (weight: number) => void;
   onHuntingBoundaryOpacityChange?: (opacity: number) => void;
+  showNoHuntZones?: boolean;
+  onShowNoHuntZonesChange?: (v: boolean) => void;
   compassSliceLength?: number; // 0-100 (% of screen height)
   onCompassSliceLengthChange?: (length: number) => void;
   showZoomButtons?: boolean;
@@ -152,6 +154,8 @@ export default function SettingsMenu({
   onHuntingBoundaryColorChange,
   onHuntingBoundaryWeightChange,
   onHuntingBoundaryOpacityChange,
+  showNoHuntZones,
+  onShowNoHuntZonesChange,
   compassSliceLength,
   onCompassSliceLengthChange,
   showZoomButtons,
@@ -311,6 +315,21 @@ export default function SettingsMenu({
             ) : (
               <div className="mt-2 p-2 bg-gray-100 rounded text-xs text-gray-500 italic">
                 Ingen home position lagret ennå
+              </div>
+            )}
+            
+            {/* Vis No-hunt zones */}
+            {onShowNoHuntZonesChange && (
+              <div className="mb-3">
+                <label className="flex items-center gap-2 cursor-pointer text-sm">
+                  <input
+                    type="checkbox"
+                    checked={!!showNoHuntZones}
+                    onChange={e => onShowNoHuntZonesChange(e.target.checked)}
+                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                  />
+                  Vis No-hunt zones
+                </label>
               </div>
             )}
           </div>
