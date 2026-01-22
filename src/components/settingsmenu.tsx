@@ -143,6 +143,7 @@ export default function SettingsMenu({
   huntingAreas,
   activeHuntingAreaId,
   onDefineNewHuntingArea,
+  onDefineNewNoHuntZone,
   onActiveHuntingAreaChange,
   onDeleteHuntingArea,
   huntingBoundaryColor,
