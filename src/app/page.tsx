@@ -379,8 +379,16 @@ export default function Home() {
         console.error('Failed to save no-hunt-zone', err);
         alert(`Feil ved lagring av no-hunt-zone: ${err.error || res.status}`);
       } else {
-        // refresh data later if we render holes
-        console.log('No-hunt-zone saved');
+        const saved = await res.json().catch(() => null);
+        console.log('No-hunt-zone saved:', saved);
+        // Verifiser lagring ved å hente tilbake antall for aktivt jaktfelt
+        try {
+          const verifyRes = await fetch(`/api/no-hunt-zones?teamId=${authState.activeTeam.id}&huntingAreaId=${encodeURIComponent(payload.huntingAreaId)}`);
+          const zones = await verifyRes.json().catch(() => []);
+          console.log(`No-hunt-zones for area ${payload.huntingAreaId}:`, Array.isArray(zones) ? zones.length : zones);
+        } catch (e) {
+          console.warn('Verification fetch for no-hunt-zones failed', e);
+        }
       }
     } catch (e: any) {
       console.error('Error saving no-hunt-zone', e);
