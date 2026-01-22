@@ -358,10 +358,36 @@ export default function Home() {
   };
   
   const handleNoHuntZoneDefined = async (payload: { huntingAreaId: string; coordinates: [number, number][]; name?: string }) => {
-    // Foreløpig: logg og avslutt definisjon. Backend/wire-up kan legges til senere.
-    console.log('No-hunt-zone defined:', payload);
-    setIsDefiningNoHuntZone(false);
-    // TODO: Kall API når backend er på plass, og oppdater lokal state/rendering med hull.
+    try {
+      if (!authState.activeTeam?.id) {
+        alert('Mangler aktivt team');
+        setIsDefiningNoHuntZone(false);
+        return;
+      }
+      const res = await fetch('/api/no-hunt-zones', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          teamId: authState.activeTeam.id,
+          huntingAreaId: payload.huntingAreaId,
+          name: payload.name,
+          coordinates: payload.coordinates,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        console.error('Failed to save no-hunt-zone', err);
+        alert(`Feil ved lagring av no-hunt-zone: ${err.error || res.status}`);
+      } else {
+        // refresh data later if we render holes
+        console.log('No-hunt-zone saved');
+      }
+    } catch (e: any) {
+      console.error('Error saving no-hunt-zone', e);
+      alert(`Feil ved lagring av no-hunt-zone: ${e?.message || 'ukjent feil'}`);
+    } finally {
+      setIsDefiningNoHuntZone(false);
+    }
   };
   
   const handleCancelNoHuntZoneDefinition = () => {
