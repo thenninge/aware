@@ -88,8 +88,11 @@ interface MapComponentProps {
   huntingBoundaryWeight?: number;
   huntingBoundaryOpacity?: number;
   isDefiningHuntingArea?: boolean;
+  isDefiningNoHuntZone?: boolean;
   onHuntingAreaDefined?: (area: HuntingArea) => void;
   onCancelHuntingAreaDefinition?: () => void;
+  onNoHuntZoneDefined?: (payload: { huntingAreaId: string; coordinates: [number, number][]; name?: string }) => void;
+  onCancelNoHuntZoneDefinition?: () => void;
   onRefreshHuntingAreas?: () => void;
   onRegisterSync?: (syncFn: () => void) => void;
   onRegisterCalibration?: (openFn: () => void) => void;
@@ -984,8 +987,11 @@ export default function MapComponent({
   huntingBoundaryWeight = 3,
   huntingBoundaryOpacity = 80,
   isDefiningHuntingArea = false,
+  isDefiningNoHuntZone = false,
   onHuntingAreaDefined,
   onCancelHuntingAreaDefinition,
+  onNoHuntZoneDefined,
+  onCancelNoHuntZoneDefinition,
   onRefreshHuntingAreas,
   onRegisterSync,
   onRegisterCalibration,
@@ -1192,6 +1198,10 @@ export default function MapComponent({
   const [huntingAreaPoints, setHuntingAreaPoints] = useState<[number, number][]>([]);
   const [showSaveHuntingAreaDialog, setShowSaveHuntingAreaDialog] = useState(false);
   const [huntingAreaName, setHuntingAreaName] = useState('');
+  // No-hunt-zone definition state
+  const [noHuntZonePoints, setNoHuntZonePoints] = useState<[number, number][]>([]);
+  const [showSaveNoHuntZoneDialog, setShowSaveNoHuntZoneDialog] = useState(false);
+  const [noHuntZoneName, setNoHuntZoneName] = useState('');
   const [currentTrackingId, setCurrentTrackingId] = useState<string | null>(null);
   const [showFindDialog, setShowFindDialog] = useState(false);
   const [newFindPosition, setNewFindPosition] = useState<Position | null>(null);
@@ -1426,6 +1436,43 @@ export default function MapComponent({
     setHuntingAreaPoints([]);
     setHuntingAreaName('');
     setShowSaveHuntingAreaDialog(false);
+  };
+
+  // No-hunt-zone handlers
+  const handleAddNoHuntZonePoint = useCallback((lat: number, lng: number) => {
+    setNoHuntZonePoints(prev => [...prev, [lat, lng]]);
+  }, []);
+  const handleCancelNoHuntZone = () => {
+    setNoHuntZonePoints([]);
+    setNoHuntZoneName('');
+    onCancelNoHuntZoneDefinition?.();
+  };
+  const handleFinishNoHuntZone = () => {
+    if (noHuntZonePoints.length < 3) {
+      alert('Du må definere minst 3 punkter for å lage en no-hunt-zone');
+      return;
+    }
+    if (!activeHuntingAreaId) {
+      alert('Ingen aktivt jaktfelt valgt');
+      return;
+    }
+    setShowSaveNoHuntZoneDialog(true);
+  };
+  const handleSaveNoHuntZone = () => {
+    if (!activeHuntingAreaId) {
+      alert('Ingen aktivt jaktfelt valgt');
+      return;
+    }
+    const payload = {
+      huntingAreaId: String(activeHuntingAreaId),
+      coordinates: [...noHuntZonePoints, noHuntZonePoints[0]] as [number, number][],
+      name: noHuntZoneName.trim() || undefined,
+    };
+    onNoHuntZoneDefined?.(payload);
+    // Reset state
+    setNoHuntZonePoints([]);
+    setNoHuntZoneName('');
+    setShowSaveNoHuntZoneDialog(false);
   };
 
   
@@ -3518,6 +3565,11 @@ export default function MapComponent({
           isDefiningHuntingArea={isDefiningHuntingArea}
           onPointAdded={handleAddHuntingAreaPoint}
         />
+        {/* No-hunt-zone click handler (reuses same component) */}
+        <HuntingAreaClickHandler 
+          isDefiningHuntingArea={isDefiningNoHuntZone}
+          onPointAdded={handleAddNoHuntZonePoint}
+        />
 
         {/* Compass slice - shows direction as red pie slice */}
         {currentPosition && (
@@ -3611,6 +3663,36 @@ export default function MapComponent({
                 positions={huntingAreaPoints}
                 pathOptions={{
                   color: huntingBoundaryColor,
+                  weight: huntingBoundaryWeight,
+                  opacity: (huntingBoundaryOpacity || 80) / 100,
+                  dashArray: '5, 5',
+                }}
+              />
+            )}
+          </>
+        )}
+        
+        {/* No-hunt-zone definition - preview while defining */}
+        {isDefiningNoHuntZone && noHuntZonePoints.length > 0 && (
+          <>
+            {noHuntZonePoints.map((point, index) => (
+              <Circle
+                key={`nohunt-point-${index}`}
+                center={point}
+                radius={3}
+                pathOptions={{
+                  color: '#ef4444',
+                  fillColor: '#ef4444',
+                  fillOpacity: 0.6,
+                  weight: 2,
+                }}
+              />
+            ))}
+            {noHuntZonePoints.length > 1 && (
+              <Polyline
+                positions={noHuntZonePoints}
+                pathOptions={{
+                  color: '#ef4444',
                   weight: huntingBoundaryWeight,
                   opacity: (huntingBoundaryOpacity || 80) / 100,
                   dashArray: '5, 5',
@@ -5051,6 +5133,29 @@ export default function MapComponent({
         </div>
       )}
       
+      {/* No-Hunt-Zone Definition Buttons */}
+      {isDefiningNoHuntZone && (
+        <div className="fixed bottom-4 inset-x-0 z-[2001] flex flex-wrap justify-center items-center gap-4 px-2" style={{ pointerEvents: 'none' }}>
+          <button
+            onClick={handleCancelNoHuntZone}
+            className="px-6 py-3 rounded-full shadow-lg font-semibold transition-colors bg-red-600 hover:bg-red-700 text-white"
+            style={{ pointerEvents: 'auto' }}
+          >
+            Avbryt
+          </button>
+          <div className="text-sm font-semibold text-white bg-black/70 px-4 py-2 rounded-full">
+            {noHuntZonePoints.length} punkter
+          </div>
+          <button
+            onClick={handleFinishNoHuntZone}
+            className="px-6 py-3 rounded-full shadow-lg font-semibold transition-colors bg-amber-600 hover:bg-amber-700 text-white"
+            style={{ pointerEvents: 'auto' }}
+          >
+            Ferdig
+          </button>
+        </div>
+      )}
+      
       {/* MSR-retikkel Button - Bottom Left */}
       <div className="fixed bottom-4 left-4 sm:bottom-4 sm:left-4 bottom-2 left-2 z-[2000] flex flex-col gap-2" style={{ pointerEvents: 'auto' }}>
           {/* MSR-retikkel knapp */}
@@ -6102,6 +6207,42 @@ export default function MapComponent({
                 className="px-3 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white font-bold"
               >
                 Lagre jaktfelt
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Dialog for å lagre no-hunt-zone */}
+      {showSaveNoHuntZoneDialog && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[3000]">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-80 flex flex-col gap-4">
+            <div className="text-xl font-bold mb-2 text-gray-800">Lagre no-hunt-zone</div>
+            <label className="text-base font-semibold text-gray-700">
+              Navn (valgfritt):
+              <input
+                type="text"
+                value={noHuntZoneName}
+                onChange={e => setNoHuntZoneName(e.target.value)}
+                className="mt-1 w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                placeholder="F.eks. 'Hytteområde'"
+              />
+            </label>
+            <div className="text-xs text-gray-500">
+              Sonen legges inn i aktivt jaktfelt
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setShowSaveNoHuntZoneDialog(false)}
+                className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold"
+              >
+                Avbryt
+              </button>
+              <button
+                onClick={handleSaveNoHuntZone}
+                className="px-3 py-1 rounded bg-amber-600 hover:bg-amber-700 text-white font-bold"
+              >
+                Lagre no-hunt-zone
               </button>
             </div>
           </div>

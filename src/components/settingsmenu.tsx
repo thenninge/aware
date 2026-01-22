@@ -59,6 +59,7 @@ interface SettingsMenuProps {
   onDefineNewHuntingArea?: () => void;
   onActiveHuntingAreaChange?: (id: string | null) => void;
   onDeleteHuntingArea?: (id: string) => void;
+  onDefineNewNoHuntZone?: () => void;
   huntingBoundaryColor?: string;
   huntingBoundaryWeight?: number;
   huntingBoundaryOpacity?: number;
@@ -882,6 +883,16 @@ export default function SettingsMenu({
                 onClick={onDefineNewHuntingArea}
               >
                 Definer nytt jaktfelt
+              </button>
+            )}
+            {/* Add no-hunt-zone button */}
+            {onDefineNewNoHuntZone && (
+              <button
+                type="button"
+                className="w-full bg-amber-600 hover:bg-amber-700 text-white font-semibold py-2 px-4 rounded shadow-lg text-sm mb-3"
+                onClick={onDefineNewNoHuntZone}
+              >
+                Add no-hunt-zone i aktivt jaktfelt
               </button>
             )}
             

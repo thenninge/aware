@@ -88,8 +88,11 @@ interface AwareMapProps {
   huntingBoundaryWeight?: number;
   huntingBoundaryOpacity?: number;
   isDefiningHuntingArea?: boolean;
+  isDefiningNoHuntZone?: boolean;
   onHuntingAreaDefined?: (area: HuntingArea) => void;
   onCancelHuntingAreaDefinition?: () => void;
+  onNoHuntZoneDefined?: (payload: { huntingAreaId: string; coordinates: [number, number][]; name?: string }) => void;
+  onCancelNoHuntZoneDefinition?: () => void;
   onRefreshHuntingAreas?: () => void;
   onRegisterSync?: (syncFn: () => void) => void;
   onRegisterCalibration?: (openFn: () => void) => void;
@@ -165,8 +168,11 @@ export default function AwareMap({
   huntingBoundaryWeight,
   huntingBoundaryOpacity,
   isDefiningHuntingArea,
+  isDefiningNoHuntZone,
   onHuntingAreaDefined,
   onCancelHuntingAreaDefinition,
+  onNoHuntZoneDefined,
+  onCancelNoHuntZoneDefinition,
   onRefreshHuntingAreas,
   onRegisterSync,
   onRegisterCalibration,
@@ -288,8 +294,11 @@ export default function AwareMap({
         huntingBoundaryWeight={huntingBoundaryWeight}
         huntingBoundaryOpacity={huntingBoundaryOpacity}
         isDefiningHuntingArea={isDefiningHuntingArea}
+        isDefiningNoHuntZone={isDefiningNoHuntZone}
         onHuntingAreaDefined={onHuntingAreaDefined}
         onCancelHuntingAreaDefinition={onCancelHuntingAreaDefinition}
+        onNoHuntZoneDefined={onNoHuntZoneDefined}
+        onCancelNoHuntZoneDefinition={onCancelNoHuntZoneDefinition}
         onRefreshHuntingAreas={onRefreshHuntingAreas}
         onRegisterSync={onRegisterSync}
         onRegisterCalibration={onRegisterCalibration}

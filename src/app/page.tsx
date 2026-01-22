@@ -80,6 +80,7 @@ export default function Home() {
   const [huntingAreas, setHuntingAreas] = useState<HuntingArea[]>([]);
   const [activeHuntingAreaId, setActiveHuntingAreaId] = useState<string | null>(null);
   const [isDefiningHuntingArea, setIsDefiningHuntingArea] = useState(false);
+  const [isDefiningNoHuntZone, setIsDefiningNoHuntZone] = useState(false);
   const [huntingBoundaryColor, setHuntingBoundaryColor] = useState('#00ff00'); // green
   const [huntingBoundaryWeight, setHuntingBoundaryWeight] = useState(3); // pixels
   const [huntingBoundaryOpacity, setHuntingBoundaryOpacity] = useState(80); // 0-100
@@ -306,6 +307,15 @@ export default function Home() {
     setIsSettingsExpanded(false); // Lukk settings-menyen
   };
   
+  const handleDefineNewNoHuntZone = () => {
+    if (!activeHuntingAreaId) {
+      alert('Velg et aktivt jaktfelt før du legger til no-hunt-zone');
+      return;
+    }
+    setIsDefiningNoHuntZone(true);
+    setIsSettingsExpanded(false);
+  };
+  
   const handleHuntingAreaDefined = async (area: HuntingArea) => {
     setHuntingAreas(prev => [...prev, area]);
     setActiveHuntingAreaId(area.id);
@@ -345,6 +355,17 @@ export default function Home() {
   
   const handleCancelHuntingAreaDefinition = () => {
     setIsDefiningHuntingArea(false);
+  };
+  
+  const handleNoHuntZoneDefined = async (payload: { huntingAreaId: string; coordinates: [number, number][]; name?: string }) => {
+    // Foreløpig: logg og avslutt definisjon. Backend/wire-up kan legges til senere.
+    console.log('No-hunt-zone defined:', payload);
+    setIsDefiningNoHuntZone(false);
+    // TODO: Kall API når backend er på plass, og oppdater lokal state/rendering med hull.
+  };
+  
+  const handleCancelNoHuntZoneDefinition = () => {
+    setIsDefiningNoHuntZone(false);
   };
   
   const handleDeleteHuntingArea = async (huntingAreaId: string) => {
@@ -642,6 +663,7 @@ export default function Home() {
             huntingAreas={huntingAreas}
             activeHuntingAreaId={activeHuntingAreaId}
             onDefineNewHuntingArea={handleDefineNewHuntingArea}
+            onDefineNewNoHuntZone={handleDefineNewNoHuntZone}
             onActiveHuntingAreaChange={setActiveHuntingAreaId}
             onDeleteHuntingArea={handleDeleteHuntingArea}
             huntingBoundaryColor={huntingBoundaryColor}
@@ -780,8 +802,11 @@ export default function Home() {
         huntingBoundaryWeight={huntingBoundaryWeight}
         huntingBoundaryOpacity={huntingBoundaryOpacity}
         isDefiningHuntingArea={isDefiningHuntingArea}
+        isDefiningNoHuntZone={isDefiningNoHuntZone}
         onHuntingAreaDefined={handleHuntingAreaDefined}
         onCancelHuntingAreaDefinition={handleCancelHuntingAreaDefinition}
+        onNoHuntZoneDefined={handleNoHuntZoneDefined}
+        onCancelNoHuntZoneDefinition={handleCancelNoHuntZoneDefinition}
         onRefreshHuntingAreas={loadHuntingAreas}
         onRegisterSync={(fn) => { syncCallbackRef.current = fn; }}
         onRegisterCalibration={(fn) => { calibrationOpenRef.current = fn; }}
