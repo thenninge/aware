@@ -5439,7 +5439,7 @@ export default function MapComponent({
           
           {/* Layers button - above compass */}
             <button
-            className="w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center bg-white/90 border border-gray-300 hover:bg-gray-100"
+            className="w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center bg-transparent border border-gray-300 hover:bg-white/20"
               onClick={() => {
               const currentKey = LAYER_CONFIGS[layerIdx]?.key;
               const i = LAYER_ROTATION_KEYS.indexOf(currentKey as any);
