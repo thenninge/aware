@@ -5320,49 +5320,6 @@ export default function MapComponent({
           </button>
             </>
           )}
-
-          {/* Kompass-knapp - toggle on/off */}
-            <button
-            onClick={async () => {
-              if (compassMode === 'off') {
-                // Robust restart sequence (fix sporadic stalls after first run)
-                try {
-                  // Ensure clean state before (re)start
-                  compass.stopCompass();
-                  await Promise.resolve();
-                  await compass.startCompass();
-                  onCompassModeChange?.('on');
-                  onCompassLockedChange?.(false); // Default: arrow rotates
-
-                  // Fallback: if no heading arrives shortly, soft-restart once
-                  setTimeout(() => {
-                    try {
-                      if (compass.currentHeading == null && compass.rawHeading == null) {
-                        compass.stopCompass();
-                        // fire-and-forget; permission already granted
-                        void compass.startCompass();
-                      }
-                    } catch {}
-                  }, 1200);
-                } catch (error) {
-                  alert((error as Error).message);
-                }
-              } else {
-                // Turn off compass
-                compass.stopCompass();
-                onCompassModeChange?.('off');
-                onCompassLockedChange?.(false);
-              }
-            }}
-            className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
-              compassMode === 'off'
-                ? 'bg-gray-600 hover:bg-gray-700 text-white'
-                : 'bg-green-600 hover:bg-green-700 text-white'
-            }`}
-            title={compassMode === 'off' ? 'Start kompass' : 'Stopp kompass'}
-            >
-              🧭
-            </button>
           
       {/* Elevation HUD */}
       {mode === 'aware' && showElevationProfile && (elevLoading || elevError || elevSamples.length > 1) && (
@@ -5478,7 +5435,50 @@ export default function MapComponent({
           
           {/* Kalibreringsknapp flyttet ut av denne gruppen */}
           
-          {/* Layers button - moved above GPS to avoid confusion with compass */}
+          {/* Kompass-knapp - toggle on/off */}
+            <button
+            onClick={async () => {
+              if (compassMode === 'off') {
+                // Robust restart sequence (fix sporadic stalls after first run)
+                try {
+                  // Ensure clean state before (re)start
+                  compass.stopCompass();
+                  await Promise.resolve();
+                  await compass.startCompass();
+                  onCompassModeChange?.('on');
+                  onCompassLockedChange?.(false); // Default: arrow rotates
+
+                  // Fallback: if no heading arrives shortly, soft-restart once
+                  setTimeout(() => {
+                    try {
+                      if (compass.currentHeading == null && compass.rawHeading == null) {
+                        compass.stopCompass();
+                        // fire-and-forget; permission already granted
+                        void compass.startCompass();
+                      }
+                    } catch {}
+                  }, 1200);
+                } catch (error) {
+                  alert((error as Error).message);
+                }
+              } else {
+                // Turn off compass
+                compass.stopCompass();
+                onCompassModeChange?.('off');
+                onCompassLockedChange?.(false);
+              }
+            }}
+            className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
+              compassMode === 'off'
+                ? 'bg-red-300 hover:bg-red-400 text-white'
+                : 'bg-red-400 hover:bg-red-500 text-white'
+            }`}
+            title={compassMode === 'off' ? 'Start kompass' : 'Stopp kompass'}
+            >
+              🧭
+            </button>
+          
+          {/* Layers button - moved below compass */}
             <button
             className="w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center bg-white/90 border border-gray-300 hover:bg-gray-100"
               onClick={() => {
