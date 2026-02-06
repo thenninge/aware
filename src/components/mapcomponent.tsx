@@ -153,6 +153,7 @@ function MapController({
   clearPlaces,
   onGpsPositionChange,
   isMapLocked = false,
+  onMapLockChange,
   invertPieDirections = false,
   batterySaver = false,
   onZoomChange,
@@ -178,6 +179,7 @@ function MapController({
   clearPlaces?: boolean;
   onGpsPositionChange?: (position: Position) => void;
   isMapLocked?: boolean;
+  onMapLockChange?: (locked: boolean) => void;
   invertPieDirections?: boolean;
   batterySaver?: boolean;
   onZoomChange?: (zoom: number) => void;
@@ -296,9 +298,18 @@ function MapController({
       const handleMoveEnd = () => {
         handleMapMove();
       };
+      
+      // Auto-unlock GPS lock when user starts panning manually
+      const handleDragStart = () => {
+        if (isMapLocked && onMapLockChange) {
+          onMapLockChange(false); // Unlock when user manually pans
+        }
+      };
+      
       map.on('move', handleMove);
       map.on('moveend', handleMoveEnd);
       map.on('click', handleMapClick);
+      map.on('dragstart', handleDragStart);
       const handleZoomEnd = () => {
         onZoomChange?.(map.getZoom());
       };
@@ -314,13 +325,14 @@ function MapController({
         map.off('move', handleMove);
         map.off('moveend', handleMoveEnd);
         map.off('click', handleMapClick);
+        map.off('dragstart', handleDragStart);
         map.off('zoomend', handleZoomEnd);
       };
     } catch (error) {
       console.error('Map controller error:', error);
       onError?.();
     }
-  }, [map, onError, onPositionChange, isMapLocked]);
+  }, [map, onError, onPositionChange, isMapLocked, onMapLockChange, onZoomChange, onLosOriginSelected, mode, isLosAwaitingClick]);
 
 
   // GPS functionality
@@ -3537,6 +3549,7 @@ export default function MapComponent({
           }}
           clearPlaces={clearPlaces}
           isMapLocked={isMapLocked}
+          onMapLockChange={(locked) => setIsMapLocked(locked)}
           invertPieDirections={invertSlices}
           batterySaver={batterySaver}
           onZoomChange={(z) => setLeafletZoom(z)}
