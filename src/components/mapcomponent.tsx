@@ -208,10 +208,12 @@ function MapController({
   }, []);
 
   // Disable map interactions while modals/dialogs are open to prevent background panning during slider drag
+  // Note: isMapLocked does NOT disable dragging - it just auto-centers on GPS.
+  // When user manually drags, the lock is automatically released via dragstart event.
   useEffect(() => {
     if (!map) return;
     try {
-      const shouldLock = lockInteractions || isMapLocked;
+      const shouldLock = lockInteractions; // Only lock for modal interactions, not GPS lock
       if (shouldLock) {
         // prevent body scroll/bounce on mobile while modal open
         const prevOverflow = document.body.style.overflow;
@@ -245,7 +247,7 @@ function MapController({
     } catch (e) {
       // no-op
     }
-  }, [map, lockInteractions, isMapLocked]);
+  }, [map, lockInteractions]);
 
   useEffect(() => {
     // Check if map and L are available
@@ -5435,10 +5437,31 @@ export default function MapComponent({
           
           {/* Kalibreringsknapp flyttet ut av denne gruppen */}
           
-          {/* Kompass-knapp - toggle on/off */}
+          {/* Layers button - above compass */}
+            <button
+            className="w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center bg-white/90 border border-gray-300 hover:bg-gray-100"
+              onClick={() => {
+              const currentKey = LAYER_CONFIGS[layerIdx]?.key;
+              const i = LAYER_ROTATION_KEYS.indexOf(currentKey as any);
+              const nextKey = LAYER_ROTATION_KEYS[(i >= 0 ? i + 1 : 0) % LAYER_ROTATION_KEYS.length];
+              const nextIdx = LAYER_CONFIGS.findIndex(l => l.key === nextKey);
+              if (nextIdx >= 0) setLayerIdx(nextIdx);
+            }}
+            title={`Bytt kartlag (${LAYER_CONFIGS[layerIdx].name})`}
+            style={{ pointerEvents: 'auto' }}
+          >
+            <span className="w-7 h-7 flex items-center justify-center"><LayersIcon /></span>
+          </button>
+          
+          {/* Kompass-knapp - toggle on/off, below layers */}
             <button
             onClick={async () => {
               if (compassMode === 'off') {
+                // If turning compass ON, turn GPS OFF
+                if (isLiveMode) {
+                  onLiveModeChange?.(false);
+                }
+                
                 // Robust restart sequence (fix sporadic stalls after first run)
                 try {
                   // Ensure clean state before (re)start
@@ -5462,7 +5485,7 @@ export default function MapComponent({
                   alert((error as Error).message);
                 }
               } else {
-                // Turn off compass
+                // Turn off compass (don't affect GPS)
                 compass.stopCompass();
                 onCompassModeChange?.('off');
                 onCompassLockedChange?.(false);
@@ -5477,28 +5500,18 @@ export default function MapComponent({
             >
               🧭
             </button>
-          
-          {/* Layers button - moved below compass */}
-            <button
-            className="w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center bg-white/90 border border-gray-300 hover:bg-gray-100"
-              onClick={() => {
-              const currentKey = LAYER_CONFIGS[layerIdx]?.key;
-              const i = LAYER_ROTATION_KEYS.indexOf(currentKey as any);
-              const nextKey = LAYER_ROTATION_KEYS[(i >= 0 ? i + 1 : 0) % LAYER_ROTATION_KEYS.length];
-              const nextIdx = LAYER_CONFIGS.findIndex(l => l.key === nextKey);
-              if (nextIdx >= 0) setLayerIdx(nextIdx);
-            }}
-            title={`Bytt kartlag (${LAYER_CONFIGS[layerIdx].name})`}
-            style={{ pointerEvents: 'auto' }}
-          >
-            <span className="w-7 h-7 flex items-center justify-center"><LayersIcon /></span>
-          </button>
 
-          {/* GPS (Live mode) button - now below layers */}
+          {/* GPS (Live mode) button - now below compass */}
             <button
               onClick={() => {
               const next = !isLiveMode;
               onLiveModeChange?.(next);
+              // If turning GPS ON, turn compass OFF
+              if (next && compassMode === 'on') {
+                compass.stopCompass();
+                onCompassModeChange?.('off');
+                onCompassLockedChange?.(false);
+              }
             }}
             className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
               isLiveMode ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-gray-600 hover:bg-gray-700 text-white'
