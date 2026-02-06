@@ -348,13 +348,16 @@ function MapController({
           setGpsPosition(newGpsPosition);
           onGpsPositionChange?.(newGpsPosition);
           
-          // Update current position (used for map center and other UI)
-          setCurrentPosition(newGpsPosition);
-          onPositionChange?.(newGpsPosition);
-          
-          // Auto-center map on GPS position only when map is locked
-          if (isMapLocked && map) {
-            map.setView([newGpsPosition.lat, newGpsPosition.lng], map.getZoom());
+          // Update current position only when map is locked
+          // When unlocked, currentPosition is controlled by map pan (moveend event)
+          if (isMapLocked) {
+            setCurrentPosition(newGpsPosition);
+            onPositionChange?.(newGpsPosition);
+            
+            // Auto-center map on GPS position when locked
+            if (map) {
+              map.setView([newGpsPosition.lat, newGpsPosition.lng], map.getZoom());
+            }
           }
         },
         (error) => {
