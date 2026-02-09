@@ -5461,9 +5461,12 @@ export default function MapComponent({
             <button
             onClick={async () => {
               if (compassMode === 'off') {
-                // If turning compass ON, turn GPS OFF
+                // If turning compass ON, turn GPS OFF and unlock map
                 if (isLiveMode) {
                   onLiveModeChange?.(false);
+                }
+                if (isMapLocked) {
+                  setIsMapLocked(false);
                 }
                 
                 // Robust restart sequence (fix sporadic stalls after first run)
@@ -5489,7 +5492,7 @@ export default function MapComponent({
                   alert((error as Error).message);
                 }
               } else {
-                // Turn off compass (don't affect GPS)
+                // Turn off compass (don't affect GPS or lock)
                 compass.stopCompass();
                 onCompassModeChange?.('off');
                 onCompassLockedChange?.(false);
