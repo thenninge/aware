@@ -3597,14 +3597,14 @@ export default function MapComponent({
           onPointAdded={handleAddNoHuntZonePoint}
         />
 
-        {/* Compass slice - shows direction as red pie slice */}
+        {/* Compass slice - shows direction as red pie slice from GPS position */}
         {currentPosition && (
           <CompassSlice 
             heading={applyCalibration(currentPosition.heading) || null}
             isActive={compassMode === 'on' && !isCompassLocked}
             isLocked={false}
-            centerLat={currentPosition.lat}
-            centerLng={currentPosition.lng}
+            centerLat={gpsPosition?.lat || currentPosition.lat}
+            centerLng={gpsPosition?.lng || currentPosition.lng}
             lengthPercent={compassSliceLength}
             angleRange={1}
           />
