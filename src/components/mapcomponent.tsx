@@ -2556,7 +2556,11 @@ export default function MapComponent({
         body: JSON.stringify({
           teamId: activeTeam,
           name: find.name,
-          localId: find.id
+          localId: find.id,
+          position: find.position,
+          color: find.color,
+          shotPairId: find.shotPairId,
+          mode: find.mode
         })
       });
     } catch (e) {

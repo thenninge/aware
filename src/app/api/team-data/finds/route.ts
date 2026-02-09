@@ -86,10 +86,14 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { teamId, name, localId } = body;
+    const { teamId, name, localId, position, color, shotPairId, mode } = body;
 
     if (!teamId) {
       return NextResponse.json({ error: 'Team ID is required' }, { status: 400 });
+    }
+
+    if (!position || !position.lat || !position.lng) {
+      return NextResponse.json({ error: 'Position (lat, lng) is required' }, { status: 400 });
     }
 
     // Verify user has access to this team
@@ -118,14 +122,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    // Create new find - only use columns that actually exist
+    // Create new find with complete data
     const { data: newFind, error: createError } = await supabaseAdmin
       .from('finds')
       .insert({
         teamid: teamId,
         createdby: userId,
         name: name || 'Unnamed Find',
-        local_id: localId
+        local_id: localId,
+        position: position,
+        color: color || '#EF4444',
+        shotpairid: shotPairId || null,
+        mode: mode || 'søk'
       })
       .select()
       .single();
