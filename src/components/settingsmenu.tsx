@@ -700,7 +700,7 @@ export default function SettingsMenu({
                 isDefining={isDefiningOfflineArea || false}
                 selectedLayer={selectedMapLayer}
                 definedBounds={definedOfflineBounds || null}
-                onConfirmDownload={onConfirmOfflineDownload || (() => {})}
+                onConfirmDownload={onConfirmOfflineDownload || (async () => {})}
                 onCancelDefine={onCancelOfflineDefine || (() => {})}
               />
             </div>
