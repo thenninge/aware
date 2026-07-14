@@ -12,6 +12,7 @@ import { useWakeLock } from '@/hooks/useWakeLock';
 import { savePendingTrack } from '@/lib/idb';
 import GoogleMapSmart from './GoogleMapSmart';
 import OfflineTileLayer from './OfflineTileLayer';
+import OfflineAreaDefiner from './OfflineAreaDefiner';
 // Database operations now go through Next.js API routes
 import { Dialog } from '@headlessui/react';
 import { createPortal } from 'react-dom';
@@ -118,6 +119,9 @@ interface MapComponentProps {
   showElevationProfile?: boolean;
   noHuntZones?: Array<{ id: string; hunting_area_id: string; teamid: string; name?: string; coordinates: [number, number][] }>;
   showNoHuntZones?: boolean;
+  isDefiningOfflineArea?: boolean;
+  onOfflineAreaDefined?: (bounds: { north: number; south: number; east: number; west: number }) => void;
+  onCancelOfflineAreaDefinition?: () => void;
 }
 
 interface CategoryFilter {
@@ -1036,6 +1040,9 @@ export default function MapComponent({
   showElevationProfile = false,
   noHuntZones = [],
   showNoHuntZones = true,
+  isDefiningOfflineArea = false,
+  onOfflineAreaDefined,
+  onCancelOfflineAreaDefinition,
 }: MapComponentProps) {
   const [showTargetDialog, setShowTargetDialog] = useState(false);
   const instanceId = useRef(Math.random());
@@ -3598,6 +3605,13 @@ export default function MapComponent({
         <HuntingAreaClickHandler 
           isDefiningHuntingArea={isDefiningNoHuntZone}
           onPointAdded={handleAddNoHuntZonePoint}
+        />
+
+        {/* Offline area definer */}
+        <OfflineAreaDefiner
+          isDefining={isDefiningOfflineArea}
+          onAreaDefined={onOfflineAreaDefined || (() => {})}
+          onCancel={onCancelOfflineAreaDefinition || (() => {})}
         />
 
         {/* Compass slice - shows direction as red pie slice from GPS position */}

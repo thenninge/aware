@@ -116,6 +116,9 @@ interface AwareMapProps {
   losOpacity?: number;
   losHoleOpacity?: number;
   showElevationProfile?: boolean;
+  isDefiningOfflineArea?: boolean;
+  onOfflineAreaDefined?: (bounds: { north: number; south: number; east: number; west: number }) => void;
+  onCancelOfflineAreaDefinition?: () => void;
 }
 
 export default function AwareMap({
@@ -198,6 +201,9 @@ export default function AwareMap({
   losOpacity,
   losHoleOpacity,
   showElevationProfile,
+  isDefiningOfflineArea,
+  onOfflineAreaDefined,
+  onCancelOfflineAreaDefinition,
 }: AwareMapProps) {
   const [isClient, setIsClient] = useState(false);
   const [hasError, setHasError] = useState(false);
@@ -314,6 +320,9 @@ export default function AwareMap({
         onCompassModeChange={onCompassModeChange}
         onCompassLockedChange={onCompassLockedChange}
         batterySaver={batterySaver}
+        isDefiningOfflineArea={isDefiningOfflineArea}
+        onOfflineAreaDefined={onOfflineAreaDefined}
+        onCancelOfflineAreaDefinition={onCancelOfflineAreaDefinition}
       />
     </div>
   );
