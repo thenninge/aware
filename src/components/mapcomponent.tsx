@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { MapContainer, TileLayer, Marker, useMap, Circle, CircleMarker, Polyline, Polygon, Tooltip, Popup, LayersControl, ZoomControl } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMap, Circle, CircleMarker, Polyline, Polygon, Tooltip, Popup, LayersControl, ZoomControl, Rectangle } from 'react-leaflet';
 import L from 'leaflet';
 import MSRRetikkel from './msr-retikkel';
 import 'leaflet/dist/leaflet.css';
@@ -11,6 +11,7 @@ import SettingsMenu, { HuntingArea } from './settingsmenu';
 import { useWakeLock } from '@/hooks/useWakeLock';
 import { savePendingTrack } from '@/lib/idb';
 import GoogleMapSmart from './GoogleMapSmart';
+import OfflineTileLayer from './OfflineTileLayer';
 // Database operations now go through Next.js API routes
 import { Dialog } from '@headlessui/react';
 import { createPortal } from 'react-dom';
@@ -3503,10 +3504,12 @@ export default function MapComponent({
         {showZoomButtons && (
           <ZoomControl position={zoomButtonsSide === 'left' ? 'topleft' : 'topright'} />
         )}
-        <TileLayer
+        <OfflineTileLayer
           url={selectedLayer.url}
           attribution={selectedLayer.attribution}
           maxZoom={18}
+          layerKey={selectedLayer.key}
+          enableCaching={true}
         />
         
         <MapController 

@@ -87,6 +87,14 @@ export default function Home() {
   const [huntingBoundaryWeight, setHuntingBoundaryWeight] = useState(3); // pixels
   const [huntingBoundaryOpacity, setHuntingBoundaryOpacity] = useState(80); // 0-100
   
+  // Offline maps state
+  const [isDefiningOfflineArea, setIsDefiningOfflineArea] = useState(false);
+  const [selectedMapLayer] = useState({
+    key: 'kartverket_topo',
+    name: 'Topo (Kartverket)',
+    url: 'https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png',
+  });
+  
   // State for Shoot & Track settings
   const [targetSize, setTargetSize] = useState(15); // meters
   const [shotSize, setShotSize] = useState(5); // meters
@@ -746,6 +754,13 @@ export default function Home() {
             onLosOpacityChange={setLosOpacity}
             losHoleOpacity={losHoleOpacity}
             onLosHoleOpacityChange={setLosHoleOpacity}
+            onDefineOfflineArea={() => {
+              setIsDefiningOfflineArea(true);
+              alert('Offline-kart: Tegn et rektangel på kartet for å definere område.\n\nOBS: Full funksjonalitet kommer i neste versjon. Tiles blir allerede cachet automatisk når du navigerer kartet!');
+              setIsDefiningOfflineArea(false);
+            }}
+            isDefiningOfflineArea={isDefiningOfflineArea}
+            selectedMapLayer={selectedMapLayer}
           />
         </div>
       )}

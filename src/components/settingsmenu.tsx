@@ -2,6 +2,7 @@
 
 import React, { useRef, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import OfflineMapManager from './OfflineMapManager';
 
 interface CategoryConfig {
   color: string;
@@ -93,6 +94,14 @@ interface SettingsMenuProps {
   onLosOpacityChange?: (v: number) => void;
   losHoleOpacity?: number;
   onLosHoleOpacityChange?: (v: number) => void;
+  // Offline maps
+  onDefineOfflineArea?: () => void;
+  isDefiningOfflineArea?: boolean;
+  selectedMapLayer?: {
+    key: string;
+    name: string;
+    url: string;
+  };
 }
 
 export interface HuntingArea {
@@ -178,7 +187,10 @@ export default function SettingsMenu({
   losOpacity,
   onLosOpacityChange,
   losHoleOpacity,
-  onLosHoleOpacityChange
+  onLosHoleOpacityChange,
+  onDefineOfflineArea,
+  isDefiningOfflineArea,
+  selectedMapLayer
 }: SettingsMenuProps & { currentCenter?: { lat: number, lng: number } }) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [showHomeSaved, setShowHomeSaved] = useState(false);
@@ -193,6 +205,7 @@ export default function SettingsMenu({
   const [isHuntingAreaExpanded, setIsHuntingAreaExpanded] = useState(false);
   const [isZoomButtonsExpanded, setIsZoomButtonsExpanded] = useState(false);
   const [isLosExpanded, setIsLosExpanded] = useState(false);
+  const [isOfflineMapExpanded, setIsOfflineMapExpanded] = useState(false);
   const [savedHomePosition, setSavedHomePosition] = useState<{ lat: number; lng: number } | null>(null);
 
   const categoryLabels: Record<keyof CategoryFilter, string> = {
@@ -661,6 +674,30 @@ export default function SettingsMenu({
           </div>
         )}
       </div>
+
+      {/* Offline Map Settings Expander */}
+      {onDefineOfflineArea && selectedMapLayer && (
+        <div className="mb-4 border border-gray-200 rounded-lg overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setIsOfflineMapExpanded(!isOfflineMapExpanded)}
+            className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors"
+          >
+            <span className="text-sm font-medium text-gray-700">📥 Offline kart</span>
+            <span className="text-gray-500 text-sm">{isOfflineMapExpanded ? '▼' : '▶'}</span>
+          </button>
+          
+          {isOfflineMapExpanded && (
+            <div className="p-3 bg-white">
+              <OfflineMapManager
+                onDefineArea={onDefineOfflineArea}
+                isDefining={isDefiningOfflineArea || false}
+                selectedLayer={selectedMapLayer}
+              />
+            </div>
+          )}
+        </div>
+      )}
       
       {/* Filter Settings Expander */}
       {categoryFilters && onCategoryChange && (
