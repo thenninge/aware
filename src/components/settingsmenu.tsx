@@ -102,6 +102,9 @@ interface SettingsMenuProps {
     name: string;
     url: string;
   };
+  definedOfflineBounds?: { north: number; south: number; east: number; west: number } | null;
+  onConfirmOfflineDownload?: (name: string, zoomLevels: number[]) => void;
+  onCancelOfflineDefine?: () => void;
 }
 
 export interface HuntingArea {
@@ -190,7 +193,10 @@ export default function SettingsMenu({
   onLosHoleOpacityChange,
   onDefineOfflineArea,
   isDefiningOfflineArea,
-  selectedMapLayer
+  selectedMapLayer,
+  definedOfflineBounds,
+  onConfirmOfflineDownload,
+  onCancelOfflineDefine
 }: SettingsMenuProps & { currentCenter?: { lat: number, lng: number } }) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [showHomeSaved, setShowHomeSaved] = useState(false);
@@ -693,6 +699,9 @@ export default function SettingsMenu({
                 onDefineArea={onDefineOfflineArea}
                 isDefining={isDefiningOfflineArea || false}
                 selectedLayer={selectedMapLayer}
+                definedBounds={definedOfflineBounds || null}
+                onConfirmDownload={onConfirmOfflineDownload || (() => {})}
+                onCancelDefine={onCancelOfflineDefine || (() => {})}
               />
             </div>
           )}

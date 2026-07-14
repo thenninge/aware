@@ -5,6 +5,7 @@ import AwareMap from '@/components/awaremap';
 import SettingsMenu, { HuntingArea } from '@/components/settingsmenu';
 import FilterMenu from '@/components/filtermenu';
 import AdminMenu from '@/components/adminmenu';
+import OfflineAreaControls from '@/components/OfflineAreaControls';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface Position {
@@ -89,6 +90,8 @@ export default function Home() {
   
   // Offline maps state
   const [isDefiningOfflineArea, setIsDefiningOfflineArea] = useState(false);
+  const [drawnOfflineBounds, setDrawnOfflineBounds] = useState<{ north: number; south: number; east: number; west: number } | null>(null);
+  const [definedOfflineBounds, setDefinedOfflineBounds] = useState<{ north: number; south: number; east: number; west: number } | null>(null);
   const [selectedMapLayer] = useState({
     key: 'kartverket_topo',
     name: 'Topo (Kartverket)',
@@ -756,11 +759,46 @@ export default function Home() {
             onLosHoleOpacityChange={setLosHoleOpacity}
             onDefineOfflineArea={() => {
               setIsDefiningOfflineArea(true);
-              alert('Offline-kart: Tegn et rektangel på kartet for å definere område.\n\nOBS: Full funksjonalitet kommer i neste versjon. Tiles blir allerede cachet automatisk når du navigerer kartet!');
-              setIsDefiningOfflineArea(false);
+              setDefinedOfflineBounds(null);
+              setIsSettingsExpanded(false); // Close settings menu
             }}
             isDefiningOfflineArea={isDefiningOfflineArea}
             selectedMapLayer={selectedMapLayer}
+            definedOfflineBounds={definedOfflineBounds}
+            onConfirmOfflineDownload={async (name: string, zoomLevels: number[]) => {
+              if (!definedOfflineBounds) return;
+              
+              // Import download function
+              const { downloadOfflineArea } = await import('@/lib/offlineTiles');
+              
+              try {
+                await downloadOfflineArea(
+                  {
+                    id: `area-${Date.now()}`,
+                    name,
+                    bounds: definedOfflineBounds,
+                    zoomLevels,
+                    layer: selectedMapLayer.key,
+                  },
+                  selectedMapLayer.url,
+                  (progress) => {
+                    console.log(`Download progress: ${progress.percentage}%`);
+                  }
+                );
+                
+                alert(`✅ Lastet ned ${name}!\n\nTiles er nå tilgjengelig offline.`);
+              } catch (error) {
+                console.error('Download failed:', error);
+                alert('❌ Nedlasting feilet. Se konsollen for detaljer.');
+              } finally {
+                setIsDefiningOfflineArea(false);
+                setDefinedOfflineBounds(null);
+              }
+            }}
+            onCancelOfflineDefine={() => {
+              setIsDefiningOfflineArea(false);
+              setDefinedOfflineBounds(null);
+            }}
           />
         </div>
       )}
@@ -886,6 +924,41 @@ export default function Home() {
         onCompassModeChange={setCompassMode}
         onCompassLockedChange={setIsCompassLocked}
         batterySaver={batterySaver}
+        isDefiningOfflineArea={isDefiningOfflineArea}
+        onOfflineAreaDrawn={(bounds) => {
+          setDrawnOfflineBounds(bounds);
+        }}
+        onOfflineAreaDefined={(bounds) => {
+          // This is called when user clicks "Lagre"
+          setDefinedOfflineBounds(bounds);
+          setIsDefiningOfflineArea(false);
+          setDrawnOfflineBounds(null);
+          setIsSettingsExpanded(true); // Re-open settings to show config
+        }}
+        onCancelOfflineAreaDefinition={() => {
+          setIsDefiningOfflineArea(false);
+          setDefinedOfflineBounds(null);
+          setDrawnOfflineBounds(null);
+        }}
+      />
+
+      {/* Offline Area Controls (Lagre/Avbryt buttons) */}
+      <OfflineAreaControls
+        isDefining={isDefiningOfflineArea}
+        hasDefinedArea={drawnOfflineBounds !== null}
+        onSave={() => {
+          if (drawnOfflineBounds) {
+            setDefinedOfflineBounds(drawnOfflineBounds);
+            setIsDefiningOfflineArea(false);
+            setDrawnOfflineBounds(null);
+            setIsSettingsExpanded(true); // Re-open settings to show config
+          }
+        }}
+        onCancel={() => {
+          setIsDefiningOfflineArea(false);
+          setDefinedOfflineBounds(null);
+          setDrawnOfflineBounds(null);
+        }}
       />
 
       {/* Admin Menu */}
