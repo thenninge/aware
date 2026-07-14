@@ -103,7 +103,7 @@ interface SettingsMenuProps {
     url: string;
   };
   definedOfflineBounds?: { north: number; south: number; east: number; west: number } | null;
-  onConfirmOfflineDownload?: (name: string, zoomLevels: number[]) => void;
+  onConfirmOfflineDownload?: (name: string, zoomLevels: number[], onProgress: (progress: { current: number; total: number; percentage: number }) => void) => Promise<void>;
   onCancelOfflineDefine?: () => void;
 }
 
@@ -700,7 +700,7 @@ export default function SettingsMenu({
                 isDefining={isDefiningOfflineArea || false}
                 selectedLayer={selectedMapLayer}
                 definedBounds={definedOfflineBounds || null}
-                onConfirmDownload={onConfirmOfflineDownload || (() => {})}
+                onConfirmDownload={onConfirmOfflineDownload || (async () => {})}
                 onCancelDefine={onCancelOfflineDefine || (() => {})}
               />
             </div>

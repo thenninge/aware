@@ -765,8 +765,11 @@ export default function Home() {
             isDefiningOfflineArea={isDefiningOfflineArea}
             selectedMapLayer={selectedMapLayer}
             definedOfflineBounds={definedOfflineBounds}
-            onConfirmOfflineDownload={async (name: string, zoomLevels: number[]) => {
-              if (!definedOfflineBounds) return;
+            onConfirmOfflineDownload={async (name: string, zoomLevels: number[], onProgress) => {
+              if (!definedOfflineBounds) {
+                alert('Ingen område definert');
+                return;
+              }
               
               // Import download function
               const { downloadOfflineArea } = await import('@/lib/offlineTiles');
@@ -781,18 +784,17 @@ export default function Home() {
                     layer: selectedMapLayer.key,
                   },
                   selectedMapLayer.url,
-                  (progress) => {
-                    console.log(`Download progress: ${progress.percentage}%`);
-                  }
+                  onProgress
                 );
                 
                 alert(`✅ Lastet ned ${name}!\n\nTiles er nå tilgjengelig offline.`);
+                
+                // Reset state after successful download
+                setDefinedOfflineBounds(null);
               } catch (error) {
                 console.error('Download failed:', error);
                 alert('❌ Nedlasting feilet. Se konsollen for detaljer.');
-              } finally {
-                setIsDefiningOfflineArea(false);
-                setDefinedOfflineBounds(null);
+                // Keep bounds on error so user can try again
               }
             }}
             onCancelOfflineDefine={() => {

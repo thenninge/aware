@@ -24,7 +24,7 @@ interface OfflineMapManagerProps {
     url: string;
   };
   definedBounds: { north: number; south: number; east: number; west: number } | null;
-  onConfirmDownload: (name: string, zoomLevels: number[]) => void;
+  onConfirmDownload: (name: string, zoomLevels: number[], onProgress: (progress: DownloadProgress) => void) => Promise<void>;
   onCancelDefine: () => void;
 }
 
@@ -71,7 +71,7 @@ export default function OfflineMapManager({
     await loadAreas();
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (!areaName.trim()) {
       alert('Vennligst gi området et navn');
       return;
@@ -80,8 +80,23 @@ export default function OfflineMapManager({
       alert('Vennligst velg minst ett zoom-nivå');
       return;
     }
-    onConfirmDownload(areaName, selectedZooms);
-    setAreaName('');
+    
+    setIsDownloading(true);
+    setDownloadProgress({ current: 0, total: estimatedTiles, percentage: 0 });
+    
+    try {
+      // Call download with current values and progress callback
+      await onConfirmDownload(areaName, selectedZooms, (progress) => {
+        setDownloadProgress(progress);
+      });
+      
+      // Reset form after successful download
+      setAreaName('');
+      await loadAreas(); // Reload areas to show the new one
+    } finally {
+      setIsDownloading(false);
+      setDownloadProgress(null);
+    }
   };
 
   const toggleZoom = (zoom: number) => {
