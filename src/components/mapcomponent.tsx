@@ -121,6 +121,7 @@ interface MapComponentProps {
   showNoHuntZones?: boolean;
   isDefiningOfflineArea?: boolean;
   onOfflineAreaDefined?: (bounds: { north: number; south: number; east: number; west: number }) => void;
+  onOfflineAreaDrawn?: (bounds: { north: number; south: number; east: number; west: number }) => void;
   onCancelOfflineAreaDefinition?: () => void;
 }
 
@@ -1042,6 +1043,7 @@ export default function MapComponent({
   showNoHuntZones = true,
   isDefiningOfflineArea = false,
   onOfflineAreaDefined,
+  onOfflineAreaDrawn,
   onCancelOfflineAreaDefinition,
 }: MapComponentProps) {
   const [showTargetDialog, setShowTargetDialog] = useState(false);
@@ -3611,6 +3613,7 @@ export default function MapComponent({
         <OfflineAreaDefiner
           isDefining={isDefiningOfflineArea}
           onAreaDefined={onOfflineAreaDefined || (() => {})}
+          onAreaDrawn={onOfflineAreaDrawn}
           onCancel={onCancelOfflineAreaDefinition || (() => {})}
         />
 

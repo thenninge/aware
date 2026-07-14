@@ -118,6 +118,7 @@ interface AwareMapProps {
   showElevationProfile?: boolean;
   isDefiningOfflineArea?: boolean;
   onOfflineAreaDefined?: (bounds: { north: number; south: number; east: number; west: number }) => void;
+  onOfflineAreaDrawn?: (bounds: { north: number; south: number; east: number; west: number }) => void;
   onCancelOfflineAreaDefinition?: () => void;
 }
 
@@ -203,6 +204,7 @@ export default function AwareMap({
   showElevationProfile,
   isDefiningOfflineArea,
   onOfflineAreaDefined,
+  onOfflineAreaDrawn,
   onCancelOfflineAreaDefinition,
 }: AwareMapProps) {
   const [isClient, setIsClient] = useState(false);
@@ -322,6 +324,7 @@ export default function AwareMap({
         batterySaver={batterySaver}
         isDefiningOfflineArea={isDefiningOfflineArea}
         onOfflineAreaDefined={onOfflineAreaDefined}
+        onOfflineAreaDrawn={onOfflineAreaDrawn}
         onCancelOfflineAreaDefinition={onCancelOfflineAreaDefinition}
       />
     </div>

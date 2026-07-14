@@ -8,12 +8,14 @@ interface OfflineAreaDefinerProps {
   isDefining: boolean;
   onAreaDefined: (bounds: { north: number; south: number; east: number; west: number }) => void;
   onCancel: () => void;
+  onAreaDrawn?: (bounds: { north: number; south: number; east: number; west: number }) => void;
 }
 
 export default function OfflineAreaDefiner({
   isDefining,
   onAreaDefined,
   onCancel,
+  onAreaDrawn,
 }: OfflineAreaDefinerProps) {
   const map = useMap();
   const [rectangleBounds, setRectangleBounds] = useState<L.LatLngBounds | null>(null);
@@ -33,19 +35,18 @@ export default function OfflineAreaDefiner({
       if (startPoint) {
         const bounds = L.latLngBounds(startPoint, e.latlng);
         setRectangleBounds(bounds);
-        
-        // Call onAreaDefined with the bounds
-        onAreaDefined({
-          north: bounds.getNorth(),
-          south: bounds.getSouth(),
-          east: bounds.getEast(),
-          west: bounds.getWest(),
-        });
-        
-        // Reset
         setIsDrawing(false);
         setStartPoint(null);
-        setRectangleBounds(null);
+        
+        // Notify that area has been drawn (but not saved yet)
+        if (onAreaDrawn) {
+          onAreaDrawn({
+            north: bounds.getNorth(),
+            south: bounds.getSouth(),
+            east: bounds.getEast(),
+            west: bounds.getWest(),
+          });
+        }
       }
     }
   }, [isDefining, isDrawing, startPoint, onAreaDefined]);
@@ -65,6 +66,15 @@ export default function OfflineAreaDefiner({
       onCancel();
     }
   }, [isDefining, onCancel]);
+
+  // Reset state when isDefining becomes false
+  useEffect(() => {
+    if (!isDefining) {
+      setIsDrawing(false);
+      setStartPoint(null);
+      setRectangleBounds(null);
+    }
+  }, [isDefining]);
 
   useEffect(() => {
     if (!map || !isDefining) return;
