@@ -765,7 +765,7 @@ export default function Home() {
             isDefiningOfflineArea={isDefiningOfflineArea}
             selectedMapLayer={selectedMapLayer}
             definedOfflineBounds={definedOfflineBounds}
-            onConfirmOfflineDownload={async (name: string, zoomLevels: number[], onProgress) => {
+            onConfirmOfflineDownload={async (name: string, zoomLevels: number[], includeElevation: boolean, onProgress) => {
               if (!definedOfflineBounds) {
                 alert('Ingen område definert');
                 return;
@@ -784,10 +784,13 @@ export default function Home() {
                     layer: selectedMapLayer.key,
                   },
                   selectedMapLayer.url,
-                  onProgress
+                  onProgress,
+                  undefined, // signal
+                  includeElevation
                 );
                 
-                alert(`✅ Lastet ned ${name}!\n\nTiles er nå tilgjengelig offline.`);
+                const elevationMsg = includeElevation ? '\n\nInkluderer høydedata for offline høydeprofiler!' : '';
+                alert(`✅ Lastet ned ${name}!${elevationMsg}\n\nTiles er nå tilgjengelig offline.`);
                 
                 // Reset state after successful download
                 setDefinedOfflineBounds(null);

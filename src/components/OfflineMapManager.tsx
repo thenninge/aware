@@ -24,7 +24,7 @@ interface OfflineMapManagerProps {
     url: string;
   };
   definedBounds: { north: number; south: number; east: number; west: number } | null;
-  onConfirmDownload: (name: string, zoomLevels: number[], onProgress: (progress: DownloadProgress) => void) => Promise<void>;
+  onConfirmDownload: (name: string, zoomLevels: number[], includeElevation: boolean, onProgress: (progress: DownloadProgress) => void) => Promise<void>;
   onCancelDefine: () => void;
 }
 
@@ -44,6 +44,7 @@ export default function OfflineMapManager({
   // Download configuration
   const [areaName, setAreaName] = useState('');
   const [selectedZooms, setSelectedZooms] = useState<number[]>([14, 15, 16]);
+  const [includeElevation, setIncludeElevation] = useState(true);
   const [estimatedTiles, setEstimatedTiles] = useState(0);
 
   const loadAreas = async () => {
@@ -62,7 +63,7 @@ export default function OfflineMapManager({
       const count = calculateTileCount(definedBounds, selectedZooms);
       setEstimatedTiles(count);
     }
-  }, [definedBounds, selectedZooms]);
+  }, [definedBounds, selectedZooms, includeElevation]);
 
   const handleDelete = async (areaId: string) => {
     if (!confirm('Er du sikker på at du vil slette dette offline-området?')) return;
@@ -82,16 +83,18 @@ export default function OfflineMapManager({
     }
     
     setIsDownloading(true);
-    setDownloadProgress({ current: 0, total: estimatedTiles, percentage: 0 });
+    const totalTiles = includeElevation ? estimatedTiles * 2 : estimatedTiles; // Double if including elevation
+    setDownloadProgress({ current: 0, total: totalTiles, percentage: 0 });
     
     try {
       // Call download with current values and progress callback
-      await onConfirmDownload(areaName, selectedZooms, (progress) => {
+      await onConfirmDownload(areaName, selectedZooms, includeElevation, (progress) => {
         setDownloadProgress(progress);
       });
       
       // Reset form after successful download
       setAreaName('');
+      setIncludeElevation(true);
       await loadAreas(); // Reload areas to show the new one
     } finally {
       setIsDownloading(false);
@@ -150,8 +153,28 @@ export default function OfflineMapManager({
             </div>
           </div>
 
+          <div>
+            <label className="flex items-center gap-2 cursor-pointer text-xs text-gray-700">
+              <input
+                type="checkbox"
+                checked={includeElevation}
+                onChange={(e) => setIncludeElevation(e.target.checked)}
+                className="w-4 h-4"
+              />
+              <span>Inkluder høydedata (for offline høydeprofiler)</span>
+            </label>
+            <div className="text-[10px] text-gray-500 mt-1 ml-6">
+              +50% lagringsplass, men gir offline høydeprofiler
+            </div>
+          </div>
+
           <div className="text-xs text-gray-700 bg-white p-2 rounded">
-            <strong>Estimat:</strong> {estimatedTiles} tiles (~{formatBytes(estimateStorageSize(estimatedTiles))})
+            <strong>Estimat:</strong> {includeElevation ? estimatedTiles * 2 : estimatedTiles} tiles (~{formatBytes(estimateStorageSize(estimatedTiles, includeElevation))})
+            {includeElevation && (
+              <div className="text-[10px] text-gray-600 mt-1">
+                {estimatedTiles} kartbilder + {estimatedTiles} høydedata
+              </div>
+            )}
           </div>
 
           <div className="flex gap-2">
@@ -231,7 +254,16 @@ export default function OfflineMapManager({
               <div className="text-gray-600 space-y-0.5">
                 <div>Lag: {area.layer}</div>
                 <div>Zoom: {area.zoomLevels.join(', ')}</div>
-                <div>{area.tileCount} tiles (~{formatBytes(estimateStorageSize(area.tileCount))})</div>
+                <div>
+                  {area.tileCount} kart-tiles
+                  {area.includesElevation && ` + ${area.elevationTileCount} høyde-tiles`}
+                  {' '}(~{formatBytes(estimateStorageSize(area.tileCount, area.includesElevation))})
+                </div>
+                {area.includesElevation && (
+                  <div className="text-[10px] text-green-600">
+                    ✓ Inkluderer høydedata
+                  </div>
+                )}
                 <div className="text-[10px] text-gray-500">
                   {new Date(area.createdAt).toLocaleString('no-NO')}
                 </div>
