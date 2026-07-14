@@ -103,7 +103,7 @@ interface SettingsMenuProps {
     url: string;
   };
   definedOfflineBounds?: { north: number; south: number; east: number; west: number } | null;
-  onConfirmOfflineDownload?: (name: string, zoomLevels: number[]) => void;
+  onConfirmOfflineDownload?: (name: string, zoomLevels: number[], onProgress: (progress: { current: number; total: number; percentage: number }) => void) => Promise<void>;
   onCancelOfflineDefine?: () => void;
 }
 
