@@ -5,9 +5,10 @@ export interface PendingTrackSegment {
 }
 
 export interface CachedTile {
-  key: string; // format: "layer/z/x/y"
+  key: string; // format: "layer/z/x/y" or "elevation/z/x/y"
   blob: Blob;
   timestamp: number;
+  type?: 'map' | 'elevation'; // Type of tile
 }
 
 export interface OfflineArea {
@@ -23,6 +24,8 @@ export interface OfflineArea {
   layer: string;
   createdAt: number;
   tileCount: number;
+  elevationTileCount: number; // Number of elevation tiles downloaded
+  includesElevation: boolean; // Whether elevation data is included
 }
 
 function openDB(): Promise<IDBDatabase> {
@@ -66,15 +69,34 @@ export async function savePendingTrack(segment: PendingTrackSegment) {
 
 // ============= TILE CACHING FUNCTIONS =============
 
-export async function saveTile(layer: string, z: number, x: number, y: number, blob: Blob): Promise<void> {
+export async function saveTile(layer: string, z: number, x: number, y: number, blob: Blob, type: 'map' | 'elevation' = 'map'): Promise<void> {
   const db = await openDB();
-  const key = `${layer}/${z}/${x}/${y}`;
+  const key = type === 'elevation' ? `elevation/${z}/${x}/${y}` : `${layer}/${z}/${x}/${y}`;
   return new Promise<void>((resolve, reject) => {
     const tx = db.transaction('tiles', 'readwrite');
     const store = tx.objectStore('tiles');
-    store.put({ key, blob, timestamp: Date.now() });
+    store.put({ key, blob, timestamp: Date.now(), type });
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
+  });
+}
+
+export async function saveElevationTile(z: number, x: number, y: number, blob: Blob): Promise<void> {
+  return saveTile('elevation', z, x, y, blob, 'elevation');
+}
+
+export async function getElevationTile(z: number, x: number, y: number): Promise<Blob | null> {
+  const db = await openDB();
+  const key = `elevation/${z}/${x}/${y}`;
+  return new Promise<Blob | null>((resolve, reject) => {
+    const tx = db.transaction('tiles', 'readonly');
+    const store = tx.objectStore('tiles');
+    const req = store.get(key);
+    req.onsuccess = () => {
+      const result = req.result as CachedTile | undefined;
+      resolve(result?.blob || null);
+    };
+    req.onerror = () => reject(req.error);
   });
 }
 
