@@ -3567,12 +3567,13 @@ export default function MapComponent({
                 setIsScanningNormal(true);
               }
             } else {
+              // Reset loading indicators but keep scan active
               if (activeScan === 'invert') {
                 setIsScanningInvert(false);
               } else if (activeScan === 'normal') {
                 setIsScanningNormal(false);
               }
-              setActiveScan('none');
+              // Keep activeScan state to track which view is displayed
             }
           }}
           mode={mode}
@@ -5286,14 +5287,16 @@ export default function MapComponent({
           {mode === 'aware' && (
             <button
               onClick={() => {
-                if (!isScanningInvert && invertSlices && places.length > 0) {
-                  // Toggle off current invert view
+                // Toggle off if invert scan is currently displayed
+                if (invertSlices && places.length > 0 && !isScanningInvert) {
                   setPlaces([]);
                   setClearPlaces(true);
                   setSearchPosition(null);
                   setInvertSlices(false);
+                  setActiveScan('none');
                   return;
                 }
+                // Start new invert scan
                 setActiveScan('invert');
                 setIsScanningInvert(true);
                 setInvertSlices(true);
@@ -5314,13 +5317,15 @@ export default function MapComponent({
           {mode === 'aware' && (
           <button
             onClick={() => {
-              if (!isScanningNormal && !invertSlices && places.length > 0) {
-                // Toggle off normal scan display
+              // Toggle off if normal scan is currently displayed
+              if (!invertSlices && places.length > 0 && !isScanningNormal) {
                 setPlaces([]);
                 setClearPlaces(true);
                 setSearchPosition(null);
+                setActiveScan('none');
                 return;
               }
+              // Start new normal scan
               setActiveScan('normal');
               setIsScanningNormal(true);
               setInvertSlices(false);
