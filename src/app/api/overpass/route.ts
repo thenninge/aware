@@ -54,6 +54,7 @@ export async function GET(request: NextRequest) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
+        'User-Agent': 'Cold Bore Aware App (https://cbaware.vercel.app)', // Required by Overpass API
       },
       body: `data=${encodeURIComponent(query)}`,
       signal: controller.signal,
