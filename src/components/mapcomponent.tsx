@@ -424,7 +424,10 @@ function MapController({
       try {
         console.log('Scanning area for radius:', radius, 'at position:', searchPos);
         const response = await fetch(
-          `/api/overpass?lat=${searchPos.lat}&lng=${searchPos.lng}&radius=${radius}`
+          `/api/overpass?lat=${searchPos.lat}&lng=${searchPos.lng}&radius=${radius}`,
+          { 
+            signal: AbortSignal.timeout(10000) // 10 second client timeout
+          }
         );
         
         if (response.ok) {
@@ -435,12 +438,28 @@ function MapController({
           setPlaces(newPlaces);
           onPlacesChange?.(newPlaces);
         } else {
-          console.error('Failed to fetch places');
+          const errorData = await response.json().catch(() => ({}));
+          console.error('Failed to fetch places:', response.status, errorData);
+          
+          // Show user-friendly error message
+          if (response.status === 504) {
+            console.warn('⏱️ Overpass API timeout - prøv igjen eller reduser radius');
+          } else {
+            console.warn('❌ Kunne ikke hente bebyggelsesdata');
+          }
+          
           setPlaces([]);
           onPlacesChange?.([]);
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error fetching places:', error);
+        
+        if (error.name === 'TimeoutError') {
+          console.warn('⏱️ Forespørselen tok for lang tid');
+        } else {
+          console.warn('❌ Feil ved henting av data');
+        }
+        
         setPlaces([]);
         onPlacesChange?.([]);
       } finally {

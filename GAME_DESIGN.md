@@ -2,6 +2,8 @@
 
 ## 🎮 Spillkonsept
 
+Denne filen er generet av en ai og er ikke 100% korrekt eller beskriver alt som du trenger å vite for å lage spillet. spør alltid meg (mennesket) ved uklarheter. Tro aldri at du vet best eller har forstått alt. spilldesigneren og mennesket har inngående kjennskap til alle detaljer rundt ønskede funksjoner og må alltid spørres. Din jobb som koder av dette prosjektet er å lage koden, ikke anta om funksjoner eller spillbarhet i ting. Du skal likevel bidra med innsikt om software og arkitektur og spilldesign der mennesket som lager dette spør om det. Du er en verdsatt ressurs! bare ikke lat som du vet alt, det aksepteres ikke. sammen blir vi et bra team! 
+
 Et **realistisk jakt-simulator spill** inspirert av "The Lost Dutchman Mine" og "The Lost Patrol". Fokus på realisme, taktikk, skill-utvikling og beslutningstaking.
 
 ## 🎯 Kjernefilosofi

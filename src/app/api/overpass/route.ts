@@ -35,23 +35,31 @@ export async function GET(request: NextRequest) {
 
   try {
     // Overpass API query using regex matching
+    // Reduced timeout to 8 seconds to work within Vercel's 10s limit
     const query = `
-      [out:json][timeout:25];
+      [out:json][timeout:8];
       node
         ["place"~"city|town|village|hamlet|farm|isolated_dwelling"]
         (around:${radius}, ${lat}, ${lng});
-      out;
+      out body;
     `;
 
     console.log('Overpass query:', query);
 
+    // Use fetch with 9 second timeout (within Vercel's 10s limit)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 9000);
+    
     const response = await fetch('https://overpass-api.de/api/interpreter', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: `data=${encodeURIComponent(query)}`,
+      signal: controller.signal,
     });
+    
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       throw new Error(`Overpass API error: ${response.status}`);
@@ -117,10 +125,22 @@ export async function GET(request: NextRequest) {
       },
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Overpass API error:', error);
+    
+    // More detailed error messages
+    if (error.name === 'AbortError') {
+      return NextResponse.json(
+        { error: 'Request timeout - Overpass API took too long to respond' },
+        { status: 504 }
+      );
+    }
+    
     return NextResponse.json(
-      { error: 'Failed to fetch data from Overpass API' },
+      { 
+        error: 'Failed to fetch data from Overpass API', 
+        details: error.message || 'Unknown error' 
+      },
       { status: 500 }
     );
   }
