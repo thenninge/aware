@@ -34,22 +34,37 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Overpass API query using regex matching
-    // Reduced timeout to 8 seconds to work within Vercel's 10s limit
+    // Overpass API query with adaptive timeout based on radius
+    // Must stay within Vercel's 10s serverless limit (Hobby plan)
+    // Small radius (<=3000m): 7s, Medium (3000-6000m): 9s
+    // For large radius, suggest user reduces area
+    const radiusNum = parseInt(radius);
+    let queryTimeout = 7;
+    if (radiusNum > 6000) {
+      return NextResponse.json(
+        { 
+          error: 'Radius too large', 
+          suggestion: 'Please reduce radius to 6000m or less for reliable results.',
+          maxRadius: 6000
+        },
+        { status: 400 }
+      );
+    } else if (radiusNum > 3000) {
+      queryTimeout = 9;
+    }
+
     const query = `
-      [out:json][timeout:8];
+      [out:json][timeout:${queryTimeout}];
       node
         ["place"~"city|town|village|hamlet|farm|isolated_dwelling"]
         (around:${radius}, ${lat}, ${lng});
       out body;
     `;
 
-    console.log('Overpass query:', query);
+    console.log('Overpass query:', query, `(timeout: ${queryTimeout}s)`);
 
-    // Use fetch with 9 second timeout (within Vercel's 10s limit)
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 9000);
-    
+    // Let Vercel's 10s serverless timeout handle overall timeout
+    // Use simpler fetch without AbortController for better reliability
     const response = await fetch('https://overpass-api.de/api/interpreter', {
       method: 'POST',
       headers: {
@@ -57,10 +72,7 @@ export async function GET(request: NextRequest) {
         'User-Agent': 'Cold Bore Aware App (https://cbaware.vercel.app)', // Required by Overpass API
       },
       body: `data=${encodeURIComponent(query)}`,
-      signal: controller.signal,
     });
-    
-    clearTimeout(timeoutId);
 
     if (!response.ok) {
       throw new Error(`Overpass API error: ${response.status}`);
@@ -130,9 +142,12 @@ export async function GET(request: NextRequest) {
     console.error('Overpass API error:', error);
     
     // More detailed error messages
-    if (error.name === 'AbortError') {
+    if (error.name === 'AbortError' || error.code === 'ETIMEDOUT') {
       return NextResponse.json(
-        { error: 'Request timeout - Overpass API took too long to respond' },
+        { 
+          error: 'Request timeout - Try reducing search radius or try again later',
+          suggestion: 'Overpass API is busy. Try radius < 3000m for faster results.'
+        },
         { status: 504 }
       );
     }

@@ -423,11 +423,18 @@ function MapController({
       onLoadingChange?.(true);
       try {
         console.log('Scanning area for radius:', radius, 'at position:', searchPos);
+        
+        // Check radius before making request
+        if (radius > 6000) {
+          console.warn('⚠️ Radius for stor! Maksimum er 6000m');
+          alert('Radius er for stor. Maksimum er 6000m.\n\nReduser radius i innstillinger for å scanne bebyggelse.');
+          setPlaces([]);
+          onPlacesChange?.([]);
+          return;
+        }
+        
         const response = await fetch(
-          `/api/overpass?lat=${searchPos.lat}&lng=${searchPos.lng}&radius=${radius}`,
-          { 
-            signal: AbortSignal.timeout(10000) // 10 second client timeout
-          }
+          `/api/overpass?lat=${searchPos.lat}&lng=${searchPos.lng}&radius=${radius}`
         );
         
         if (response.ok) {
@@ -443,7 +450,11 @@ function MapController({
           
           // Show user-friendly error message
           if (response.status === 504) {
-            console.warn('⏱️ Overpass API timeout - prøv igjen eller reduser radius');
+            console.warn('⏱️ Timeout - prøv mindre radius eller prøv igjen senere');
+            alert('Søket tok for lang tid.\n\nTips:\n- Prøv mindre radius (anbefalt: 3000m)\n- Eller prøv igjen om litt (Overpass API kan være overbelastet)');
+          } else if (response.status === 400 && errorData.maxRadius) {
+            console.warn('⚠️ Radius for stor');
+            alert(`Radius er for stor (maks ${errorData.maxRadius}m).\n\n${errorData.suggestion}`);
           } else {
             console.warn('❌ Kunne ikke hente bebyggelsesdata');
           }
