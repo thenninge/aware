@@ -425,12 +425,18 @@ function MapController({
         console.log('Scanning area for radius:', radius, 'at position:', searchPos);
         
         // Check radius before making request
-        if (radius > 6000) {
-          console.warn('⚠️ Radius for stor! Maksimum er 6000m');
-          alert('Radius er for stor. Maksimum er 6000m.\n\nReduser radius i innstillinger for å scanne bebyggelse.');
+        // Conservative limit due to Overpass API + Vercel timeout constraints
+        if (radius > 4000) {
+          console.warn('⚠️ Radius for stor! Maksimum er 4000m');
+          alert('Radius er for stor. Maksimum er 4000m.\n\nAnbefalt: 2000m for rask respons.\n\nReduser radius i innstillinger for å scanne bebyggelse.');
           setPlaces([]);
           onPlacesChange?.([]);
           return;
+        }
+        
+        // Warn for large radius
+        if (radius > 2500) {
+          console.warn('⚠️ Stor radius - kan ta lang tid');
         }
         
         const response = await fetch(
@@ -450,13 +456,16 @@ function MapController({
           
           // Show user-friendly error message
           if (response.status === 504) {
-            console.warn('⏱️ Timeout - prøv mindre radius eller prøv igjen senere');
-            alert('Søket tok for lang tid.\n\nTips:\n- Prøv mindre radius (anbefalt: 3000m)\n- Eller prøv igjen om litt (Overpass API kan være overbelastet)');
+            console.warn('⏱️ Timeout - Overpass API er treg');
+            alert('⏱️ Søket tok for lang tid\n\nOverpass API (OpenStreetMap data) er treg akkurat nå.\n\nTips:\n• Prøv radius 2000m for rask respons\n• Eller prøv igjen om 1-2 minutter\n• Best ytelse: Bruk mindre områder');
           } else if (response.status === 400 && errorData.maxRadius) {
             console.warn('⚠️ Radius for stor');
-            alert(`Radius er for stor (maks ${errorData.maxRadius}m).\n\n${errorData.suggestion}`);
+            const suggestion = errorData.suggestion || 'Reduser radius';
+            const recommended = errorData.recommendedRadius || 2000;
+            alert(`⚠️ Radius er for stor\n\nMaksimum: ${errorData.maxRadius}m\nAnbefalt: ${recommended}m\n\n${suggestion}`);
           } else {
             console.warn('❌ Kunne ikke hente bebyggelsesdata');
+            alert('❌ Kunne ikke hente bebyggelsesdata\n\nSjekk internettforbindelsen og prøv igjen.');
           }
           
           setPlaces([]);

@@ -34,23 +34,26 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Overpass API query with adaptive timeout based on radius
-    // Must stay within Vercel's 10s serverless limit (Hobby plan)
-    // Small radius (<=3000m): 7s, Medium (3000-6000m): 9s
-    // For large radius, suggest user reduces area
+    // Overpass API query with conservative timeout
+    // Vercel Hobby: 10s serverless timeout - we need to be well under this
+    // Overpass API can be slow (15+ seconds for 3000m radius observed)
+    // Strategy: Use shorter timeout + retry suggestion to user
     const radiusNum = parseInt(radius);
-    let queryTimeout = 7;
-    if (radiusNum > 6000) {
+    let queryTimeout = 5; // Conservative: 5s for query execution
+    
+    // Limit radius more aggressively due to Vercel timeout constraints
+    if (radiusNum > 4000) {
       return NextResponse.json(
         { 
-          error: 'Radius too large', 
-          suggestion: 'Please reduce radius to 6000m or less for reliable results.',
-          maxRadius: 6000
+          error: 'Radius too large for reliable results', 
+          suggestion: 'Please reduce radius to 4000m or less. Overpass API can be slow during peak hours.',
+          maxRadius: 4000,
+          recommendedRadius: 2000
         },
         { status: 400 }
       );
-    } else if (radiusNum > 3000) {
-      queryTimeout = 9;
+    } else if (radiusNum > 2000) {
+      queryTimeout = 6;
     }
 
     const query = `
