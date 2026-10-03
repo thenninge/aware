@@ -1,4 +1,5 @@
 import { getElevationTile } from './idb';
+import { ELEVATION_ZOOM } from './tileMath';
 
 /**
  * Decode elevation from Terrarium RGB format
@@ -16,7 +17,7 @@ export function decodeTerrainRGB(r: number, g: number, b: number): number {
 export async function getElevationAtPoint(
   lat: number,
   lng: number,
-  zoom: number = 14
+  zoom: number = ELEVATION_ZOOM
 ): Promise<number | null> {
   // Convert lat/lng to tile coordinates
   const x = Math.floor((lng + 180) / 360 * Math.pow(2, zoom));
@@ -85,7 +86,7 @@ export async function getElevationProfile(
   endLat: number,
   endLng: number,
   samples: number = 50,
-  zoom: number = 14
+  zoom: number = ELEVATION_ZOOM
 ): Promise<Array<{ distance: number; elevation: number; lat: number; lng: number }> | null> {
   const profile: Array<{ distance: number; elevation: number; lat: number; lng: number }> = [];
   
@@ -128,7 +129,7 @@ export async function getElevationProfile(
  */
 export async function hasElevationDataForArea(
   bounds: { north: number; south: number; east: number; west: number },
-  zoom: number = 14
+  zoom: number = ELEVATION_ZOOM
 ): Promise<boolean> {
   // Check center point
   const centerLat = (bounds.north + bounds.south) / 2;

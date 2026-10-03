@@ -36,34 +36,42 @@ class OfflineCachingTileLayer extends L.TileLayer {
     tile.setAttribute('role', 'presentation');
     
     const { z, x, y } = coords;
-    
-    // Try to load from cache first
+    const tileUrl = this.getTileUrl(coords);
+
+    // Viser en blob og frigir blob-URL-en når bildet er lastet
+    const showBlob = (blob: Blob) => {
+      if (!tile.isConnected) return;
+      const objectUrl = URL.createObjectURL(blob);
+      const release = () => URL.revokeObjectURL(objectUrl);
+      tile.addEventListener('load', release, { once: true });
+      tile.addEventListener('error', release, { once: true });
+      tile.src = objectUrl;
+    };
+
+    // Cache først, ellers én enkelt henting som både vises og lagres
     getTile(this.layerKey, z, x, y)
       .then((cachedBlob) => {
-        if (cachedBlob && tile.parentElement) {
-          tile.src = URL.createObjectURL(cachedBlob);
-        } else {
-          const tileUrl = this.getTileUrl(coords);
-          tile.src = tileUrl;
-          
-          // Cache the tile after it loads
-          fetch(tileUrl)
-            .then((response) => response.blob())
-            .then((blob) => {
-              saveTile(this.layerKey, z, x, y, blob).catch(() => {
-                // Silently fail - caching is optional
-              });
-            })
-            .catch(() => {
-              // Silently fail - network error
-            });
+        if (cachedBlob) {
+          showBlob(cachedBlob);
+          return;
         }
+        return fetch(tileUrl)
+          .then((response) => {
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return response.blob();
+          })
+          .then((blob) => {
+            saveTile(this.layerKey, z, x, y, blob).catch(() => {
+              // Caching er valgfritt
+            });
+            showBlob(blob);
+          });
       })
       .catch(() => {
-        const tileUrl = this.getTileUrl(coords);
-        tile.src = tileUrl;
+        // Cache- eller fetch-feil (f.eks. CORS): la nettleseren laste flisen direkte
+        if (tile.isConnected) tile.src = tileUrl;
       });
-    
+
     return tile;
   }
 }

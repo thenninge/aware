@@ -1,3 +1,5 @@
+import { elevationTileKey, mapTileKey, tileKeysForArea } from './tileMath';
+
 export interface PendingTrackSegment {
   id: string | null;
   createdAt: string;
@@ -26,9 +28,28 @@ export interface OfflineArea {
   tileCount: number;
   elevationTileCount: number; // Number of elevation tiles downloaded
   includesElevation: boolean; // Whether elevation data is included
+  failedTileCount?: number; // Fliser som ikke lot seg laste ned
 }
 
+let dbPromise: Promise<IDBDatabase> | null = null;
+
 function openDB(): Promise<IDBDatabase> {
+  if (!dbPromise) {
+    dbPromise = openDBUncached().then((db) => {
+      db.onversionchange = () => {
+        db.close();
+        dbPromise = null;
+      };
+      return db;
+    });
+    dbPromise.catch(() => {
+      dbPromise = null;
+    });
+  }
+  return dbPromise;
+}
+
+function openDBUncached(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open('aware-db', 2); // Increment version for schema change
     req.onupgradeneeded = (event) => {
@@ -71,7 +92,7 @@ export async function savePendingTrack(segment: PendingTrackSegment) {
 
 export async function saveTile(layer: string, z: number, x: number, y: number, blob: Blob, type: 'map' | 'elevation' = 'map'): Promise<void> {
   const db = await openDB();
-  const key = type === 'elevation' ? `elevation/${z}/${x}/${y}` : `${layer}/${z}/${x}/${y}`;
+  const key = type === 'elevation' ? elevationTileKey(z, x, y) : mapTileKey(layer, z, x, y);
   return new Promise<void>((resolve, reject) => {
     const tx = db.transaction('tiles', 'readwrite');
     const store = tx.objectStore('tiles');
@@ -87,7 +108,7 @@ export async function saveElevationTile(z: number, x: number, y: number, blob: B
 
 export async function getElevationTile(z: number, x: number, y: number): Promise<Blob | null> {
   const db = await openDB();
-  const key = `elevation/${z}/${x}/${y}`;
+  const key = elevationTileKey(z, x, y);
   return new Promise<Blob | null>((resolve, reject) => {
     const tx = db.transaction('tiles', 'readonly');
     const store = tx.objectStore('tiles');
@@ -102,7 +123,7 @@ export async function getElevationTile(z: number, x: number, y: number): Promise
 
 export async function getTile(layer: string, z: number, x: number, y: number): Promise<Blob | null> {
   const db = await openDB();
-  const key = `${layer}/${z}/${x}/${y}`;
+  const key = mapTileKey(layer, z, x, y);
   return new Promise<Blob | null>((resolve, reject) => {
     const tx = db.transaction('tiles', 'readonly');
     const store = tx.objectStore('tiles');
@@ -115,29 +136,24 @@ export async function getTile(layer: string, z: number, x: number, y: number): P
   });
 }
 
+// Sletter kun fliser som tilhører dette området og ikke et annet lagret område
 export async function deleteTilesForArea(areaId: string): Promise<void> {
-  const db = await openDB();
-  const area = await getOfflineArea(areaId);
+  const areas = await getOfflineAreas();
+  const area = areas.find((a) => a.id === areaId);
   if (!area) return;
 
+  const keep = new Set<string>();
+  for (const other of areas) {
+    if (other.id === areaId) continue;
+    for (const key of tileKeysForArea(other)) keep.add(key);
+  }
+  const keysToDelete = [...tileKeysForArea(area)].filter((key) => !keep.has(key));
+
+  const db = await openDB();
   return new Promise<void>((resolve, reject) => {
     const tx = db.transaction('tiles', 'readwrite');
     const store = tx.objectStore('tiles');
-    
-    // Delete all tiles for this layer within the area bounds
-    const layerPrefix = `${area.layer}/`;
-    const req = store.openCursor();
-    
-    req.onsuccess = (event) => {
-      const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
-      if (cursor) {
-        if (cursor.key.toString().startsWith(layerPrefix)) {
-          cursor.delete();
-        }
-        cursor.continue();
-      }
-    };
-    
+    for (const key of keysToDelete) store.delete(key);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
@@ -147,16 +163,55 @@ export async function getCacheSize(): Promise<number> {
   const db = await openDB();
   return new Promise<number>((resolve, reject) => {
     const tx = db.transaction('tiles', 'readonly');
-    const store = tx.objectStore('tiles');
-    const req = store.getAll();
-    
+    const req = tx.objectStore('tiles').openCursor();
+    let total = 0;
     req.onsuccess = () => {
-      const tiles = req.result as CachedTile[];
-      const totalSize = tiles.reduce((sum, tile) => sum + tile.blob.size, 0);
-      resolve(totalSize);
+      const cursor = req.result;
+      if (cursor) {
+        total += (cursor.value as CachedTile).blob.size;
+        cursor.continue();
+      } else {
+        resolve(total);
+      }
     };
     req.onerror = () => reject(req.error);
   });
+}
+
+export interface StorageInfo {
+  usage: number | null;
+  quota: number | null;
+  persisted: boolean | null;
+}
+
+export async function getStorageInfo(): Promise<StorageInfo> {
+  const info: StorageInfo = { usage: null, quota: null, persisted: null };
+  if (typeof navigator === 'undefined' || !navigator.storage) return info;
+  try {
+    const estimate = await navigator.storage.estimate();
+    info.usage = estimate.usage ?? null;
+    info.quota = estimate.quota ?? null;
+  } catch {
+    // estimate støttes ikke
+  }
+  try {
+    info.persisted = await navigator.storage.persisted();
+  } catch {
+    // persisted støttes ikke
+  }
+  return info;
+}
+
+// iOS Safari sletter ellers nettsidedata etter ca. 7 dagers inaktivitet. Best effort.
+export async function requestPersistentStorage(): Promise<boolean> {
+  try {
+    if (typeof navigator !== 'undefined' && navigator.storage?.persist) {
+      return await navigator.storage.persist();
+    }
+  } catch {
+    // ikke støttet
+  }
+  return false;
 }
 
 // ============= OFFLINE AREA FUNCTIONS =============

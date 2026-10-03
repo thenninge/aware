@@ -5,13 +5,18 @@ import {
   getOfflineAreas, 
   deleteOfflineArea, 
   getCacheSize,
-  OfflineArea 
+  getStorageInfo,
+  requestPersistentStorage,
+  OfflineArea,
+  StorageInfo,
 } from '@/lib/idb';
 import {
+  MAX_TILES_PER_DOWNLOAD,
+  calculateElevationTileCount,
   calculateTileCount,
-  downloadOfflineArea,
   estimateStorageSize,
   formatBytes,
+  getOfflinePolicy,
   DownloadProgress,
 } from '@/lib/offlineTiles';
 
@@ -46,12 +51,20 @@ export default function OfflineMapManager({
   const [selectedZooms, setSelectedZooms] = useState<number[]>([14, 15, 16]);
   const [includeElevation, setIncludeElevation] = useState(true);
   const [estimatedTiles, setEstimatedTiles] = useState(0);
+  const [estimatedElevationTiles, setEstimatedElevationTiles] = useState(0);
+  const [storageInfo, setStorageInfo] = useState<StorageInfo | null>(null);
+
+  const policy = getOfflinePolicy(selectedLayer.key);
+  const canDownload = policy === 'full';
+  const totalEstimatedTiles = estimatedTiles + (includeElevation ? estimatedElevationTiles : 0);
+  const tooManyTiles = totalEstimatedTiles > MAX_TILES_PER_DOWNLOAD;
 
   const loadAreas = async () => {
     const areas = await getOfflineAreas();
     setOfflineAreas(areas);
     const size = await getCacheSize();
     setCacheSize(size);
+    setStorageInfo(await getStorageInfo());
   };
 
   useEffect(() => {
@@ -60,10 +73,15 @@ export default function OfflineMapManager({
 
   useEffect(() => {
     if (definedBounds) {
-      const count = calculateTileCount(definedBounds, selectedZooms);
-      setEstimatedTiles(count);
+      setEstimatedTiles(calculateTileCount(definedBounds, selectedZooms));
+      setEstimatedElevationTiles(calculateElevationTileCount(definedBounds));
     }
-  }, [definedBounds, selectedZooms, includeElevation]);
+  }, [definedBounds, selectedZooms]);
+
+  const handleRequestPersist = async () => {
+    await requestPersistentStorage();
+    setStorageInfo(await getStorageInfo());
+  };
 
   const handleDelete = async (areaId: string) => {
     if (!confirm('Er du sikker på at du vil slette dette offline-området?')) return;
@@ -82,9 +100,13 @@ export default function OfflineMapManager({
       return;
     }
     
+    if (tooManyTiles) {
+      alert(`For mange fliser (${totalEstimatedTiles}). Velg et mindre område eller færre zoom-nivåer (maks ${MAX_TILES_PER_DOWNLOAD}).`);
+      return;
+    }
+
     setIsDownloading(true);
-    const totalTiles = includeElevation ? estimatedTiles * 2 : estimatedTiles; // Double if including elevation
-    setDownloadProgress({ current: 0, total: totalTiles, percentage: 0 });
+    setDownloadProgress({ current: 0, total: totalEstimatedTiles, percentage: 0 });
     
     try {
       // Call download with current values and progress callback
@@ -115,7 +137,32 @@ export default function OfflineMapManager({
       {/* Current cache size */}
       <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded">
         <strong>Total cache:</strong> {formatBytes(cacheSize)}
+        {storageInfo?.usage != null && storageInfo.quota != null && (
+          <div className="text-[10px] text-gray-500 mt-1">
+            Nettleserlagring: {formatBytes(storageInfo.usage)} av {formatBytes(storageInfo.quota)}
+          </div>
+        )}
+        {storageInfo?.persisted === true && (
+          <div className="text-[10px] text-green-600 mt-1">✓ Lagringen er beskyttet mot automatisk sletting</div>
+        )}
+        {storageInfo?.persisted === false && (
+          <div className="text-[10px] text-amber-700 mt-1">
+            Nettleseren kan slette kartene hvis appen ikke brukes på en stund (iOS: etter ca. 7 dager).
+            Legg appen til på hjemskjermen for å unngå dette.{' '}
+            <button type="button" onClick={handleRequestPersist} className="underline">
+              Be om permanent lagring
+            </button>
+          </div>
+        )}
       </div>
+
+      {!canDownload && (
+        <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200 p-2 rounded">
+          {policy === 'view'
+            ? `«${selectedLayer.name}» kan ikke lastes ned i bulk. Kart du ser på lagres automatisk for offline bruk.`
+            : `«${selectedLayer.name}» kan ikke lagres offline (lisensvilkår). Bytt til Topo (Kartverket) for å laste ned områder.`}
+        </div>
+      )}
 
       {/* Download configuration (shown when bounds are defined) */}
       {definedBounds && !isDownloading && (
@@ -164,15 +211,20 @@ export default function OfflineMapManager({
               <span>Inkluder høydedata (for offline høydeprofiler)</span>
             </label>
             <div className="text-[10px] text-gray-500 mt-1 ml-6">
-              +50% lagringsplass, men gir offline høydeprofiler
+              {estimatedElevationTiles} høydefliser (ett zoom-nivå), gir offline høydeprofiler
             </div>
           </div>
 
           <div className="text-xs text-gray-700 bg-white p-2 rounded">
-            <strong>Estimat:</strong> {includeElevation ? estimatedTiles * 2 : estimatedTiles} tiles (~{formatBytes(estimateStorageSize(estimatedTiles, includeElevation))})
+            <strong>Estimat:</strong> {totalEstimatedTiles} tiles (~{formatBytes(estimateStorageSize(estimatedTiles, includeElevation ? estimatedElevationTiles : 0))})
             {includeElevation && (
               <div className="text-[10px] text-gray-600 mt-1">
-                {estimatedTiles} kartbilder + {estimatedTiles} høydedata
+                {estimatedTiles} kartbilder + {estimatedElevationTiles} høydedata
+              </div>
+            )}
+            {tooManyTiles && (
+              <div className="text-[10px] text-red-600 mt-1">
+                Over grensen på {MAX_TILES_PER_DOWNLOAD} tiles. Velg mindre område eller færre zoom-nivåer.
               </div>
             )}
           </div>
@@ -181,7 +233,8 @@ export default function OfflineMapManager({
             <button
               type="button"
               onClick={handleConfirm}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-1 px-3 rounded text-xs font-semibold"
+              disabled={tooManyTiles || !canDownload}
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-1 px-3 rounded text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Last ned
             </button>
@@ -201,9 +254,9 @@ export default function OfflineMapManager({
         <button
           type="button"
           onClick={onDefineArea}
-          disabled={isDefining || isDownloading}
+          disabled={isDefining || isDownloading || !canDownload}
           className={`w-full py-2 px-4 rounded font-semibold text-sm shadow ${
-            isDefining || isDownloading
+            isDefining || isDownloading || !canDownload
               ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
               : 'bg-blue-600 hover:bg-blue-700 text-white'
           }`}
@@ -257,8 +310,13 @@ export default function OfflineMapManager({
                 <div>
                   {area.tileCount} kart-tiles
                   {area.includesElevation && ` + ${area.elevationTileCount} høyde-tiles`}
-                  {' '}(~{formatBytes(estimateStorageSize(area.tileCount, area.includesElevation))})
+                  {' '}(~{formatBytes(estimateStorageSize(area.tileCount, area.includesElevation ? area.elevationTileCount : 0))})
                 </div>
+                {!!area.failedTileCount && (
+                  <div className="text-[10px] text-amber-700">
+                    ⚠ {area.failedTileCount} tiles kunne ikke lastes ned (hull i kartet)
+                  </div>
+                )}
                 {area.includesElevation && (
                   <div className="text-[10px] text-green-600">
                     ✓ Inkluderer høydedata

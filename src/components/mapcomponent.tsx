@@ -10,6 +10,7 @@ import PieChart from './piechart';
 import SettingsMenu, { HuntingArea } from './settingsmenu';
 import { useWakeLock } from '@/hooks/useWakeLock';
 import { savePendingTrack } from '@/lib/idb';
+import { getOfflinePolicy } from '@/lib/offlineTiles';
 import GoogleMapSmart from './GoogleMapSmart';
 import OfflineTileLayer from './OfflineTileLayer';
 import OfflineAreaDefiner from './OfflineAreaDefiner';
@@ -3557,7 +3558,7 @@ export default function MapComponent({
           attribution={selectedLayer.attribution}
           maxZoom={18}
           layerKey={selectedLayer.key}
-          enableCaching={true}
+          enableCaching={getOfflinePolicy(selectedLayer.key) !== 'none'}
         />
         
         <MapController 

@@ -775,7 +775,7 @@ export default function Home() {
               const { downloadOfflineArea } = await import('@/lib/offlineTiles');
               
               try {
-                await downloadOfflineArea(
+                const result = await downloadOfflineArea(
                   {
                     id: `area-${Date.now()}`,
                     name,
@@ -790,13 +790,17 @@ export default function Home() {
                 );
                 
                 const elevationMsg = includeElevation ? '\n\nInkluderer høydedata for offline høydeprofiler!' : '';
-                alert(`✅ Lastet ned ${name}!${elevationMsg}\n\nTiles er nå tilgjengelig offline.`);
+                if (result.failed > 0) {
+                  alert(`⚠️ ${name} lastet ned med hull: ${result.failed} av ${result.total} tiles feilet.${elevationMsg}\n\nPrøv igjen med bedre nett for et komplett kart.`);
+                } else {
+                  alert(`✅ Lastet ned ${name}!${elevationMsg}\n\nTiles er nå tilgjengelig offline.`);
+                }
                 
                 // Reset state after successful download
                 setDefinedOfflineBounds(null);
               } catch (error) {
                 console.error('Download failed:', error);
-                alert('❌ Nedlasting feilet. Se konsollen for detaljer.');
+                alert(`❌ Nedlasting feilet: ${error instanceof Error ? error.message : 'ukjent feil'}`);
                 // Keep bounds on error so user can try again
               }
             }}
