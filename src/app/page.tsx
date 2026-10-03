@@ -525,7 +525,11 @@ export default function Home() {
   const handleDeleteAllShots = async () => {
     if (!window.confirm('Er du sikker på at du vil slette alle skuddpar?')) return;
     // Slett fra Supabase
-    const res = await fetch('/api/delete-shots', { method: 'POST' });
+    const res = await fetch('/api/delete-shots', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ teamId: authState.activeTeam?.id ?? null }),
+    });
     if (!res.ok) {
       alert('Feil ved sletting!');
       return;
