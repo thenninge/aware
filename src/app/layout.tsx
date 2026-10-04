@@ -1,7 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import ClientProviders from "./client-providers";
+import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -16,6 +17,18 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "be AWARE of your shots",
   description: "by toppjakt.no & coldbarreladjacent",
+  appleWebApp: {
+    capable: true,
+    title: "Aware",
+    statusBarStyle: "default",
+  },
+  icons: {
+    apple: "/pwa-icon/180",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#1f3d2b",
 };
 
 export default function RootLayout({
@@ -28,6 +41,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <ServiceWorkerRegister />
         <ClientProviders>
           {children}
         </ClientProviders>
