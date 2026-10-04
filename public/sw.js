@@ -101,7 +101,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  if (url.pathname === '/manifest.webmanifest' || url.pathname.startsWith('/pwa-icon/')) {
+  if (url.pathname === '/manifest.webmanifest' || url.pathname.startsWith('/pwa-icon/') || url.pathname.startsWith('/hogst/')) {
     event.respondWith(staleWhileRevalidate(request));
   }
 });
