@@ -12,6 +12,7 @@ import { useWakeLock } from '@/hooks/useWakeLock';
 import { savePendingTrack } from '@/lib/idb';
 import GoogleMapSmart from './GoogleMapSmart';
 import OfflineTileLayer from './OfflineTileLayer';
+import HogstOverlay from './HogstOverlay';
 import OfflineAreaDefiner from './OfflineAreaDefiner';
 // Database operations now go through Next.js API routes
 import { Dialog } from '@headlessui/react';
@@ -119,6 +120,9 @@ interface MapComponentProps {
   showElevationProfile?: boolean;
   noHuntZones?: Array<{ id: string; hunting_area_id: string; teamid: string; name?: string; coordinates: [number, number][] }>;
   showNoHuntZones?: boolean;
+  showNewCuts?: boolean;
+  newCutsColor?: string;
+  newCutsOpacity?: number;
   isDefiningOfflineArea?: boolean;
   onOfflineAreaDefined?: (bounds: { north: number; south: number; east: number; west: number }) => void;
   onOfflineAreaDrawn?: (bounds: { north: number; south: number; east: number; west: number }) => void;
@@ -1080,6 +1084,9 @@ export default function MapComponent({
   showElevationProfile = false,
   noHuntZones = [],
   showNoHuntZones = true,
+  showNewCuts = true,
+  newCutsColor = '#eb143c',
+  newCutsOpacity = 35,
   isDefiningOfflineArea = false,
   onOfflineAreaDefined,
   onOfflineAreaDrawn,
@@ -3710,6 +3717,10 @@ export default function MapComponent({
           const opacity = (huntingBoundaryOpacity || 80) / 100;
           return (
             <>
+              {/* Hogstflater (Sentinel-2) under jaktgrensa */}
+              {showNewCuts && (
+                <HogstOverlay areaName={activeArea.name} color={newCutsColor} opacity={newCutsOpacity / 100} />
+              )}
               {/* Boundary stroke only (no fill for legal area) */}
             <Polyline
                 key={`hunting-area-stroke-${activeArea.id}`}
