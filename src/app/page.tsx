@@ -87,6 +87,9 @@ export default function Home() {
   const [huntingBoundaryColor, setHuntingBoundaryColor] = useState('#00ff00'); // green
   const [huntingBoundaryWeight, setHuntingBoundaryWeight] = useState(3); // pixels
   const [huntingBoundaryOpacity, setHuntingBoundaryOpacity] = useState(80); // 0-100
+  const [showNewCuts, setShowNewCuts] = useState(true);
+  const [newCutsColor, setNewCutsColor] = useState('#eb143c');
+  const [newCutsOpacity, setNewCutsOpacity] = useState(35); // 0-100
   
   // Offline maps state
   const [isDefiningOfflineArea, setIsDefiningOfflineArea] = useState(false);
@@ -193,6 +196,9 @@ export default function Home() {
         if (defaults.huntingBoundaryColor !== undefined) setHuntingBoundaryColor(defaults.huntingBoundaryColor);
         if (defaults.huntingBoundaryWeight !== undefined) setHuntingBoundaryWeight(defaults.huntingBoundaryWeight);
         if (defaults.huntingBoundaryOpacity !== undefined) setHuntingBoundaryOpacity(defaults.huntingBoundaryOpacity);
+        if (defaults.showNewCuts !== undefined) setShowNewCuts(defaults.showNewCuts);
+        if (defaults.newCutsColor !== undefined) setNewCutsColor(defaults.newCutsColor);
+        if (defaults.newCutsOpacity !== undefined) setNewCutsOpacity(defaults.newCutsOpacity);
         if (defaults.showZoomButtons !== undefined) setShowZoomButtons(defaults.showZoomButtons);
         if (defaults.zoomButtonsX !== undefined) setZoomButtonsX(defaults.zoomButtonsX);
         if (defaults.zoomButtonsY !== undefined) setZoomButtonsY(defaults.zoomButtonsY);
@@ -490,6 +496,21 @@ export default function Home() {
         setHuntingAreas([]);
       }
     } else {
+      // Kun i utvikling: ?demo=<felt> laster et jaktfelt lokalt uten innlogging (public/hogst/dev-areas.json, ikke i git)
+      const demo = process.env.NODE_ENV === 'development' ? new URLSearchParams(window.location.search).get('demo') : null;
+      if (demo) {
+        try {
+          const res = await fetch('/hogst/dev-areas.json');
+          const areas = res.ok ? await res.json() : {};
+          if (areas[demo]) {
+            setHuntingAreas([areas[demo]]);
+            setActiveHuntingAreaId(areas[demo].id);
+            return;
+          }
+        } catch {
+          // faller tilbake til tomt
+        }
+      }
       // No active team, clear hunting areas
       setHuntingAreas([]);
       setActiveHuntingAreaId(null);
@@ -735,6 +756,12 @@ export default function Home() {
             onHuntingBoundaryOpacityChange={setHuntingBoundaryOpacity}
             showNoHuntZones={showNoHuntZones}
             onShowNoHuntZonesChange={setShowNoHuntZones}
+            showNewCuts={showNewCuts}
+            onShowNewCutsChange={setShowNewCuts}
+            newCutsColor={newCutsColor}
+            onNewCutsColorChange={setNewCutsColor}
+            newCutsOpacity={newCutsOpacity}
+            onNewCutsOpacityChange={setNewCutsOpacity}
             compassSliceLength={compassSliceLength}
             onCompassSliceLengthChange={setCompassSliceLength}
             showZoomButtons={showZoomButtons}
@@ -915,6 +942,9 @@ export default function Home() {
         isDefiningNoHuntZone={isDefiningNoHuntZone}
         noHuntZones={noHuntZones}
         showNoHuntZones={showNoHuntZones}
+        showNewCuts={showNewCuts}
+        newCutsColor={newCutsColor}
+        newCutsOpacity={newCutsOpacity}
         onHuntingAreaDefined={handleHuntingAreaDefined}
         onCancelHuntingAreaDefinition={handleCancelHuntingAreaDefinition}
         onNoHuntZoneDefined={handleNoHuntZoneDefined}

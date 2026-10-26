@@ -69,6 +69,12 @@ interface SettingsMenuProps {
   onHuntingBoundaryOpacityChange?: (opacity: number) => void;
   showNoHuntZones?: boolean;
   onShowNoHuntZonesChange?: (v: boolean) => void;
+  showNewCuts?: boolean;
+  onShowNewCutsChange?: (v: boolean) => void;
+  newCutsColor?: string;
+  onNewCutsColorChange?: (color: string) => void;
+  newCutsOpacity?: number;
+  onNewCutsOpacityChange?: (opacity: number) => void;
   compassSliceLength?: number; // 0-100 (% of screen height)
   onCompassSliceLengthChange?: (length: number) => void;
   showZoomButtons?: boolean;
@@ -168,6 +174,12 @@ export default function SettingsMenu({
   onHuntingBoundaryOpacityChange,
   showNoHuntZones,
   onShowNoHuntZonesChange,
+  showNewCuts,
+  onShowNewCutsChange,
+  newCutsColor,
+  onNewCutsColorChange,
+  newCutsOpacity,
+  onNewCutsOpacityChange,
   compassSliceLength,
   onCompassSliceLengthChange,
   showZoomButtons,
@@ -1055,6 +1067,57 @@ export default function SettingsMenu({
                 </label>
               </div>
             )}
+
+            {/* Vis nye hogster (Sentinel-2) */}
+            {onShowNewCutsChange && (
+              <div className="mt-2 mb-1">
+                <label className="flex items-center gap-2 cursor-pointer text-sm">
+                  <input
+                    type="checkbox"
+                    checked={!!showNewCuts}
+                    onChange={e => onShowNewCutsChange(e.target.checked)}
+                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                  />
+                  Vis nye hogster
+                </label>
+              </div>
+            )}
+
+            {/* Nye hogster farge */}
+            {showNewCuts && newCutsColor !== undefined && onNewCutsColorChange && (
+              <div className="mt-2 mb-3">
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Nye hogster farge:
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={newCutsColor}
+                    onChange={(e) => onNewCutsColorChange(e.target.value)}
+                    className="w-12 h-8 border rounded cursor-pointer"
+                  />
+                  <span className="text-xs text-gray-600">{newCutsColor}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Nye hogster opasitet */}
+            {showNewCuts && newCutsOpacity !== undefined && onNewCutsOpacityChange && (
+              <div className="mb-3">
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Nye hogster opasitet: {newCutsOpacity}%
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="5"
+                  value={newCutsOpacity}
+                  onChange={(e) => onNewCutsOpacityChange(Number(e.target.value))}
+                  className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer hover:bg-gray-300 transition-colors"
+                />
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -1193,6 +1256,9 @@ export default function SettingsMenu({
             huntingBoundaryColor,
             huntingBoundaryWeight,
             huntingBoundaryOpacity,
+            showNewCuts,
+            newCutsColor,
+            newCutsOpacity,
             showZoomButtons,
             zoomButtonsX,
             zoomButtonsY,
