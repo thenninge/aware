@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchPlacesAround } from '@/lib/places/overpass';
 
+export const dynamic = 'force-dynamic';
+export const maxDuration = 10;
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const lat = searchParams.get('lat');

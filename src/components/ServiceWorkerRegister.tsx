@@ -9,9 +9,18 @@ export default function ServiceWorkerRegister() {
 
     const id = encodeURIComponent(process.env.NEXT_PUBLIC_BUILD_ID || 'dev');
     const time = encodeURIComponent(process.env.NEXT_PUBLIC_BUILD_TIME || '0');
-    navigator.serviceWorker.register(`/sw.js?b=${id}&t=${time}`, { scope: '/' }).catch((error) => {
-      console.warn('Service worker kunne ikke registreres:', error);
-    });
+    navigator.serviceWorker
+      .register(`/sw.js?b=${id}&t=${time}`, { scope: '/' })
+      .then((registration) => {
+        registration.update().catch(() => {});
+        const onVisible = () => {
+          if (document.visibilityState === 'visible') registration.update().catch(() => {});
+        };
+        document.addEventListener('visibilitychange', onVisible);
+      })
+      .catch((error) => {
+        console.warn('Service worker kunne ikke registreres:', error);
+      });
   }, []);
 
   return null;

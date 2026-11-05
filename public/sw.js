@@ -1,12 +1,12 @@
 // Service worker for Aware: lagrer appskallet slik at appen kan starte uten nett.
 // Kartfliser håndteres av IndexedDB-laget i appen, og /api/* røres aldri.
+const SW_VERSION = '1.5.1-overpass';
 
 const params = new URL(self.location.href).searchParams;
 const BUILD_ID = params.get('b') || 'dev';
 const BUILD_TIME = params.get('t') || '0';
 const CACHE_PREFIX = 'aware-shell-';
-const CACHE = `${CACHE_PREFIX}${BUILD_TIME}-${BUILD_ID}`;
-const NAVIGATION_TIMEOUT_MS = 4000;
+const CACHE = `${CACHE_PREFIX}${SW_VERSION}-${BUILD_TIME}-${BUILD_ID}`;
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -33,19 +33,9 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-async function fetchWithTimeout(request, ms) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), ms);
-  try {
-    return await fetch(request, { signal: controller.signal });
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
 async function handleNavigation(request) {
   try {
-    const response = await fetchWithTimeout(request, NAVIGATION_TIMEOUT_MS);
+    const response = await fetch(request, { cache: 'no-store' });
     if (response.ok) {
       const cache = await caches.open(CACHE);
       cache.put('/', response.clone());

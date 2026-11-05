@@ -121,12 +121,42 @@ async function queryEndpoint(
   }
 }
 
+async function queryOwnApi(
+  lat: number,
+  lng: number,
+  radius: number,
+  outer?: AbortSignal
+): Promise<PlaceData[] | null> {
+  if (outer?.aborted) return null;
+  const { signal, cancel } = mergeSignals(9000, outer);
+  const url = `/api/overpass?lat=${encodeURIComponent(String(lat))}&lng=${encodeURIComponent(String(lng))}&radius=${Math.round(radius)}`;
+  try {
+    const response = await fetch(url, { method: 'GET', cache: 'no-store', signal });
+    if (!response.ok) return null;
+    const data = await response.json();
+    if (!data?.success || !Array.isArray(data.data)) return null;
+    return data.data as PlaceData[];
+  } catch {
+    return null;
+  } finally {
+    cancel();
+  }
+}
+
 export async function fetchPlacesAround(
   lat: number,
   lng: number,
   radius: number,
   signal?: AbortSignal
 ): Promise<PlaceData[]> {
+  // Browser: same-origin API first. Safari/PWA often block direct Overpass.
+  // Server must not call /api/overpass (that would recurse).
+  if (typeof window !== 'undefined') {
+    if (signal?.aborted) throw new Error('OVERPASS_ABORTED');
+    const fromApi = await queryOwnApi(lat, lng, radius, signal);
+    if (fromApi) return fromApi;
+  }
+
   const query = buildQuery(lat, lng, radius);
   const endpoints = typeof window === 'undefined' ? ENDPOINTS.slice(0, 1) : ENDPOINTS;
 
