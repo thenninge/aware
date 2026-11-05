@@ -447,38 +447,41 @@ function MapController({
           console.warn('⚠️ Stor radius - kan ta lang tid');
         }
         
-        const response = await fetch(
-          `/api/overpass?lat=${searchPos.lat}&lng=${searchPos.lng}&radius=${radius}`
-        );
-        
-        if (response.ok) {
-          const result = await response.json();
-          console.log('Found places:', Array.isArray(result.data) ? result.data.length : 0);
-          console.log('Places:', result.data?.map((p: PlaceData) => ({ name: p.name, category: p.category })) || []);
-          const newPlaces = Array.isArray(result.data) ? result.data : [];
-          setPlaces(newPlaces);
-          onPlacesChange?.(newPlaces);
-        } else {
-          const errorData = await response.json().catch(() => ({}));
-          console.error('Failed to fetch places:', response.status, errorData);
-          
-          // Show user-friendly error message
-          if (response.status === 504) {
-            console.warn('⏱️ Timeout - Overpass API er treg');
-            alert('⏱️ Søket tok for lang tid\n\nOverpass API (OpenStreetMap data) er treg akkurat nå.\n\nTips:\n• Prøv radius 2000m for rask respons\n• Eller prøv igjen om 1-2 minutter\n• Best ytelse: Bruk mindre områder');
-          } else if (response.status === 400 && errorData.maxRadius) {
-            console.warn('⚠️ Radius for stor');
-            const suggestion = errorData.suggestion || 'Reduser radius';
-            const recommended = errorData.recommendedRadius || 2000;
-            alert(`⚠️ Radius er for stor\n\nMaksimum: ${errorData.maxRadius}m\nAnbefalt: ${recommended}m\n\n${suggestion}`);
-          } else {
-            console.warn('❌ Kunne ikke hente bebyggelsesdata');
-            alert('❌ Kunne ikke hente bebyggelsesdata\n\nSjekk internettforbindelsen og prøv igjen.');
-          }
-          
-          setPlaces([]);
-          onPlacesChange?.([]);
+        let foundPlaces: PlaceData[] | undefined;
+        try {
+          const { fetchPlacesAround } = await import('@/lib/places/overpass');
+          foundPlaces = await fetchPlacesAround(searchPos.lat, searchPos.lng, radius);
+          console.log('[Overpass] Client OK', { count: foundPlaces.length });
+        } catch (clientError) {
+          console.warn('[Overpass] Client failed, trying /api/overpass', clientError);
         }
+
+        if (!foundPlaces) {
+          const response = await fetch(
+            `/api/overpass?lat=${searchPos.lat}&lng=${searchPos.lng}&radius=${radius}`
+          );
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            console.error('Failed to fetch places:', response.status, errorData);
+            if (response.status === 504 || response.status === 503) {
+              alert('⏱️ Bebyggelsesdata er opptatt akkurat nå.\n\nOverpass (OpenStreetMap) er treg eller overbelastet.\nPrøv igjen om et minutt, eller bruk radius 2000 m.');
+            } else if (response.status === 400 && errorData.maxRadius) {
+              alert(`⚠️ Radius er for stor\n\nMaksimum: ${errorData.maxRadius}m`);
+            } else {
+              alert('❌ Kunne ikke hente bebyggelsesdata.\n\nOpenStreetMap Overpass svarer ikke. Dette er ikke nettverket ditt — prøv igjen om litt.');
+            }
+            setPlaces([]);
+            onPlacesChange?.([]);
+            return;
+          }
+          const result = await response.json();
+          foundPlaces = Array.isArray(result.data) ? result.data : [];
+        }
+
+        const resolvedPlaces: PlaceData[] = foundPlaces ?? [];
+        console.log('Found places:', resolvedPlaces.length);
+        setPlaces(resolvedPlaces);
+        onPlacesChange?.(resolvedPlaces);
       } catch (error: any) {
         console.error('Error fetching places:', error);
         
