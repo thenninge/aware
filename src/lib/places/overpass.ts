@@ -17,15 +17,17 @@ const PLACE_CATEGORIES = [
   'isolated_dwelling',
 ] as const;
 
+// One primary + one fallback. lz4 is the same cluster as overpass-api.de.
 const ENDPOINTS = [
-  'https://overpass-api.de/api/interpreter',
-  'https://lz4.overpass-api.de/api/interpreter',
   'https://overpass.kumi.systems/api/interpreter',
+  'https://overpass-api.de/api/interpreter',
 ];
 
-function buildQuery(lat: number, lng: number, radius: number, timeoutSec: number): string {
-  return `[out:json][timeout:${timeoutSec}];
-node["place"~"city|town|village|hamlet|farm|isolated_dwelling"](around:${radius},${lat},${lng});
+const ATTEMPT_MS = 6000;
+
+function buildQuery(lat: number, lng: number, radius: number): string {
+  return `[out:json][timeout:5];
+node["place"~"city|town|village|hamlet|farm|isolated_dwelling"](around:${Math.round(radius)},${lat},${lng});
 out body;`;
 }
 
@@ -36,17 +38,20 @@ function categorize(placeTag?: string): string {
   return 'other';
 }
 
-function parsePlaces(raw: {
-  elements?: Array<{
-    type: string;
-    id: number;
-    lat?: number;
-    lon?: number;
-    tags?: Record<string, string>;
-  }>;
-}, fallbackLat: number, fallbackLng: number): PlaceData[] {
-  const elements = raw.elements || [];
-  return elements
+function parsePlaces(
+  raw: {
+    elements?: Array<{
+      type: string;
+      id: number;
+      lat?: number;
+      lon?: number;
+      tags?: Record<string, string>;
+    }>;
+  },
+  fallbackLat: number,
+  fallbackLng: number
+): PlaceData[] {
+  return (raw.elements || [])
     .map((element) => {
       const category = categorize(element.tags?.place);
       return {
@@ -72,24 +77,36 @@ function parsePlaces(raw: {
 
 type OverpassJson = Parameters<typeof parsePlaces>[0];
 
+function mergeSignals(timeoutMs: number, outer?: AbortSignal): { signal: AbortSignal; cancel: () => void } {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const onOuterAbort = () => controller.abort();
+  outer?.addEventListener('abort', onOuterAbort);
+  return {
+    signal: controller.signal,
+    cancel: () => {
+      clearTimeout(timer);
+      outer?.removeEventListener('abort', onOuterAbort);
+    },
+  };
+}
+
 async function queryEndpoint(
   endpoint: string,
   query: string,
-  timeoutMs: number
+  outer?: AbortSignal
 ): Promise<OverpassJson | null> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  if (outer?.aborted) return null;
+  const { signal, cancel } = mergeSignals(ATTEMPT_MS, outer);
   const url = `${endpoint}?data=${encodeURIComponent(query)}`;
   try {
     const response = await fetch(url, {
       method: 'GET',
       headers: {
-        Accept: 'application/json, text/plain, */*',
-        ...(typeof window === 'undefined'
-          ? { 'User-Agent': 'overpass-turbo/aware' }
-          : {}),
+        Accept: 'application/json',
+        ...(typeof window === 'undefined' ? { 'User-Agent': 'overpass-turbo/aware' } : {}),
       },
-      signal: controller.signal,
+      signal,
     });
     if (!response.ok) return null;
     const data = await response.json();
@@ -98,23 +115,23 @@ async function queryEndpoint(
   } catch {
     return null;
   } finally {
-    clearTimeout(timer);
+    cancel();
   }
 }
 
 export async function fetchPlacesAround(
   lat: number,
   lng: number,
-  radius: number
+  radius: number,
+  signal?: AbortSignal
 ): Promise<PlaceData[]> {
-  const timeoutSec = radius > 2000 ? 12 : 10;
-  const query = buildQuery(lat, lng, radius, timeoutSec);
-  const perAttemptMs = (timeoutSec + 3) * 1000;
+  const query = buildQuery(lat, lng, radius);
+  const endpoints = typeof window === 'undefined' ? ENDPOINTS.slice(0, 1) : ENDPOINTS;
 
-  for (const endpoint of ENDPOINTS) {
-    const raw = await queryEndpoint(endpoint, query, perAttemptMs);
-    if (!raw) continue;
-    return parsePlaces(raw, lat, lng);
+  for (const endpoint of endpoints) {
+    if (signal?.aborted) throw new Error('OVERPASS_ABORTED');
+    const raw = await queryEndpoint(endpoint, query, signal);
+    if (raw) return parsePlaces(raw, lat, lng);
   }
 
   throw new Error('OVERPASS_UNAVAILABLE');

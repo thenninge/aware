@@ -419,87 +419,57 @@ function MapController({
 
   // Fetch places when shouldScan is true or radius/category filters change
   useEffect(() => {
-    if (!shouldScan) return; // Only fetch when scan is triggered
+    if (!shouldScan) return;
 
-    // Set the search position to current position when scan is triggered
     const searchPos = currentPosition;
     setSearchPosition(searchPos);
     onSearchPositionChange?.(searchPos);
+
+    const abort = new AbortController();
 
     const fetchPlaces = async () => {
       setLoading(true);
       onLoadingChange?.(true);
       try {
         console.log('Scanning area for radius:', radius, 'at position:', searchPos);
-        
-        // Check radius before making request
-        // Conservative limit due to Overpass API + Vercel timeout constraints
+
         if (radius > 4000) {
-          console.warn('⚠️ Radius for stor! Maksimum er 4000m');
-          alert('Radius er for stor. Maksimum er 4000m.\n\nAnbefalt: 2000m for rask respons.\n\nReduser radius i innstillinger for å scanne bebyggelse.');
+          alert('Radius er for stor. Maksimum er 4000m.\n\nAnbefalt: 2000m.');
           setPlaces([]);
           onPlacesChange?.([]);
           return;
         }
-        
-        // Warn for large radius
-        if (radius > 2500) {
-          console.warn('⚠️ Stor radius - kan ta lang tid');
-        }
-        
-        let foundPlaces: PlaceData[] | undefined;
-        try {
-          const { fetchPlacesAround } = await import('@/lib/places/overpass');
-          foundPlaces = await fetchPlacesAround(searchPos.lat, searchPos.lng, radius);
-          console.log('[Overpass] Client OK', { count: foundPlaces.length });
-        } catch (clientError) {
-          console.warn('[Overpass] Client failed, trying /api/overpass', clientError);
-        }
 
-        if (!foundPlaces) {
-          const response = await fetch(
-            `/api/overpass?lat=${searchPos.lat}&lng=${searchPos.lng}&radius=${radius}`
-          );
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            console.error('Failed to fetch places:', response.status, errorData);
-            if (response.status === 504 || response.status === 503) {
-              alert('⏱️ Bebyggelsesdata er opptatt akkurat nå.\n\nOverpass (OpenStreetMap) er treg eller overbelastet.\nPrøv igjen om et minutt, eller bruk radius 2000 m.');
-            } else if (response.status === 400 && errorData.maxRadius) {
-              alert(`⚠️ Radius er for stor\n\nMaksimum: ${errorData.maxRadius}m`);
-            } else {
-              alert('❌ Kunne ikke hente bebyggelsesdata.\n\nOpenStreetMap Overpass svarer ikke. Dette er ikke nettverket ditt — prøv igjen om litt.');
-            }
-            setPlaces([]);
-            onPlacesChange?.([]);
-            return;
-          }
-          const result = await response.json();
-          foundPlaces = Array.isArray(result.data) ? result.data : [];
-        }
-
-        const resolvedPlaces: PlaceData[] = foundPlaces ?? [];
-        console.log('Found places:', resolvedPlaces.length);
-        setPlaces(resolvedPlaces);
-        onPlacesChange?.(resolvedPlaces);
-      } catch (error: any) {
+        const { fetchPlacesAround } = await import('@/lib/places/overpass');
+        const foundPlaces = await fetchPlacesAround(
+          searchPos.lat,
+          searchPos.lng,
+          radius,
+          abort.signal
+        );
+        if (abort.signal.aborted) return;
+        console.log('[Overpass] OK', { count: foundPlaces.length });
+        setPlaces(foundPlaces);
+        onPlacesChange?.(foundPlaces);
+      } catch (error: unknown) {
+        if (abort.signal.aborted) return;
+        const message = error instanceof Error ? error.message : '';
         console.error('Error fetching places:', error);
-        
-        if (error.name === 'TimeoutError') {
-          console.warn('⏱️ Forespørselen tok for lang tid');
-        } else {
-          console.warn('❌ Feil ved henting av data');
+        if (message !== 'OVERPASS_ABORTED') {
+          alert('⏱️ Bebyggelsesdata tok for lang tid.\n\nOverpass er treg. Prøv igjen om litt, eller bruk 2000 m radius.');
         }
-        
         setPlaces([]);
         onPlacesChange?.([]);
       } finally {
-        setLoading(false);
-        onLoadingChange?.(false);
+        if (!abort.signal.aborted) {
+          setLoading(false);
+          onLoadingChange?.(false);
+        }
       }
     };
 
     fetchPlaces();
+    return () => abort.abort();
   }, [shouldScan, radius, categoryFilters, onLoadingChange]);
 
   // Don't render anything if L is not available
