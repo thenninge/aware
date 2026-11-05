@@ -417,7 +417,11 @@ function MapController({
     }
   }, [clearPlaces, onPlacesChange]);
 
-  // Fetch places when shouldScan is true or radius/category filters change
+  const scanGenerationRef = useRef(0);
+
+  // Fetch places when shouldScan pulses true. Do not abort when the pulse
+  // falls back to false (~100ms) — that was cancelling the request and leaving
+  // the hourglass on with no results.
   useEffect(() => {
     if (!shouldScan) return;
 
@@ -425,6 +429,7 @@ function MapController({
     setSearchPosition(searchPos);
     onSearchPositionChange?.(searchPos);
 
+    const generation = ++scanGenerationRef.current;
     const abort = new AbortController();
 
     const fetchPlaces = async () => {
@@ -447,21 +452,21 @@ function MapController({
           radius,
           abort.signal
         );
-        if (abort.signal.aborted) return;
+        if (generation !== scanGenerationRef.current) return;
         console.log('[Overpass] OK', { count: foundPlaces.length });
         setPlaces(foundPlaces);
         onPlacesChange?.(foundPlaces);
       } catch (error: unknown) {
-        if (abort.signal.aborted) return;
+        if (generation !== scanGenerationRef.current) return;
         const message = error instanceof Error ? error.message : '';
         console.error('Error fetching places:', error);
         if (message !== 'OVERPASS_ABORTED') {
-          alert('⏱️ Bebyggelsesdata tok for lang tid.\n\nOverpass er treg. Prøv igjen om litt, eller bruk 2000 m radius.');
+          alert('⏱️ Fant ikke bebyggelse.\n\nOverpass svarte ikke i tide. Prøv igjen om litt, eller bruk 2000 m radius.');
         }
         setPlaces([]);
         onPlacesChange?.([]);
       } finally {
-        if (!abort.signal.aborted) {
+        if (generation === scanGenerationRef.current) {
           setLoading(false);
           onLoadingChange?.(false);
         }
@@ -469,7 +474,6 @@ function MapController({
     };
 
     fetchPlaces();
-    return () => abort.abort();
   }, [shouldScan, radius, categoryFilters, onLoadingChange]);
 
   // Don't render anything if L is not available
