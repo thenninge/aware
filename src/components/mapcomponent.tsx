@@ -3207,6 +3207,8 @@ export default function MapComponent({
   const hasSafePlaces = safePlaces.length > 0;
   const safeSavedPairs = Array.isArray(savedPairs) ? savedPairs : [];
   const hasSavedPairs = safeSavedPairs.length > 0;
+  // Bebyggelsessøk skal ikke legge alle skuddplasser oppå kakestykkene.
+  const showShotsOnMap = showShots && !(mode === 'aware' && hasSafePlaces);
   // Reverser rekkefølgen slik at index 0 = nyeste, index 1 = nest nyeste, etc.
   const reversedPairs = hasSavedPairs ? [...safeSavedPairs].reverse() : [];
   // Hjelper: slett skuddpar ved indeks i safeSavedPairs
@@ -4085,36 +4087,8 @@ export default function MapComponent({
           </>
         )}
 
-        {/* Place markers: kun i aware-mode */}
-        {(mode === 'aware' || mode === 'søk') && showMarkers && hasSafePlaces && safePlaces
-          .filter(place => {
-            // Filter based on category filters
-            if (place.category === 'city' && !categoryFilters.city) return false;
-            if (place.category === 'town' && !categoryFilters.town) return false;
-            if (place.category === 'village' && !categoryFilters.village) return false;
-            if (place.category === 'hamlet' && !categoryFilters.hamlet) return false;
-            if (place.category === 'farm' && !categoryFilters.farm) return false;
-            if (place.category === 'isolated_dwelling' && !categoryFilters.isolated_dwelling) return false;
-            return true;
-          })
-          .map((place) => {
-            const config = categoryConfigs[place.category as keyof CategoryFilter] || { color: '#999', opacity: 0.8, icon: '' };
-            return (
-              <Marker
-                key={`${place.type}-${place.id}`}
-                position={Array.isArray(place) && place.length === 2 ? place : [0,0]}
-                icon={L.divIcon({
-                  className: 'custom-marker place-marker',
-                  html: `<div style="width: 12px; height: 12px; background-color: ${config.color}; opacity: ${config.opacity}; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 4px rgba(0,0,0,0.5);"></div>`,
-                  iconSize: [12, 12],
-                  iconAnchor: [6, 6],
-                })}
-              />
-            );
-          })}
-
         {/* Saved points: vis blå X for hver current-posisjon i track-mode */}
-        {((mode === 'track' && showShots) || (mode === 'søk' && showShots) || (mode === 'aware' && showShots)) && hasSavedPairs && (
+        {((mode === 'track' && showShotsOnMap) || (mode === 'søk' && showShotsOnMap) || (mode === 'aware' && showShotsOnMap)) && hasSavedPairs && (
           <>
 
             
