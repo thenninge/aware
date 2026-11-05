@@ -17,7 +17,15 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  const latNum = parseFloat(lat);
+  const lngNum = parseFloat(lng);
   const radiusNum = parseInt(radius, 10);
+  if (!Number.isFinite(latNum) || !Number.isFinite(lngNum) || Math.abs(latNum) > 90 || Math.abs(lngNum) > 180) {
+    return NextResponse.json(
+      { error: 'Invalid coordinates' },
+      { status: 400 }
+    );
+  }
   if (radiusNum > 4000) {
     return NextResponse.json(
       {
@@ -31,14 +39,14 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const places = await fetchPlacesAround(parseFloat(lat), parseFloat(lng), radiusNum);
+    const places = await fetchPlacesAround(latNum, lngNum, radiusNum);
     return NextResponse.json({
       success: true,
       data: places,
       count: places.length,
       query: {
-        lat: parseFloat(lat),
-        lng: parseFloat(lng),
+        lat: latNum,
+        lng: lngNum,
         radius: radiusNum,
       },
     });

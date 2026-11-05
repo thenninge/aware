@@ -32,6 +32,26 @@ interface Position {
   heading?: number; // Compass heading in degrees (0-360)
 }
 
+const FALLBACK_POSITION: Position = { lat: 60.424834440433045, lng: 12.408766398367092 };
+
+function isValidPosition(pos: unknown): pos is Position {
+  if (!pos || typeof pos !== 'object') return false;
+  const p = pos as Position;
+  return Number.isFinite(p.lat) && Number.isFinite(p.lng) && Math.abs(p.lat) <= 90 && Math.abs(p.lng) <= 180;
+}
+
+function readHomePosition(): Position | null {
+  try {
+    if (typeof window === 'undefined') return null;
+    const saved = localStorage.getItem('aware_default_position');
+    if (!saved) return null;
+    const pos = JSON.parse(saved);
+    return isValidPosition(pos) ? { lat: pos.lat, lng: pos.lng } : null;
+  } catch {
+    return null;
+  }
+}
+
 interface PlaceData {
   id: number;
   type: string;
@@ -175,6 +195,7 @@ function MapController({
   isLosAwaitingClick = false,
   onLosOriginSelected,
   lockInteractions = false,
+  originPosition,
 }: { 
   onPositionChange?: (position: Position) => void; 
   radius: number;
@@ -201,9 +222,12 @@ function MapController({
   isLosAwaitingClick?: boolean;
   onLosOriginSelected?: (pos: Position) => void;
   lockInteractions?: boolean;
+  originPosition?: Position;
 }) {
   const map = useMap();
-  const [currentPosition, setCurrentPosition] = useState<Position>({ lat: 60.424834440433045, lng: 12.408766398367092 });
+  const [currentPosition, setCurrentPosition] = useState<Position>(
+    () => originPosition && isValidPosition(originPosition) ? originPosition : (readHomePosition() ?? FALLBACK_POSITION)
+  );
   const [gpsPosition, setGpsPosition] = useState<Position | null>(null); // Separate GPS position
   const [searchPosition, setSearchPosition] = useState<Position | null>(null);
   const [places, setPlaces] = useState<PlaceData[]>([]);
@@ -350,6 +374,19 @@ function MapController({
     }
   }, [map, onError, onPositionChange, isMapLocked, onMapLockChange, onZoomChange, onLosOriginSelected, mode, isLosAwaitingClick]);
 
+  // First load: Leaflet fires moveend before this controller is mounted, so
+  // pick up the map center (red dot / home) immediately.
+  useEffect(() => {
+    if (!map) return;
+    const center = map.getCenter();
+    const pos: Position = { lat: center.lat, lng: center.lng };
+    if (!isValidPosition(pos)) return;
+    setCurrentPosition(pos);
+    onPositionChange?.(pos);
+    onCenterChange?.(pos);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map]);
+
 
   // GPS functionality
   useEffect(() => {
@@ -432,7 +469,23 @@ function MapController({
   useEffect(() => {
     if (!shouldScan) return;
 
-    const searchPos = currentPosition;
+    const fromMap = (() => {
+      try {
+        const center = map?.getCenter();
+        if (center && isValidPosition({ lat: center.lat, lng: center.lng })) {
+          return { lat: center.lat, lng: center.lng };
+        }
+      } catch {
+        // map not ready
+      }
+      return null;
+    })();
+    const searchPos = fromMap ?? (isValidPosition(currentPosition) ? currentPosition : null) ?? readHomePosition();
+    if (!searchPos) {
+      alert('Fant ikke posisjon for søk. Sett home position, eller vent til kartet er lastet.');
+      return;
+    }
+    setCurrentPosition(searchPos);
     setSearchPosition(searchPos);
     onSearchPositionChangeRef.current?.(searchPos);
 
@@ -3363,20 +3416,7 @@ export default function MapComponent({
   };
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('aware_default_position');
-      if (saved) {
-        try {
-          const pos = JSON.parse(saved);
-          if (pos && typeof pos.lat === 'number' && typeof pos.lng === 'number') {
-            setCurrentPosition({ lat: pos.lat, lng: pos.lng });
-            return;
-          }
-        } catch {}
-      }
-      // fallback hvis ikke lagret
-      setCurrentPosition({ lat: 60.424834440433045, lng: 12.408766398367092 });
-    }
+    setCurrentPosition(readHomePosition() ?? FALLBACK_POSITION);
   }, []);
 
   useEffect(() => {
@@ -3454,6 +3494,7 @@ export default function MapComponent({
         />
         
         <MapController 
+          originPosition={currentPosition}
           onPositionChange={(pos) => {
             setCurrentPosition(pos);
           }} 

@@ -149,6 +149,9 @@ export async function fetchPlacesAround(
   radius: number,
   signal?: AbortSignal
 ): Promise<PlaceData[]> {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+    throw new Error('OVERPASS_UNAVAILABLE');
+  }
   // Browser: same-origin API first. Safari/PWA often block direct Overpass.
   // Server must not call /api/overpass (that would recurse).
   if (typeof window !== 'undefined') {
