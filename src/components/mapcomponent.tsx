@@ -23,7 +23,8 @@ import { createPortal } from 'react-dom';
 import { useCompass } from '@/hooks/useCompass';
 import { useViewshed } from '@/components/useViewshed';
 import ViewshedLeafletOverlay from '@/components/ViewshedLeafletOverlay';
-import { Loader } from '@googlemaps/js-api-loader';
+import { getMapService } from '@/lib/map/MapService';
+import { EARTH_RADIUS_M, destination, distance as geoDistance } from '@/lib/geo/coordinates';
 
 interface Position {
   lat: number;
@@ -784,17 +785,7 @@ function TrackingController({
   const [localTrackingPoints, setLocalTrackingPoints] = useState<Position[]>([]);
   const [lastGpsPosition, setLastGpsPosition] = useState<Position | null>(null);
 
-  // Helper function to calculate distance between two positions
-  const calculateDistance = (pos1: Position, pos2: Position): number => {
-    const R = 6371000; // Earth's radius in meters
-    const dLat = (pos2.lat - pos1.lat) * Math.PI / 180;
-    const dLng = (pos2.lng - pos1.lng) * Math.PI / 180;
-    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-              Math.cos(pos1.lat * Math.PI / 180) * Math.cos(pos2.lat * Math.PI / 180) *
-              Math.sin(dLng/2) * Math.sin(dLng/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R * c;
-  };
+  const calculateDistance = (pos1: Position, pos2: Position): number => geoDistance(pos1, pos2);
 
   // (flyttet lenger ned) Hjelper for sletting ved indeks
 
@@ -873,32 +864,13 @@ function TrackingController({
 
 
 
-// Hjelpefunksjon for å kalkulere ny posisjon ut fra avstand og retning
-function destinationPoint(lat: number, lng: number, distance: number, bearing: number): Position {
-  const R = 6371000; // Jordradius i meter
-  const δ = distance / R; // angular distance in radians
-  const θ = (bearing * Math.PI) / 180; // bearing in radians
-  const φ1 = (lat * Math.PI) / 180;
-  const λ1 = (lng * Math.PI) / 180;
-  const φ2 = Math.asin(
-    Math.sin(φ1) * Math.cos(δ) +
-      Math.cos(φ1) * Math.sin(δ) * Math.cos(θ)
-  );
-  const λ2 =
-    λ1 +
-    Math.atan2(
-      Math.sin(θ) * Math.sin(δ) * Math.cos(φ1),
-      Math.cos(δ) - Math.sin(φ1) * Math.sin(φ2)
-    );
-  return {
-    lat: (φ2 * 180) / Math.PI,
-    lng: (λ2 * 180) / Math.PI,
-  };
+function destinationPoint(lat: number, lng: number, distanceM: number, bearingDeg: number): Position {
+  return destination({ lat, lng }, bearingDeg, distanceM);
 }
 
 // Hjelpefunksjon for å finne punkt X meter fra A mot B
 function pointTowards(from: Position, to: Position, distanceFromTo: number) {
-  const R = 6371000;
+  const R = EARTH_RADIUS_M;
   const d = Math.sqrt(
     Math.pow((to.lat - from.lat) * Math.PI / 180 * R, 2) +
     Math.pow((to.lng - from.lng) * Math.PI / 180 * R * Math.cos((from.lat + to.lat) * Math.PI / 360), 2)
@@ -1142,15 +1114,12 @@ export default function MapComponent({
   };
   // LOS state
   const [isLosAwaitingClick, setIsLosAwaitingClick] = useState(false);
-  const [isLosLoadingSdk, setIsLosLoadingSdk] = useState(false);
   const los = useViewshed({
-    apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
     radiusM: losRadiusM,
     rays: 180,
     samples: 64,
     observerHeightM: losObserverHeightM,
     targetHeightM: 0,
-    batchSize: 12,
   });
   const handleLosOriginSelected = useCallback((pos: Position) => {
     if (los.status === 'running') return;
@@ -1158,28 +1127,20 @@ export default function MapComponent({
     los.runAt({ lat: pos.lat, lng: pos.lng });
     setIsLosAwaitingClick(false);
   }, [los]);
-  const runLosAtCurrent = useCallback(async () => {
+  const runLosAtCurrent = useCallback(() => {
     if (!currentPosition) return;
     if (los.status === 'running') return;
     setIsLosAwaitingClick(false);
-    try {
-      // Ensure Google Maps JS SDK is available to use ElevationService when possible
-      if (typeof window !== 'undefined' && !(window as any).google?.maps) {
-        setIsLosLoadingSdk(true);
-        const loader = new Loader({
-          apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
-          version: 'weekly',
-        });
-        // Load elevation library (safe to call even if already loaded)
-        await loader.importLibrary('elevation').catch(() => {});
-        setIsLosLoadingSdk(false);
-      }
-      los.clear();
-      los.runAt({ lat: currentPosition.lat, lng: currentPosition.lng });
-    } finally {
-      setIsLosLoadingSdk(false);
-    }
+    los.clear();
+    los.runAt({ lat: currentPosition.lat, lng: currentPosition.lng });
   }, [currentPosition, los]);
+
+  useEffect(() => {
+    if (los.status === 'error' && los.error) {
+      console.error('[LOS]', los.error);
+      alert(los.error);
+    }
+  }, [los.status, los.error]);
   
   // Use props or default to 'off'
   const compassMode = externalCompassMode || 'off';
@@ -1342,17 +1303,7 @@ export default function MapComponent({
   // Dynamisk størrelse for MSR-retikkel (andel av min(screenW, screenH))
   const [msrSizeRatio, setMsrSizeRatio] = useState<number>(0.3);
   
-  // Avstandsmåling funksjoner
-  const calculateDistance = (point1: Position, point2: Position): number => {
-    const R = 6371000; // Jordens radius i meter
-    const dLat = (point2.lat - point1.lat) * Math.PI / 180;
-    const dLng = (point2.lng - point1.lng) * Math.PI / 180;
-    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-              Math.cos(point1.lat * Math.PI / 180) * Math.cos(point2.lat * Math.PI / 180) *
-              Math.sin(dLng/2) * Math.sin(dLng/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R * c;
-  };
+  const calculateDistance = (point1: Position, point2: Position): number => geoDistance(point1, point2);
 
   // Elevation profile: fetch when profile is enabled and there are >= 2 points
   useEffect(() => {
@@ -1363,68 +1314,24 @@ export default function MapComponent({
       try {
         setElevLoading(true);
         setElevError(null);
-        // Build path string
-        const pathParam = pts.map(p => `${p.lat},${p.lng}`).join('|');
         const samples = Math.min(256, Math.max(32, pts.length * 64));
-        console.log('[Elevation] Fetching profile', { points: pts.length, samples });
-        // Try client-side Google ElevationService first (avoids server key restrictions)
-        let results: any[] | null = null;
-        try {
-          if (!(window as any).google?.maps?.ElevationService) {
-            const loader = new Loader({ apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '', version: 'weekly' });
-            await loader.importLibrary('elevation');
-          }
-          const svc = new (window as any).google.maps.ElevationService();
-          const gPath = pts.map(p => ({ lat: p.lat, lng: p.lng }));
-          results = await new Promise<any[]>((resolve, reject) => {
-            svc.getElevationAlongPath({ path: gPath, samples }, (res: any[], status: string) => {
-              if (status === 'OK' && Array.isArray(res)) resolve(res);
-              else reject(new Error(status || 'CLIENT_ELEVATION_ERROR'));
-            });
-          });
-          console.log('[Elevation] Client ElevationService OK', { count: results.length });
-        } catch (e: any) {
-          console.warn('[Elevation] Client ElevationService failed, falling back to /api/elevation', e?.message || e);
+        console.log('[Elevation] Terrarium profile', { points: pts.length, samples });
+        const profile = await getMapService().getElevationProfile(pts, samples);
+        if (!profile.length) {
+          setElevError('Ingen høydedata for denne linja');
+          setElevSamples([]);
+          setElevLoading(false);
+          return;
         }
-        if (!results) {
-          const res = await fetch(`/api/elevation?path=${pathParam}&samples=${samples}`);
-          const data = await res.json();
-          console.log('[Elevation] Response', { status: data.status, count: data.results?.length });
-          if (data.status && data.status !== 'OK' && !data.results) {
-            setElevError(data.error_message || data.status || 'ELEVATION_ERROR');
-            setElevSamples([]);
-            setElevLoading(false);
-            console.error('[Elevation] Error response', data);
-            return;
-          }
-          results = data.results || [];
-        }
-        // Compute distances along the polyline
-        const toLatLng = (loc: any) => {
-          try {
-            if (loc && typeof loc.lat === 'function' && typeof loc.lng === 'function') {
-              return { lat: Number(loc.lat()), lng: Number(loc.lng()) };
-            }
-            return { lat: Number(loc?.lat), lng: Number(loc?.lng) };
-          } catch {
-            return { lat: NaN as any, lng: NaN as any };
-          }
-        };
-        const locs: Position[] = (results as any[]).map((r: any) => toLatLng(r.location));
         let acc = 0;
-        const dist: number[] = [0];
-        for (let i = 1; i < locs.length; i++) {
-          acc += calculateDistance(locs[i-1], locs[i]);
-          dist.push(acc);
+        const samplesArr: Array<{ distance: number; elevation: number }> = [
+          { distance: 0, elevation: profile[0].elevation },
+        ];
+        for (let i = 1; i < profile.length; i++) {
+          acc += calculateDistance(profile[i - 1], profile[i]);
+          samplesArr.push({ distance: acc, elevation: profile[i].elevation });
         }
-        const samplesArr: Array<{ distance: number; elevation: number }> = [];
-        (results as any[]).forEach((r: any, i: number) => {
-          const d = dist[i];
-          const e = r?.elevation;
-          if (Number.isFinite(d) && Number.isFinite(e)) {
-            samplesArr.push({ distance: d, elevation: e });
-          }
-        });
+        console.log('[Elevation] Terrarium OK', { count: samplesArr.length });
         setElevSamples(samplesArr);
       } catch (e: any) {
         setElevError(e?.message || 'ELEVATION_ERROR');
@@ -2453,14 +2360,7 @@ export default function MapComponent({
 
       // 3) Fallback: posisjonsnærhet til current/target (innen ca. 3 meter)
       if (postIds.length === 0 && posts.length > 0 && (clickedCurrent || clickedTarget)) {
-        const near = (a: {lat:number; lng:number}, b:{lat:number; lng:number}) => {
-          const R = 6371000;
-          const dLat = (b.lat - a.lat) * Math.PI/180;
-          const dLng = (b.lng - a.lng) * Math.PI/180;
-          const s = Math.sin(dLat/2)**2 + Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLng/2)**2;
-          const d = 2*R*Math.asin(Math.sqrt(s));
-          return d < 3; // 3 meter terskel
-        };
+        const near = (a: {lat:number; lng:number}, b:{lat:number; lng:number}) => geoDistance(a, b) < 3;
         const parsed = posts.map(p => {
           const content = p.content || '';
           const latMatch = content.match(/Lat: ([\d.-]+)/);
@@ -2515,12 +2415,7 @@ export default function MapComponent({
           const ct = clickedTarget;
           const near = (a?: {lat:number; lng:number}, b?: {lat:number; lng:number}) => {
             if (!a || !b) return false;
-            const R = 6371000;
-            const dLat = (b.lat - a.lat) * Math.PI/180;
-            const dLng = (b.lng - a.lng) * Math.PI/180;
-            const s = Math.sin(dLat/2)**2 + Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLng/2)**2;
-            const d = 2*R*Math.asin(Math.sqrt(s));
-            return d < 3;
+            return geoDistance(a, b) < 3;
           };
           if (cc && near(pc, cc)) return false;
           if (ct && near(pt, ct)) return false;
@@ -5298,23 +5193,21 @@ export default function MapComponent({
                 if (los.status === 'running') {
                   try { los.cancel(); } catch {}
                   los.clear();
-                  setIsLosLoadingSdk(false);
                 } else if (los.data) {
-                  // Toggle off if already visible
                   los.clear();
                 } else {
                   runLosAtCurrent();
                 }
               }}
               className={` w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
-                (isLosLoadingSdk || los.status === 'running')
+                los.status === 'running'
                   ? 'bg-gray-400 cursor-not-allowed text-white'
                   : 'bg-gray-600 hover:bg-gray-700 text-white'
               }`}
-              title={ (isLosLoadingSdk || los.status==='running') ? 'LOS: jobber…' : (los.data ? 'Skru av LOS' : 'LOS (Line of Sight)') }
-              disabled={isLosLoadingSdk || los.status === 'running'}
+              title={ los.status==='running' ? 'LOS: jobber…' : (los.data ? 'Skru av LOS' : 'LOS (Line of Sight)') }
+              disabled={los.status === 'running'}
             >
-              {(isLosLoadingSdk || los.status === 'running') ? '⏳' : '👁️'}
+              {los.status === 'running' ? '⏳' : '👁️'}
             </button>
           )}
           {/* Invertert bebyggelses-scan knapp (❗) over 🔍 i aware-mode */}

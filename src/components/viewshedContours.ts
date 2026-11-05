@@ -1,8 +1,4 @@
-// Lightweight contour utilities for viewshed rendering
-// Exposes:
-// - extractContours(mask, wrapRays): Array of contours as [{r,s}] index rings
-// - contoursToLatLng(contours, profiles): Map index rings to LatLng paths
-// - simplifyPathLatLng(path, toleranceMeters): Douglas–Peucker simplification in meters
+import { Coordinate, EARTH_RADIUS_M } from '@/lib/geo/coordinates';
 
 export type GridIndex = { r: number; s: number };
 
@@ -36,11 +32,11 @@ export function extractContours(mask: boolean[][], wrapRays: boolean): Array<Arr
 
 export function contoursToLatLng(
   contours: Array<Array<GridIndex>>,
-  profiles: Array<{ locations: google.maps.LatLngLiteral[]; visible: boolean[] }>
-): google.maps.LatLngLiteral[][] {
-  const out: google.maps.LatLngLiteral[][] = [];
+  profiles: Array<{ locations: Coordinate[]; visible: boolean[] }>
+): Coordinate[][] {
+  const out: Coordinate[][] = [];
   for (const ring of contours) {
-    const path: google.maps.LatLngLiteral[] = [];
+    const path: Coordinate[] = [];
     for (const { r, s } of ring) {
       const locs = profiles[r]?.locations;
       if (!locs || !locs.length) continue;
@@ -62,16 +58,16 @@ export function contoursToLatLng(
 
 // Douglas–Peucker simplification in meters using a local equirectangular projection
 export function simplifyPathLatLng(
-  path: google.maps.LatLngLiteral[],
+  path: Coordinate[],
   toleranceMeters: number
-): google.maps.LatLngLiteral[] {
+): Coordinate[] {
   if (!path || path.length <= 2) return path?.slice() ?? [];
-  const R = 6371000;
+  const R = EARTH_RADIUS_M;
   const toRad = (d: number) => (d * Math.PI) / 180;
   const lat0 = toRad(path[0].lat);
   const lon0 = toRad(path[0].lng);
   const cosLat0 = Math.cos(lat0);
-  const toXY = (p: google.maps.LatLngLiteral) => {
+  const toXY = (p: Coordinate) => {
     const x = R * (toRad(p.lng) - lon0) * cosLat0;
     const y = R * (toRad(p.lat) - lat0);
     return { x, y };
@@ -122,7 +118,7 @@ export function simplifyPathLatLng(
   }
 
   simplifyDP(0, pts.length - 1);
-  const out: google.maps.LatLngLiteral[] = [];
+  const out: Coordinate[] = [];
   for (let i = 0; i < path.length; i++) {
     if (keep[i]) out.push(path[i]);
   }
@@ -138,23 +134,23 @@ export function simplifyPathLatLng(
 
 // Merge many grid-aligned quads into fewer closed rings by removing shared edges.
 export function unifyQuadsToRings(
-  quads: google.maps.LatLngLiteral[][],
+  quads: Coordinate[][],
   simplifyToleranceMeters = 3
-): google.maps.LatLngLiteral[][] {
+): Coordinate[][] {
   if (!quads || quads.length === 0) return [];
 
   // Local projection and snapping for robust node matching
-  const R = 6371000;
+  const R = EARTH_RADIUS_M;
   const toRad = (d: number) => (d * Math.PI) / 180;
   const ref = quads[0][0];
   const lat0 = toRad(ref.lat);
   const lon0 = toRad(ref.lng);
   const cosLat0 = Math.cos(lat0);
-  const toXY = (p: google.maps.LatLngLiteral) => ({
+  const toXY = (p: Coordinate) => ({
     x: R * (toRad(p.lng) - lon0) * cosLat0,
     y: R * (toRad(p.lat) - lat0),
   });
-  const toLL = (x: number, y: number): google.maps.LatLngLiteral => ({
+  const toLL = (x: number, y: number): Coordinate => ({
     lat: (y / R) * 180 / Math.PI + (lat0 * 180) / Math.PI,
     lng: ((x / (R * cosLat0)) * 180) / Math.PI + (lon0 * 180) / Math.PI,
   });
@@ -163,7 +159,7 @@ export function unifyQuadsToRings(
 
   type Node = { x: number; y: number; count: number };
   const nodeMap = new Map<string, Node>();
-  const nodeKeyForLL = (p: google.maps.LatLngLiteral) => {
+  const nodeKeyForLL = (p: Coordinate) => {
     const xy = toXY(p);
     const xs = snap(xy.x);
     const ys = snap(xy.y);
@@ -218,7 +214,7 @@ export function unifyQuadsToRings(
   }
 
   // Convert node key -> average lat/lng (from snapped xy)
-  const nodeLL = new Map<string, google.maps.LatLngLiteral>();
+  const nodeLL = new Map<string, Coordinate>();
   for (const [k, n] of nodeMap.entries()) {
     nodeLL.set(k, toLL(n.x, n.y));
   }
@@ -238,7 +234,7 @@ export function unifyQuadsToRings(
 
   // Walk rings with right-hand rule (choose smallest clockwise turn)
   const visited = new Set<string>(); // directed edges
-  const rings: google.maps.LatLngLiteral[][] = [];
+  const rings: Coordinate[][] = [];
 
   const dirKey = (a: string, b: string) => `${a}->${b}`;
 
@@ -246,7 +242,7 @@ export function unifyQuadsToRings(
     if (visited.has(dirKey(e.a, e.b))) continue;
     let startA = e.a;
     let startB = e.b;
-    const out: google.maps.LatLngLiteral[] = [];
+    const out: Coordinate[] = [];
     out.push(nodeLL.get(startA)!);
     out.push(nodeLL.get(startB)!);
     visited.add(dirKey(startA, startB));

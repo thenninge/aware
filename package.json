@@ -1,12 +1,13 @@
 {
   "name": "aware2",
-  "version": "0.1.0",
+  "version": "1.5.0",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "test:terrain": "node scripts/test-terrain.mjs",
     "vercel-build": "next build"
   },
   "dependencies": {

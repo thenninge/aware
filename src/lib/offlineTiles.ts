@@ -1,4 +1,6 @@
 import { OfflineArea, saveOfflineArea, saveTile, saveElevationTile } from './idb';
+import { coordToTile } from './geo/coordinates';
+import { TERRARIUM_TILE_URL } from './terrain/decode';
 
 export interface DownloadProgress {
   current: number;
@@ -8,20 +10,12 @@ export interface DownloadProgress {
 
 export type ProgressCallback = (progress: DownloadProgress) => void;
 
-// Calculate tile coordinates for a given lat/lng at a specific zoom level
-function latLngToTile(lat: number, lng: number, zoom: number): { x: number; y: number } {
-  const x = Math.floor((lng + 180) / 360 * Math.pow(2, zoom));
-  const y = Math.floor((1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * Math.pow(2, zoom));
-  return { x, y };
-}
-
-// Get all tile coordinates within bounds for a zoom level
 function getTilesInBounds(
   bounds: { north: number; south: number; east: number; west: number },
   zoom: number
 ): Array<{ x: number; y: number; z: number }> {
-  const nw = latLngToTile(bounds.north, bounds.west, zoom);
-  const se = latLngToTile(bounds.south, bounds.east, zoom);
+  const nw = coordToTile({ lat: bounds.north, lng: bounds.west }, zoom);
+  const se = coordToTile({ lat: bounds.south, lng: bounds.east }, zoom);
   
   const tiles: Array<{ x: number; y: number; z: number }> = [];
   
@@ -56,8 +50,7 @@ function formatTileUrl(urlTemplate: string, x: number, y: number, z: number): st
     .replace('{s}', ['a', 'b', 'c'][Math.floor(Math.random() * 3)]); // Random subdomain for load balancing
 }
 
-// AWS Terrain Tiles URL template for elevation data
-const ELEVATION_TILE_URL = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
+const ELEVATION_TILE_URL = TERRARIUM_TILE_URL;
 
 // Download tiles for an offline area (both map tiles and elevation data)
 export async function downloadOfflineArea(
