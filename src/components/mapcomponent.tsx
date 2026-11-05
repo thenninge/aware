@@ -418,6 +418,13 @@ function MapController({
   }, [clearPlaces, onPlacesChange]);
 
   const scanGenerationRef = useRef(0);
+  const scanAbortRef = useRef<AbortController | null>(null);
+  const onLoadingChangeRef = useRef(onLoadingChange);
+  const onPlacesChangeRef = useRef(onPlacesChange);
+  const onSearchPositionChangeRef = useRef(onSearchPositionChange);
+  onLoadingChangeRef.current = onLoadingChange;
+  onPlacesChangeRef.current = onPlacesChange;
+  onSearchPositionChangeRef.current = onSearchPositionChange;
 
   // Fetch places when shouldScan pulses true. Do not abort when the pulse
   // falls back to false (~100ms) — that was cancelling the request and leaving
@@ -427,21 +434,23 @@ function MapController({
 
     const searchPos = currentPosition;
     setSearchPosition(searchPos);
-    onSearchPositionChange?.(searchPos);
+    onSearchPositionChangeRef.current?.(searchPos);
 
     const generation = ++scanGenerationRef.current;
+    scanAbortRef.current?.abort();
     const abort = new AbortController();
+    scanAbortRef.current = abort;
 
     const fetchPlaces = async () => {
       setLoading(true);
-      onLoadingChange?.(true);
+      onLoadingChangeRef.current?.(true);
       try {
         console.log('Scanning area for radius:', radius, 'at position:', searchPos);
 
         if (radius > 4000) {
           alert('Radius er for stor. Maksimum er 4000m.\n\nAnbefalt: 2000m.');
           setPlaces([]);
-          onPlacesChange?.([]);
+          onPlacesChangeRef.current?.([]);
           return;
         }
 
@@ -455,7 +464,7 @@ function MapController({
         if (generation !== scanGenerationRef.current) return;
         console.log('[Overpass] OK', { count: foundPlaces.length });
         setPlaces(foundPlaces);
-        onPlacesChange?.(foundPlaces);
+        onPlacesChangeRef.current?.(foundPlaces);
       } catch (error: unknown) {
         if (generation !== scanGenerationRef.current) return;
         const message = error instanceof Error ? error.message : '';
@@ -464,17 +473,17 @@ function MapController({
           alert('⏱️ Fant ikke bebyggelse.\n\nOverpass svarte ikke i tide. Prøv igjen om litt, eller bruk 2000 m radius.');
         }
         setPlaces([]);
-        onPlacesChange?.([]);
+        onPlacesChangeRef.current?.([]);
       } finally {
         if (generation === scanGenerationRef.current) {
           setLoading(false);
-          onLoadingChange?.(false);
+          onLoadingChangeRef.current?.(false);
         }
       }
     };
 
     fetchPlaces();
-  }, [shouldScan, radius, categoryFilters, onLoadingChange]);
+  }, [shouldScan, radius]);
 
   // Don't render anything if L is not available
   if (typeof L === 'undefined') {
@@ -3469,13 +3478,8 @@ export default function MapComponent({
                 setIsScanningNormal(true);
               }
             } else {
-              // Reset loading indicators but keep scan active
-              if (activeScan === 'invert') {
-                setIsScanningInvert(false);
-              } else if (activeScan === 'normal') {
-                setIsScanningNormal(false);
-              }
-              // Keep activeScan state to track which view is displayed
+              setIsScanningInvert(false);
+              setIsScanningNormal(false);
             }
           }}
           mode={mode}

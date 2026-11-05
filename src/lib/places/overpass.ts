@@ -17,18 +17,19 @@ const PLACE_CATEGORIES = [
   'isolated_dwelling',
 ] as const;
 
-// One primary + one fallback. lz4 is the same cluster as overpass-api.de.
+// kumi.systems hangs (dead since 2026-09). overpass-api.de 406/refuses from
+// many clients. osm.ch returns empty success for Norway. Europe extract:
 const ENDPOINTS = [
-  'https://overpass.kumi.systems/api/interpreter',
-  'https://overpass-api.de/api/interpreter',
+  'https://ovp.dresel.systems/api/interpreter',
+  'https://overpass.private.coffee/api/interpreter',
 ];
 
-const ATTEMPT_MS = 6000;
+const ATTEMPT_MS = 8000;
 
 function buildQuery(lat: number, lng: number, radius: number): string {
-  return `[out:json][timeout:5];
-node["place"~"city|town|village|hamlet|farm|isolated_dwelling"](around:${Math.round(radius)},${lat},${lng});
-out body;`;
+  return `[out:json][timeout:6];
+nwr["place"~"city|town|village|hamlet|farm|isolated_dwelling"](around:${Math.round(radius)},${lat},${lng});
+out center;`;
 }
 
 function categorize(placeTag?: string): string {
@@ -38,27 +39,28 @@ function categorize(placeTag?: string): string {
   return 'other';
 }
 
-function parsePlaces(
-  raw: {
-    elements?: Array<{
-      type: string;
-      id: number;
-      lat?: number;
-      lon?: number;
-      tags?: Record<string, string>;
-    }>;
-  },
-  fallbackLat: number,
-  fallbackLng: number
-): PlaceData[] {
+type OverpassElement = {
+  type: string;
+  id: number;
+  lat?: number;
+  lon?: number;
+  center?: { lat?: number; lon?: number };
+  tags?: Record<string, string>;
+};
+
+type OverpassJson = {
+  elements?: OverpassElement[];
+};
+
+function parsePlaces(raw: OverpassJson, fallbackLat: number, fallbackLng: number): PlaceData[] {
   return (raw.elements || [])
     .map((element) => {
       const category = categorize(element.tags?.place);
       return {
         id: element.id,
         type: element.type,
-        lat: element.lat || fallbackLat,
-        lng: element.lon || fallbackLng,
+        lat: element.lat ?? element.center?.lat ?? fallbackLat,
+        lng: element.lon ?? element.center?.lon ?? fallbackLng,
         name: element.tags?.name || element.tags?.ref || `ID: ${element.id}`,
         category,
         tags: element.tags || {},
@@ -74,8 +76,6 @@ function parsePlaces(
     )
     .slice(0, 50);
 }
-
-type OverpassJson = Parameters<typeof parsePlaces>[0];
 
 function mergeSignals(timeoutMs: number, outer?: AbortSignal): { signal: AbortSignal; cancel: () => void } {
   const controller = new AbortController();
@@ -102,10 +102,12 @@ async function queryEndpoint(
   try {
     const response = await fetch(url, {
       method: 'GET',
-      headers: {
-        Accept: 'application/json',
-        ...(typeof window === 'undefined' ? { 'User-Agent': 'overpass-turbo/aware' } : {}),
-      },
+      // No Accept header: overpass-api.de and some WAFs 406 on application/json.
+      // No custom headers in the browser so this stays a simple CORS request.
+      headers:
+        typeof window === 'undefined'
+          ? { 'User-Agent': 'ColdBoreAware/1.5 (+https://cbaware.vercel.app)' }
+          : undefined,
       signal,
     });
     if (!response.ok) return null;
