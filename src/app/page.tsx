@@ -544,14 +544,21 @@ export default function Home() {
   }, [activeHuntingAreaId]);
 
   const handleDeleteAllShots = async () => {
-    if (!window.confirm('Er du sikker på at du vil slette alle skuddpar?')) return;
-    // Slett fra Supabase
-    const res = await fetch('/api/delete-shots', { method: 'POST' });
+    if (!window.confirm('Er du sikker på at du vil slette alle skuddplasser?')) return;
+    const teamId = authState.activeTeam?.id;
+    if (!teamId) {
+      alert('Ingen aktivt team valgt');
+      return;
+    }
+    const res = await fetch('/api/shot-places', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ teamId, all: true }),
+    });
     if (!res.ok) {
       alert('Feil ved sletting!');
       return;
     }
-    // Oppdater lokal visning hvis ønskelig
     window.location.reload();
   };
 

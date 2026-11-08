@@ -1811,7 +1811,8 @@ export default function MapComponent({
         tracks: Object.values(localTracks).map((track: any) => ({ ...track, id: track.id, points: track.points, shotPairId: track.shotPairId })),
         finds: Object.values(localFinds).map((find: any) => ({ ...find, id: find.id, shotPairId: find.shotPairId, position: find.position, color: find.color })),
         observations: Object.values(localObservations).map((obs: any) => ({ ...obs, id: obs.id, position: obs.position, color: obs.color })),
-        posts: (safeSavedPairs || []).map((post: any) => ({ ...post, id: post.id }))
+        // Skuddplasser går via /api/shot-places, ikke sync-push
+        posts: [] as any[],
       };
       
       console.log('Auto-sync sending data:', {
@@ -2348,153 +2349,47 @@ export default function MapComponent({
   };
 
   const handleDeleteShotPair = async (clickedPairId: number) => {
-    if (!window.confirm('Er du sikker på at du vil slette dette skuddparet?')) return;
-    
+    if (!window.confirm('Er du sikker på at du vil slette denne skuddplassen?')) return;
+
     try {
-      // Finn skuddparet vi klikket
-      const clickedPair = savedPairs.find(p => p.id === clickedPairId);
+      const clickedPair = savedPairs.find((p) => p.id === clickedPairId);
       if (!clickedPair) {
-        alert('Kunne ikke finne skuddparet');
+        alert('Kunne ikke finne skuddplassen');
         return;
       }
 
-      // Hent alle posts for teamet for robust matching
-      let posts: any[] = [];
+      const clickedLocalId = clickedPair.pair_local_id || null;
+      let postIds: number[] = [clickedPairId];
+
       if (activeTeam) {
-        try {
-          const res = await fetch(`/api/posts?teamId=${activeTeam}`);
-          if (res.ok) {
-            posts = await res.json();
-          }
-        } catch (e) {
-          console.error('Kunne ikke hente poster for sletting:', e);
-        }
-      }
-
-      // Bygg liste over post-IDer som skal slettes (alltid poste-IDer)
-      let postIds: number[] = [];
-      const clickedLocalId = (clickedPair as any).pair_local_id || (clickedPair as any).local_id || null;
-      const clickedName = (clickedPair as any).name || null;
-      const clickedCurrent = (clickedPair as any).current || null;
-      const clickedTarget = (clickedPair as any).target || null;
-
-      // 1) Foretrukket: local_id (eksplisitt relasjon)
-      if (clickedLocalId && posts.length > 0) {
-        const toDelete = posts.filter((p: any) => String(p.local_id || '') === String(clickedLocalId));
-        postIds = toDelete.map((p: any) => Number(p.id)).filter((id: number) => Number.isFinite(id));
-      }
-
-      // 2) Fallback: match på felles navn (både Skyteplass og Treffpunkt fikk samme Name)
-      if (postIds.length === 0 && clickedName && posts.length > 0) {
-        const toDelete = posts.filter((p: any) => {
-          const content = p.content || '';
-          const nameMatch = content.match(/Name:\s*([^,]+)(?:,|$)/);
-          const categoryMatch = content.match(/Category:\s*(\w+)/);
-          const name = nameMatch ? nameMatch[1].trim() : null;
-          const cat = categoryMatch ? categoryMatch[1] : null;
-          return name && name === clickedName && (cat === 'Skyteplass' || cat === 'Treffpunkt');
-        });
-        postIds = toDelete.map((p: any) => Number(p.id)).filter((id: number) => Number.isFinite(id));
-      }
-
-      // 3) Fallback: posisjonsnærhet til current/target (innen ca. 3 meter)
-      if (postIds.length === 0 && posts.length > 0 && (clickedCurrent || clickedTarget)) {
-        const near = (a: {lat:number; lng:number}, b:{lat:number; lng:number}) => geoDistance(a, b) < 3;
-        const parsed = posts.map(p => {
-          const content = p.content || '';
-          const latMatch = content.match(/Lat: ([\d.-]+)/);
-          const lngMatch = content.match(/Lng: ([\d.-]+)/);
-          const targetLatMatch = content.match(/Target: ([\d.-]+), ([\d.-]+)/);
-          const categoryMatch = content.match(/Category: (\w+)/);
-          return {
-            id: p.id,
-            category: categoryMatch ? categoryMatch[1] : null,
-            current: latMatch && lngMatch ? { lat: parseFloat(latMatch[1]), lng: parseFloat(lngMatch[2] || latMatch[1]) } : null,
-            target: targetLatMatch ? { lat: parseFloat(targetLatMatch[1]), lng: parseFloat(targetLatMatch[2]) } : null,
-          };
-        });
-        const candidates: number[] = [];
-        for (const p of parsed) {
-          if (p.category === 'Skyteplass' && p.current && clickedCurrent && near(p.current, clickedCurrent)) {
-            candidates.push(p.id);
-          }
-          if (p.category === 'Treffpunkt' && p.target && clickedTarget && near(p.target, clickedTarget)) {
-            candidates.push(p.id);
-          }
-        }
-        if (candidates.length > 0) postIds = candidates;
-      }
-
-      // 4) Fallback: tid-basert heuristikk (som før)
-      if (postIds.length === 0 && (clickedPair as any).created_at) {
-        const clickedTime = new Date((clickedPair as any).created_at).getTime();
-        const timeWindow = 5 * 60 * 1000; // 5 minutter vindu
-        const relatedPairs = savedPairs.filter(p => {
-          const pairTime = new Date((p as any).created_at || '').getTime();
-          return Math.abs(pairTime - clickedTime) < timeWindow;
-        });
-        postIds = relatedPairs.map((p: any) => p.id);
-      }
-
-      // Alltid inkluder klikket postId selv om vi kun fant én partner
-      if (!postIds.includes(clickedPairId)) postIds.push(clickedPairId);
-
-      // Dedup
-      postIds = Array.from(new Set(postIds.filter((x) => Number.isFinite(x))));
-
-      if (postIds.length === 0) {
-        // Fallback: slett lokalt selv om vi ikke fant DB-poster (f.eks. manglende team/ID-typer)
-        const clickedLocalIdForRemove = (clickedPair as any).pair_local_id || (clickedPair as any).local_id || null;
-        setSavedPairs(prev => prev.filter(pair => {
-          if (clickedLocalIdForRemove && (pair as any).pair_local_id && String((pair as any).pair_local_id) === String(clickedLocalIdForRemove)) return false;
-          // Fallback posisjonsmatch
-          const pc = (pair as any).current;
-          const pt = (pair as any).target;
-          const cc = clickedCurrent;
-          const ct = clickedTarget;
-          const near = (a?: {lat:number; lng:number}, b?: {lat:number; lng:number}) => {
-            if (!a || !b) return false;
-            return geoDistance(a, b) < 3;
-          };
-          if (cc && near(pc, cc)) return false;
-          if (ct && near(pt, ct)) return false;
-          return true;
-        }));
-        setSavedTracks(prev => prev.filter(track => !track.shotPairId || track.shotPairId !== String((clickedPair as any).id)));
-        setSavedFinds(prev => prev.filter(find => !find.shotPairId || find.shotPairId !== String((clickedPair as any).id)));
-        alert('Skuddpar slettet!');
-        return;
-      }
-
-      // Slett alle relaterte poster fra API
-      try {
-        const response = await fetch(`/api/posts?ids=${postIds.join(',')}`, {
+        const response = await fetch('/api/shot-places', {
           method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            teamId: activeTeam,
+            pairLocalId: clickedLocalId || undefined,
+            postId: clickedPairId,
+          }),
         });
-
-        if (!response.ok) {
-          throw new Error('Failed to delete posts');
-        }
-      } catch (e) {
-        console.error('Sletting av skuddpar i DB feilet:', e);
+        if (!response.ok) throw new Error('Failed to delete shot place');
+        const result = await response.json();
+        if (Array.isArray(result.deleted)) postIds = result.deleted;
       }
 
-      // Oppdater lokal state: fjern alle synlige par som enten har en av IDene, eller deler samme pair_local_id
-      setSavedPairs(prev => prev.filter(pair => {
-        if (postIds.includes((pair as any).id)) return false;
-        if (clickedLocalId && (pair as any).pair_local_id && String((pair as any).pair_local_id) === String(clickedLocalId)) return false;
-        return true;
-      }));
-      
-      // Oppdater spor og funn state
-      setSavedTracks(prev => prev.filter(track => 
-        !track.shotPairId || !postIds.includes(parseInt(track.shotPairId))
-      ));
-      setSavedFinds(prev => prev.filter(find => 
-        !find.shotPairId || !postIds.includes(parseInt(find.shotPairId))
-      ));
-      
-      // Persist tombstone to keep hidden across reload if server delete failed or incomplete
+      setSavedPairs((prev) =>
+        prev.filter((pair) => {
+          if (postIds.includes(pair.id)) return false;
+          if (clickedLocalId && pair.pair_local_id && String(pair.pair_local_id) === String(clickedLocalId)) return false;
+          return true;
+        })
+      );
+      setSavedTracks((prev) =>
+        prev.filter((track) => !track.shotPairId || !postIds.includes(parseInt(track.shotPairId, 10)))
+      );
+      setSavedFinds((prev) =>
+        prev.filter((find) => !find.shotPairId || !postIds.includes(parseInt(find.shotPairId, 10)))
+      );
+
       try {
         const tsLocalIds: string[] = JSON.parse(localStorage.getItem('deleted_pair_local_ids') || '[]');
         if (clickedLocalId && !tsLocalIds.includes(String(clickedLocalId))) {
@@ -2502,21 +2397,19 @@ export default function MapComponent({
           localStorage.setItem('deleted_pair_local_ids', JSON.stringify(tsLocalIds));
         }
         const tsPostIds: number[] = JSON.parse(localStorage.getItem('deleted_post_ids') || '[]');
-        const merged = Array.from(new Set([...tsPostIds, ...postIds]));
-        localStorage.setItem('deleted_post_ids', JSON.stringify(merged));
-        // Also persist coordinate signature tombstone to catch fallback/heuristic pairs
+        localStorage.setItem('deleted_post_ids', JSON.stringify(Array.from(new Set([...tsPostIds, ...postIds]))));
         const tsSigs: string[] = JSON.parse(localStorage.getItem('deleted_pair_signatures') || '[]');
-        const sig = pairSignature(clickedPair as any);
+        const sig = pairSignature(clickedPair);
         if (sig && !tsSigs.includes(sig)) {
           tsSigs.push(sig);
           localStorage.setItem('deleted_pair_signatures', JSON.stringify(tsSigs));
         }
       } catch {}
-      
-      alert('Skuddpar slettet!');
+
+      alert('Skuddplass slettet!');
     } catch (error) {
-      console.error('Feil ved sletting av skuddpar:', error);
-      alert('Feil ved sletting av skuddpar');
+      console.error('Feil ved sletting av skuddplass:', error);
+      alert('Feil ved sletting av skuddplass');
     }
   };
 
@@ -2888,148 +2781,37 @@ export default function MapComponent({
 
   // All database operations now go through Next.js API routes
 
-  // Hent alle poster fra API
   const fetchPosts = async () => {
     try {
-      // Only fetch posts if we have an active team
       if (!activeTeam) {
-        console.log('No active team, clearing posts');
         setSavedPairs([]);
-      return;
-    }
-      
-      console.log('Fetching posts for team:', activeTeam);
-      const response = await fetch(`/api/posts?teamId=${activeTeam}`);
+        return;
+      }
+
+      const response = await fetch(`/api/shot-places?teamId=${activeTeam}`);
       if (!response.ok) {
-        throw new Error('Failed to fetch posts');
+        throw new Error('Failed to fetch shot places');
       }
       const data = await response.json();
-      console.log('Fetched posts:', data.length, 'posts');
-      
-    if (Array.isArray(data)) {
-        // Parse content field to extract coordinates, category og navn
-        const parsedPosts = data.map(post => {
-          const content = post.content || '';
-          const latMatch = content.match(/Lat: ([\d.-]+)/);
-          const lngMatch = content.match(/Lng: ([\d.-]+)/);
-          const targetLatMatch = content.match(/Target: ([\d.-]+), ([\d.-]+)/);
-          const categoryMatch = content.match(/Category: (\w+)/);
-          const nameMatch = content.match(/Name:\s*([^,]+)(?:,|$)/);
-          
-          return {
-            current: latMatch && lngMatch ? { lat: parseFloat(latMatch[1]), lng: parseFloat(lngMatch[2] || lngMatch[1]) } : undefined,
-            target: targetLatMatch ? { lat: parseFloat(targetLatMatch[1]), lng: parseFloat(targetLatMatch[2]) } : undefined,
-            category: categoryMatch ? categoryMatch[1] : 'general',
-        id: post.id,
-        created_at: post.created_at,
-            name: nameMatch ? nameMatch[1].trim() : undefined,
-            local_id: post.local_id || null,
-          } as any;
+      const uniquePairs: PointPair[] = Array.isArray(data) ? data : [];
+
+      let filtered = uniquePairs;
+      try {
+        const tsLocalIds: string[] = JSON.parse(localStorage.getItem('deleted_pair_local_ids') || '[]');
+        const tsPostIds: number[] = JSON.parse(localStorage.getItem('deleted_post_ids') || '[]');
+        const tsSigs: string[] = JSON.parse(localStorage.getItem('deleted_pair_signatures') || '[]');
+        filtered = uniquePairs.filter((p: PointPair) => {
+          if (p.pair_local_id && tsLocalIds.includes(String(p.pair_local_id))) return false;
+          if (p.id != null && tsPostIds.includes(Number(p.id))) return false;
+          const sig = pairSignature(p);
+          if (sig && tsSigs.includes(sig)) return false;
+          return true;
         });
-
-        // 1) Kombiner via local_id når mulig
-        const groupsByLocalId = new Map<string, { skyteplass?: any; treffpunkt?: any }>();
-        for (const p of parsedPosts as any[]) {
-          if (!p.local_id) continue;
-          const key = p.local_id as string;
-          if (!groupsByLocalId.has(key)) groupsByLocalId.set(key, {});
-          const g = groupsByLocalId.get(key)!;
-          if (p.category === 'Skyteplass' && p.current) g.skyteplass = p;
-          if (p.category === 'Treffpunkt' && p.target) g.treffpunkt = p;
-        }
-
-        const combinedPairsFromLocalId: PointPair[] = [];
-        groupsByLocalId.forEach((g, key) => {
-          const current = g.skyteplass?.current;
-          const target = g.treffpunkt?.target;
-          if (!current && !target) return;
-          combinedPairsFromLocalId.push({
-            current,
-            target,
-            category: target ? 'Treffpunkt' : 'Skyteplass',
-            id: (g.treffpunkt?.id ?? g.skyteplass?.id ?? 0) as number,
-            created_at: g.treffpunkt?.created_at || g.skyteplass?.created_at,
-            name: g.treffpunkt?.name || g.skyteplass?.name,
-            pair_local_id: key,
-            linked: true,
-          });
-        });
-
-        // 2) Fallback for poster uten local_id (tid-basert heuristikk)
-        const skyteplasserNoId = (parsedPosts as any[])
-          .filter(p => p.category === 'Skyteplass' && p.current && !p.local_id);
-        const treffpunkterNoId = (parsedPosts as any[])
-          .filter(p => p.category === 'Treffpunkt' && p.target && !p.local_id);
-
-        skyteplasserNoId.sort((a, b) => (a.created_at || '') < (b.created_at || '') ? -1 : 1);
-        treffpunkterNoId.sort((a, b) => (a.created_at || '') < (b.created_at || '') ? -1 : 1);
-        
-        const combinedPairsFallback: PointPair[] = [];
-        for (let i = 0; i < Math.max(skyteplasserNoId.length, treffpunkterNoId.length); i++) {
-          const skyteplass = skyteplasserNoId[i];
-          const treffpunkt = treffpunkterNoId.find(t => !skyteplass?.created_at || !t.created_at || t.created_at > skyteplass.created_at);
-          if (skyteplass || treffpunkt) {
-            combinedPairsFallback.push({
-              current: skyteplass?.current,
-              target: treffpunkt?.target,
-              category: treffpunkt?.target ? 'Treffpunkt' : 'Skyteplass',
-              id: (treffpunkt?.id ?? skyteplass?.id ?? 0) as number,
-              created_at: skyteplass?.created_at || treffpunkt?.created_at,
-              name: skyteplass?.name || treffpunkt?.name,
-              linked: false,
-            });
-            if (treffpunkt) {
-              const idx = treffpunkterNoId.indexOf(treffpunkt);
-              if (idx > -1) treffpunkterNoId.splice(idx, 1);
-            }
-          }
-        }
-        
-        const leftoverTreffpunktPairs: PointPair[] = treffpunkterNoId.map((t: any) => ({
-            current: undefined,
-          target: t.target,
-          category: 'Treffpunkt',
-          id: t.id,
-          created_at: t.created_at,
-          name: t.name,
-          linked: false,
-        }));
-
-        const combinedPairs: PointPair[] = [
-          ...combinedPairsFromLocalId,
-          ...combinedPairsFallback,
-          ...leftoverTreffpunktPairs,
-        ];
-        // 3) Dedupe by (id || coords) to avoid double-render after sync
-        const seen = new Set<string>();
-        const uniquePairs: PointPair[] = [];
-        for (const p of combinedPairs) {
-          const key = `${(p as any).id ?? ''}|${p.current ? `${p.current.lat},${p.current.lng}` : ''}|${p.target ? `${p.target.lat},${p.target.lng}` : ''}`;
-          if (!seen.has(key)) {
-            seen.add(key);
-            uniquePairs.push(p);
-          }
-        }
-        // Apply tombstones to hide deleted pairs across reloads
-        let filtered = uniquePairs;
-        try {
-          const tsLocalIds: string[] = JSON.parse(localStorage.getItem('deleted_pair_local_ids') || '[]');
-          const tsPostIds: number[] = JSON.parse(localStorage.getItem('deleted_post_ids') || '[]');
-          const tsSigs: string[] = JSON.parse(localStorage.getItem('deleted_pair_signatures') || '[]');
-          filtered = uniquePairs.filter((p: any) => {
-            if (p && p.pair_local_id && tsLocalIds.includes(String(p.pair_local_id))) return false;
-            if (p && (p.id != null) && tsPostIds.includes(Number(p.id))) return false;
-            // Coordinate signature filtering (handles fallback pairs without local_id)
-            const sig = pairSignature(p);
-            if (sig && tsSigs.includes(sig)) return false;
-            return true;
-          });
-        } catch {}
-        setSavedPairs(filtered);
-      }
+      } catch {}
+      setSavedPairs(filtered);
     } catch (error) {
-      console.error('Error fetching posts:', error);
-      alert('Kunne ikke hente poster fra backend.');
+      console.error('Error fetching shot places:', error);
+      alert('Kunne ikke hente skuddplasser fra backend.');
     }
   };
 
@@ -3137,42 +2919,32 @@ export default function MapComponent({
       return;
     }
     try {
-      // Knytt Skyteplass og Treffpunkt sammen med felles localId
       const pairLocalId = `pair_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-
-      // Lagre skyteplass med navn i content
-      const shotResponse = await fetch('/api/posts', {
+      const response = await fetch('/api/shot-places', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: 'Skyteplass',
-          content: `Lat: ${lockedShotPosition.lat}, Lng: ${lockedShotPosition.lng}, Category: Skyteplass, Name: ${finalName}`,
           teamId: activeTeam,
+          name: finalName,
+          current: { lat: lockedShotPosition.lat, lng: lockedShotPosition.lng },
+          target: { lat: pendingTargetPosition.lat, lng: pendingTargetPosition.lng },
           localId: pairLocalId,
         }),
       });
-      if (!shotResponse.ok) throw new Error('Failed to save shot position');
-      const shotData = await shotResponse.json();
-      
-      // Lagre treffpunkt med navn i content
-      const targetResponse = await fetch('/api/posts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: 'Treffpunkt',
-          content: `Target: ${pendingTargetPosition.lat}, ${pendingTargetPosition.lng}, Category: Treffpunkt, Name: ${finalName}`,
-          teamId: activeTeam,
-          localId: pairLocalId,
-        }),
-      });
-      if (!targetResponse.ok) throw new Error('Failed to save target position');
-      const targetData = await targetResponse.json();
-      
-      // Oppdater lokal state
-      setSavedPairs(prev => [
-        ...prev, 
-        { current: { ...lockedShotPosition }, category: 'Skyteplass', id: shotData.id },
-        { target: { ...pendingTargetPosition }, category: 'Treffpunkt', id: targetData.id }
+      if (!response.ok) throw new Error('Failed to save shot place');
+      const saved = await response.json();
+      setSavedPairs((prev) => [
+        ...prev,
+        {
+          current: { ...lockedShotPosition },
+          target: { ...pendingTargetPosition },
+          category: 'Treffpunkt',
+          id: saved.id,
+          pair_local_id: saved.pair_local_id || pairLocalId,
+          name: finalName,
+          linked: true,
+          created_at: saved.created_at,
+        },
       ]);
       fetchPosts();
 
@@ -3366,42 +3138,23 @@ export default function MapComponent({
   // Legg til funksjon for å slette alle skuddpar
   type ShotCategory = 'Skyteplass' | 'Treffpunkt';
   const handleDeleteAllShots = async () => {
-    if (!window.confirm('Er du sikker på at du vil slette alle skuddpar?')) return;
-    // Slett fra API - delete posts that contain Skyteplass or Treffpunkt in content
+    if (!window.confirm('Er du sikker på at du vil slette alle skuddplasser?')) return;
     try {
-      // Get posts for active team first to find the ones to delete
       if (!activeTeam) {
         alert('Ingen aktivt team valgt');
         return;
       }
-      
-      const response = await fetch(`/api/posts?teamId=${activeTeam}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch posts');
-      }
-      const posts = await response.json();
-      
-      // Filter posts that contain Skyteplass or Treffpunkt
-      const postsToDelete = posts.filter((post: any) => 
-        post.content && (post.content.includes('Skyteplass') || post.content.includes('Treffpunkt'))
-      );
-      
-      if (postsToDelete.length > 0) {
-        const ids = postsToDelete.map((post: any) => post.id);
-        const deleteResponse = await fetch(`/api/posts?ids=${ids.join(',')}`, {
-          method: 'DELETE',
-        });
-
-        if (!deleteResponse.ok) {
-          throw new Error('Failed to delete posts');
-        }
-      }
+      const response = await fetch('/api/shot-places', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teamId: activeTeam, all: true }),
+      });
+      if (!response.ok) throw new Error('Failed to delete shot places');
     } catch (error) {
       alert('Feil ved sletting: ' + (error as Error).message);
       return;
     }
-    // Oppdater lokal state
-    setSavedPairs(prev => prev.filter(pair => pair.category !== 'Skyteplass' && pair.category !== 'Treffpunkt'));
+    setSavedPairs([]);
   };
 
   const [layerIdx, setLayerIdx] = useState(() => {

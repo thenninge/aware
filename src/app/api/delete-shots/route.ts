@@ -1,18 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from '@/lib/db/supabaseAdmin';
+import { HttpError, jsonError, requireTeamAccess } from '@/lib/db/access';
+import { isShotPlaceRow } from '@/lib/db/shotPlaces';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
-  const { error } = await supabase
-    .from('posts')
-    .delete()
-    .in('category', ['Skyteplass', 'Treffpunkt']);
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  try {
+    const body = await request.json().catch(() => ({}));
+    const teamId = body.teamId as string | undefined;
+    if (!teamId) throw new HttpError(400, 'Team ID is required');
+    await requireTeamAccess(teamId);
+
+    const supabase = getSupabaseAdmin();
+    const { data: posts, error } = await supabase
+      .from('posts')
+      .select('id, content, title')
+      .eq('teamid', teamId);
+    if (error) throw new Error(error.message);
+
+    const ids = (posts || []).filter(isShotPlaceRow).map((p) => Number(p.id)).filter(Number.isFinite);
+    if (ids.length > 0) {
+      const { error: deleteError } = await supabase.from('posts').delete().in('id', ids).eq('teamid', teamId);
+      if (deleteError) throw new Error(deleteError.message);
+    }
+
+    return NextResponse.json({ success: true, deleted: ids });
+  } catch (error) {
+    return jsonError(error);
   }
-  return NextResponse.json({ success: true });
 }

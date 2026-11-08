@@ -1,60 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from '@/lib/db/supabaseAdmin';
+import { jsonError, requireTeamAccess } from '@/lib/db/access';
 
-function getSupabaseAdmin() {
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    throw new Error('Missing Supabase environment variables');
-  }
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
-  );
-}
+export const dynamic = 'force-dynamic';
 
 // POST - Sync all data (push local data to DB, pull server data to local)
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    
-    const userId = session?.user?.googleId || session?.user?.email;
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     const body = await request.json();
     const { teamId, localData } = body;
-
-    if (!teamId) {
-      return NextResponse.json({ error: 'Team ID is required' }, { status: 400 });
-    }
-
-    // Verify user has access to this team
+    const { userId } = await requireTeamAccess(teamId);
     const supabaseAdmin = getSupabaseAdmin();
-    const { data: teamAccess, error: accessError } = await supabaseAdmin
-      .from('team_members')
-      .select('*')
-      .eq('teamid', teamId)
-      .eq('userid', userId)
-      .single();
-
-    if (accessError && accessError.code !== 'PGRST116') {
-      console.error('Error checking team access:', accessError);
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
-    }
-
-    // Also check if user is owner of the team
-    const { data: ownedTeam, error: ownerError } = await supabaseAdmin
-      .from('teams')
-      .select('*')
-      .eq('id', teamId)
-      .eq('ownerid', userId)
-      .single();
-
-    if (!teamAccess && !ownedTeam) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
-    }
 
     const results = {
       pushed: { tracks: 0, finds: 0, observations: 0, posts: 0 },
@@ -174,17 +130,19 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Push posts (skuddpar)
+      // Push posts (legacy). Skuddplasser skrives via /api/shot-places.
       if (localData.posts && localData.posts.length > 0) {
         for (const post of localData.posts as any[]) {
           try {
-            // Check if post with this local_id already exists
+            if (!post.content || !post.title) continue;
+            const localId = post.local_id || post.localId || post.id;
+            if (!localId) continue;
             const { data: existingPost } = await supabaseAdmin
               .from('posts')
               .select('id')
-              .eq('local_id', post.id)
+              .eq('local_id', localId)
               .eq('teamid', teamId)
-              .single();
+              .maybeSingle();
 
             if (!existingPost) {
               const { error: postError } = await supabaseAdmin
@@ -194,7 +152,7 @@ export async function POST(request: NextRequest) {
                   createdby: userId,
                   title: post.title,
                   content: post.content,
-                  local_id: post.id
+                  local_id: localId
                 });
 
               if (postError) {
@@ -262,7 +220,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(results);
   } catch (error: unknown) {
-    console.error('Error in sync:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return jsonError(error);
   }
 }
