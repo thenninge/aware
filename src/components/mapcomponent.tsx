@@ -25,7 +25,18 @@ import { useViewshed } from '@/components/useViewshed';
 import ViewshedLeafletOverlay from '@/components/ViewshedLeafletOverlay';
 import { getMapService } from '@/lib/map/MapService';
 import { EARTH_RADIUS_M, destination, distance as geoDistance } from '@/lib/geo/coordinates';
-import { deleteTeamItem, fetchTeamSearchData, saveTeamFind, saveTeamObservation, upsertTeamTrack } from '@/lib/db/teamClient';
+import { deleteTeamItem, fetchTeamSearchData, flushPendingSearchData, saveTeamFind, saveTeamObservation, upsertTeamTrack } from '@/lib/db/teamClient';
+import {
+  listCachedFinds,
+  listCachedObservations,
+  listCachedTracks,
+  mergeServerSearchData,
+  putCachedFind,
+  putCachedObservation,
+  putCachedTrack,
+  removeCachedItem,
+  markSynced,
+} from '@/lib/db/searchCache';
 
 interface Position {
   lat: number;
@@ -34,6 +45,7 @@ interface Position {
 }
 
 const FALLBACK_POSITION: Position = { lat: 60.424834440433045, lng: 12.408766398367092 };
+const LIVE_TEAM_SYNC_MS = 4000;
 
 function isValidPosition(pos: unknown): pos is Position {
   if (!pos || typeof pos !== 'object') return false;
@@ -940,7 +952,7 @@ interface SavedTrack {
   id: string;
   points: Position[];
   createdAt: string;
-  shotPairId: string;
+  shotPairId?: string;
   mode: string;
   name: string;
   color: string;
@@ -1562,9 +1574,18 @@ export default function MapComponent({
     setCurrentTrackingId(newTrackingId);
     onTrackingPointsChange?.([]);
     onTrackingChange?.(true);
+    persistLocalTrack({
+      id: newTrackingId,
+      points: [],
+      createdAt: new Date().toISOString(),
+      shotPairId: getActiveShotPairId(),
+      mode: 'søk',
+      name: 'Live spor',
+      color: '#EAB308',
+    });
     if (activeTeam) {
       liveTrackWriteRef.current = Promise.resolve();
-      void queueLiveTrackWrite(() => upsertTeamTrack(activeTeam, {
+      void queueLiveTrackWrite(() => upsertTeamTrackQuiet(activeTeam, {
         localId: newTrackingId,
         name: 'Live spor',
         color: '#EAB308',
@@ -1582,7 +1603,7 @@ export default function MapComponent({
     if (!prevLiveRef.current && isLiveMode) onLiveModeChange?.(false);
     if (prevCompassModeRef.current === 'off' && compassMode === 'on') onCompassModeChange?.('off');
     if (trackingPoints && trackingPoints.length > 0) {
-      const shouldSave = window.confirm('Lagre spor til skudd?');
+      const shouldSave = window.confirm('Lagre spor?');
       if (shouldSave) {
         // La navn-feltet være tomt
         setTrackName('');
@@ -1607,14 +1628,31 @@ export default function MapComponent({
     } catch {}
   };
 
-  const getActiveShotPairId = () => {
+  const getActiveShotPairId = (): string | undefined => {
     if (mode === 'søk' && hasSavedPairs && safeSavedPairs.length > 0) {
       const treffpunkter = safeSavedPairs.filter(p => p.category === 'Treffpunkt');
       const reversedTreffpunkter = treffpunkter.length > 0 ? [...treffpunkter].reverse() : [];
       const selectedTarget = reversedTreffpunkter[adjustedSelectedTargetIndex];
-      return selectedTarget?.id?.toString() || 'unknown';
+      const id = selectedTarget?.id?.toString();
+      return id || undefined;
     }
-    return lastPair?.id?.toString() || 'unknown';
+    return lastPair?.id?.toString() || undefined;
+  };
+
+  const persistLocalTrack = (track: SavedTrack) => {
+    putCachedTrack(activeTeam, track);
+  };
+
+  const upsertTeamTrackQuiet = async (
+    teamId: string,
+    track: { localId: string; name?: string; color?: string; points?: Position[]; shotPairId?: string }
+  ) => {
+    try {
+      await upsertTeamTrack(teamId, track, 'PATCH');
+      markSynced(teamId, 'tracks', track.localId);
+    } catch (error) {
+      console.error('Spor-skriving venter på nett:', error);
+    }
   };
 
   const applySearchData = (tracks: SavedTrack[], finds: SavedFind[], observations: SavedObservation[]) => {
@@ -1622,36 +1660,59 @@ export default function MapComponent({
     setSavedTracks(liveId ? tracks.filter((track) => track.id !== liveId) : tracks);
     setSavedFinds(finds);
     setSavedObservations(observations);
-    try {
-      localStorage.setItem('searchTracks', JSON.stringify(Object.fromEntries(tracks.map((track) => [track.id, track]))));
-      localStorage.setItem('searchFinds', JSON.stringify(Object.fromEntries(finds.map((find) => [find.id, find]))));
-      localStorage.setItem('searchObservations', JSON.stringify(Object.fromEntries(observations.map((obs) => [obs.id, obs]))));
-    } catch {}
+  };
+
+  const loadCachedSearchData = () => {
+    applySearchData(
+      listCachedTracks(activeTeam),
+      listCachedFinds(activeTeam),
+      listCachedObservations(activeTeam)
+    );
   };
 
   const loadTeamSearchData = async () => {
-    if (!activeTeam) return;
-    const data = await fetchTeamSearchData(activeTeam);
-    applySearchData(data.tracks, data.finds, data.observations);
-    await fetchPosts();
+    if (!activeTeam) {
+      loadCachedSearchData();
+      return;
+    }
+    loadCachedSearchData();
+    try {
+      const data = await fetchTeamSearchData(activeTeam);
+      const merged = mergeServerSearchData(activeTeam, data);
+      applySearchData(merged.tracks, merged.finds, merged.observations);
+      await fetchPosts();
+      await flushPendingSearchData(activeTeam);
+    } catch (error) {
+      console.error('Bruker lokal lag-data til nett er tilbake:', error);
+    }
   };
 
   const queueLiveTrackWrite = (task: () => Promise<unknown>) => {
     liveTrackWriteRef.current = liveTrackWriteRef.current.then(task).catch((error) => {
-      console.error('Spor-skriving feilet:', error);
+      console.error('Spor-skriving venter på nett:', error);
     });
     return liveTrackWriteRef.current;
   };
 
   const syncLiveTrack = async (trackId: string | null, points: Position[], extra?: { name?: string; color?: string }) => {
-    if (!activeTeam || !trackId) return;
-    await queueLiveTrackWrite(() => upsertTeamTrack(activeTeam, {
+    if (!trackId) return;
+    persistLocalTrack({
+      id: trackId,
+      points,
+      createdAt: new Date().toISOString(),
+      shotPairId: getActiveShotPairId(),
+      mode: 'søk',
+      name: extra?.name || 'Live spor',
+      color: extra?.color || '#EAB308',
+    });
+    if (!activeTeam) return;
+    await queueLiveTrackWrite(() => upsertTeamTrackQuiet(activeTeam, {
       localId: trackId,
       name: extra?.name,
       color: extra?.color,
       points,
       shotPairId: getActiveShotPairId(),
-    }, 'PATCH'));
+    }));
   };
 
   const saveTrackToTeam = async (trackId: string | null, points: Position[], name: string, color: string) => {
@@ -1665,26 +1726,20 @@ export default function MapComponent({
       name,
       color,
     };
-    if (activeTeam) {
-      await liveTrackWriteRef.current;
-      await upsertTeamTrack(activeTeam, {
-        localId: trackId,
-        name,
-        color,
-        points,
-        shotPairId: newTrack.shotPairId,
-      }, 'PATCH');
-    }
+    persistLocalTrack(newTrack);
     setSavedTracks((prev) => [...prev.filter((track) => track.id !== trackId), newTrack]);
+    if (!activeTeam) return;
+    await liveTrackWriteRef.current;
+    await upsertTeamTrackQuiet(activeTeam, {
+      localId: trackId,
+      name,
+      color,
+      points,
+      shotPairId: newTrack.shotPairId,
+    });
   };
 
-  const loadSavedTracks = (): SavedTrack[] => {
-    try {
-      return Object.values(JSON.parse(localStorage.getItem('searchTracks') || '{}')) as SavedTrack[];
-    } catch {
-      return [];
-    }
-  };
+  const loadSavedTracks = (): SavedTrack[] => listCachedTracks(activeTeam);
 
   const syncTeamData = async () => {
     if (!activeTeam) return;
@@ -1753,10 +1808,7 @@ export default function MapComponent({
       alert('Spor har ingen punkter. Start tracking og beveg deg på kartet før du lagrer.');
       return;
     }
-    void saveTrackToTeam(currentTrackingId, pointsToSave, finalTrackName, trackColor).catch((error) => {
-      console.error('Feil ved lagring av spor:', error);
-      alert('Feil ved lagring av spor');
-    });
+    void saveTrackToTeam(currentTrackingId, pointsToSave, finalTrackName, trackColor);
     setShowSaveTrackDialog(false);
     setTrackName('');
     setTrackColor('#EAB308');
@@ -1767,8 +1819,13 @@ export default function MapComponent({
   };
 
   const discardLiveTrack = (trackId: string | null) => {
-    if (activeTeam && trackId) {
-      void deleteTeamItem('tracks', activeTeam, trackId).catch(() => {});
+    if (trackId) {
+      removeCachedItem(activeTeam, 'tracks', trackId);
+      if (activeTeam) {
+        void deleteTeamItem('tracks', activeTeam, trackId)
+          .then(() => markSynced(activeTeam, 'tracks', trackId))
+          .catch(() => {});
+      }
     }
     onTrackingPointsChange?.([]);
     currentTrackingIdRef.current = null;
@@ -1799,75 +1856,64 @@ export default function MapComponent({
       id: `find_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`,
       position,
       createdAt: new Date().toISOString(),
-      shotPairId: getActiveShotPairId(),
+      shotPairId: getActiveShotPairId() || 'unknown',
       mode: 'søk',
       name,
       color,
     };
+    putCachedFind(activeTeam, newFind);
     setSavedFinds((prev) => [...prev, newFind]);
     if (activeTeam) {
       try {
         await saveTeamFind(activeTeam, newFind);
+        markSynced(activeTeam, 'finds', newFind.id);
       } catch (error) {
-        console.error('Feil ved lagring av funn:', error);
-        alert('Funn er synlig her, men ble ikke lagret til laget.');
+        console.error('Funn venter på nett:', error);
       }
     }
   };
 
-  const loadSavedFinds = (): SavedFind[] => {
-    try {
-      return Object.values(JSON.parse(localStorage.getItem('searchFinds') || '{}')) as SavedFind[];
-    } catch {
-      return [];
-    }
-  };
+  const loadSavedFinds = (): SavedFind[] => listCachedFinds(activeTeam);
 
-  const loadSavedObservations = (): SavedObservation[] => {
-    try {
-      return Object.values(JSON.parse(localStorage.getItem('searchObservations') || '{}')) as SavedObservation[];
-    } catch {
-      return [];
-    }
-  };
+  const loadSavedObservations = (): SavedObservation[] => listCachedObservations(activeTeam);
 
   const handleDeleteFind = async (findId: string) => {
+    removeCachedItem(activeTeam, 'finds', findId);
+    setSavedFinds((prev) => prev.filter((find) => find.id !== findId));
     if (activeTeam) {
       try {
         await deleteTeamItem('finds', activeTeam, findId);
+        markSynced(activeTeam, 'finds', findId);
       } catch (error) {
-        console.error('Sletting av funn feilet:', error);
-        alert('Kunne ikke slette funn');
-        return;
+        console.error('Sletting av funn venter på nett:', error);
       }
     }
-    setSavedFinds((prev) => prev.filter((find) => find.id !== findId));
   };
 
   const handleDeleteObservation = async (observationId: string) => {
+    removeCachedItem(activeTeam, 'observations', observationId);
+    setSavedObservations((prev) => prev.filter((obs) => obs.id !== observationId));
     if (activeTeam) {
       try {
         await deleteTeamItem('observations', activeTeam, observationId);
+        markSynced(activeTeam, 'observations', observationId);
       } catch (error) {
-        console.error('Sletting av observasjon feilet:', error);
-        alert('Kunne ikke slette observasjon');
-        return;
+        console.error('Sletting av observasjon venter på nett:', error);
       }
     }
-    setSavedObservations((prev) => prev.filter((obs) => obs.id !== observationId));
   };
 
   const handleDeleteTrack = async (trackId: string) => {
+    removeCachedItem(activeTeam, 'tracks', trackId);
+    setSavedTracks((prev) => prev.filter((track) => track.id !== trackId));
     if (activeTeam) {
       try {
         await deleteTeamItem('tracks', activeTeam, trackId);
+        markSynced(activeTeam, 'tracks', trackId);
       } catch (error) {
-        console.error('Sletting av spor feilet:', error);
-        alert('Kunne ikke slette spor');
-        return;
+        console.error('Sletting av spor venter på nett:', error);
       }
     }
-    setSavedTracks((prev) => prev.filter((track) => track.id !== trackId));
   };
 
   const handleDeleteShotPair = async (clickedPairId: number) => {
@@ -1900,12 +1946,6 @@ export default function MapComponent({
           if (clickedLocalId && pair.pair_local_id && String(pair.pair_local_id) === String(clickedLocalId)) return false;
           return true;
         })
-      );
-      setSavedTracks((prev) =>
-        prev.filter((track) => !track.shotPairId || !postIds.includes(parseInt(track.shotPairId, 10)))
-      );
-      setSavedFinds((prev) =>
-        prev.filter((find) => !find.shotPairId || !postIds.includes(parseInt(find.shotPairId, 10)))
       );
     } catch (error) {
       console.error('Feil ved sletting av skuddplass:', error);
@@ -1979,13 +2019,14 @@ export default function MapComponent({
       name,
       color,
     };
+    putCachedObservation(activeTeam, newObservation);
     setSavedObservations((prev) => [...prev, newObservation]);
     if (activeTeam) {
       try {
         await saveTeamObservation(activeTeam, newObservation);
+        markSynced(activeTeam, 'observations', newObservation.id);
       } catch (error) {
-        console.error('Feil ved lagring av observasjon:', error);
-        alert('Observasjon er synlig her, men ble ikke lagret til laget.');
+        console.error('Observasjon venter på nett:', error);
       }
     }
   };
@@ -2214,8 +2255,7 @@ export default function MapComponent({
       const data = await response.json();
       setSavedPairs(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error('Error fetching shot places:', error);
-      alert('Kunne ikke hente skuddplasser fra backend.');
+      console.error('Skuddplasser venter på nett:', error);
     }
   };
 
@@ -2227,27 +2267,29 @@ export default function MapComponent({
 
   useEffect(() => {
     if (activeTeam) {
-      setSavedTracks([]);
-      setSavedFinds([]);
-      setSavedObservations([]);
-      setSavedPairs([]);
+      loadCachedSearchData();
       void syncTeamData();
     } else {
-      setSavedTracks([]);
-      setSavedFinds([]);
-      setSavedObservations([]);
-      setSavedPairs([]);
+      loadCachedSearchData();
     }
   }, [activeTeam]);
 
   useEffect(() => {
-    if (!isTracking || !activeTeam || !currentTrackingId || !trackingPoints?.length) return;
+    if (!isTracking || !currentTrackingId || !trackingPoints?.length) return;
+    persistLocalTrack({
+      id: currentTrackingId,
+      points: trackingPoints,
+      createdAt: new Date().toISOString(),
+      shotPairId: getActiveShotPairId(),
+      mode: 'søk',
+      name: 'Live spor',
+      color: '#EAB308',
+    });
+    if (!activeTeam) return;
     if (liveTrackTimerRef.current) window.clearTimeout(liveTrackTimerRef.current);
     liveTrackTimerRef.current = window.setTimeout(() => {
-      void syncLiveTrack(currentTrackingId, trackingPoints).catch((error) => {
-        console.error('Live spor-oppdatering feilet:', error);
-      });
-    }, 4000);
+      void syncLiveTrack(currentTrackingId, trackingPoints);
+    }, LIVE_TEAM_SYNC_MS);
     return () => {
       if (liveTrackTimerRef.current) window.clearTimeout(liveTrackTimerRef.current);
     };
@@ -2257,12 +2299,31 @@ export default function MapComponent({
     if (!activeTeam || (mode !== 'søk' && !isTracking)) return;
     const tick = () => {
       void fetchTeamSearchData(activeTeam)
-        .then((data) => applySearchData(data.tracks, data.finds, data.observations))
-        .catch((error) => console.error('Live lag-oppdatering feilet:', error));
+        .then((data) => {
+          const merged = mergeServerSearchData(activeTeam, data);
+          applySearchData(merged.tracks, merged.finds, merged.observations);
+          return flushPendingSearchData(activeTeam);
+        })
+        .catch((error) => console.error('Live lag-oppdatering venter på nett:', error));
     };
-    const id = window.setInterval(tick, 8000);
+    const id = window.setInterval(tick, LIVE_TEAM_SYNC_MS);
     return () => window.clearInterval(id);
   }, [activeTeam, mode, isTracking]);
+
+  useEffect(() => {
+    const flush = () => {
+      if (activeTeam && navigator.onLine) void flushPendingSearchData(activeTeam);
+    };
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') flush();
+    };
+    window.addEventListener('online', flush);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.removeEventListener('online', flush);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [activeTeam]);
 
   // Gamle state-variabler fjernet - ikke lenger nødvendige med forenklet workflow
 

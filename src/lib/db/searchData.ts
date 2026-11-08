@@ -4,7 +4,7 @@ export type SearchTrack = {
   id: string;
   points: Coord[];
   createdAt: string;
-  shotPairId: string;
+  shotPairId?: string;
   mode: string;
   name: string;
   color: string;
@@ -56,7 +56,7 @@ export function rowToTrack(row: Row): SearchTrack | null {
     id,
     name: String(row.name || 'Spor'),
     color: String(row.color || '#EAB308'),
-    shotPairId: rowShotPairId(row),
+    shotPairId: rowShotPairId(row, '') || undefined,
     points: parsePoints(row.points),
     createdAt: rowCreatedAt(row),
     mode: String(row.mode || 'søk'),

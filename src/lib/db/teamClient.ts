@@ -1,5 +1,12 @@
 import type { SearchFind, SearchObservation, SearchTrack } from './searchData';
 import type { Coord } from './parse';
+import {
+  getCachedFind,
+  getCachedObservation,
+  getCachedTrack,
+  markSynced,
+  pendingEntries,
+} from './searchCache';
 
 async function send<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, init);
@@ -71,6 +78,66 @@ export async function saveTeamFind(teamId: string, find: SearchFind): Promise<Se
       mode: find.mode,
     }),
   });
+}
+
+export async function flushPendingSearchData(teamId: string) {
+  const pending = pendingEntries(teamId);
+
+  for (const [id, op] of Object.entries(pending.tracks)) {
+    try {
+      if (op === 'delete') {
+        await deleteTeamItem('tracks', teamId, id);
+      } else {
+        const track = getCachedTrack(teamId, id);
+        if (!track) {
+          markSynced(teamId, 'tracks', id);
+          continue;
+        }
+        await upsertTeamTrack(teamId, {
+          localId: track.id,
+          name: track.name,
+          color: track.color,
+          points: track.points,
+          shotPairId: track.shotPairId,
+        }, 'PATCH');
+      }
+      markSynced(teamId, 'tracks', id);
+    } catch {
+      // Still offline or server error; keep pending.
+    }
+  }
+
+  for (const [id, op] of Object.entries(pending.finds)) {
+    try {
+      if (op === 'delete') {
+        await deleteTeamItem('finds', teamId, id);
+      } else {
+        const find = getCachedFind(teamId, id);
+        if (!find) {
+          markSynced(teamId, 'finds', id);
+          continue;
+        }
+        await saveTeamFind(teamId, find);
+      }
+      markSynced(teamId, 'finds', id);
+    } catch {}
+  }
+
+  for (const [id, op] of Object.entries(pending.observations)) {
+    try {
+      if (op === 'delete') {
+        await deleteTeamItem('observations', teamId, id);
+      } else {
+        const observation = getCachedObservation(teamId, id);
+        if (!observation) {
+          markSynced(teamId, 'observations', id);
+          continue;
+        }
+        await saveTeamObservation(teamId, observation);
+      }
+      markSynced(teamId, 'observations', id);
+    } catch {}
+  }
 }
 
 export async function saveTeamObservation(teamId: string, observation: SearchObservation): Promise<SearchObservation> {
