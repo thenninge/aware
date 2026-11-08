@@ -1,188 +1,139 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from '@/lib/db/supabaseAdmin';
+import { HttpError, jsonError, requireTeamAccess } from '@/lib/db/access';
+import { mapRows, rowToTrack, serializeTrackPoints, type Coord } from '@/lib/db/searchData';
 
-function getSupabaseAdmin() {
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    throw new Error('Missing Supabase environment variables');
-  }
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
-  );
-}
+export const dynamic = 'force-dynamic';
 
-// GET - Hent tracks for aktivt team
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    
-    const userId = session?.user?.googleId || session?.user?.email;
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const teamId = request.nextUrl.searchParams.get('teamId');
+    if (!teamId) throw new HttpError(400, 'Team ID is required');
+    await requireTeamAccess(teamId);
 
-    const { searchParams } = new URL(request.url);
-    const teamId = searchParams.get('teamId');
-
-    if (!teamId) {
-      return NextResponse.json({ error: 'Team ID is required' }, { status: 400 });
-    }
-
-    // Verify user has access to this team
-    const supabaseAdmin = getSupabaseAdmin();
-    const { data: teamAccess, error: accessError } = await supabaseAdmin
-      .from('team_members')
-      .select('*')
-      .eq('teamid', teamId)
-      .eq('userid', userId)
-      .single();
-
-    if (accessError && accessError.code !== 'PGRST116') {
-      console.error('Error checking team access:', accessError);
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
-    }
-
-    // Also check if user is owner of the team
-    const { data: ownedTeam, error: ownerError } = await supabaseAdmin
-      .from('teams')
-      .select('*')
-      .eq('id', teamId)
-      .eq('ownerid', userId)
-      .single();
-
-    if (!teamAccess && !ownedTeam) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
-    }
-
-    // Get tracks for this team
-    const { data: tracks, error: tracksError } = await supabaseAdmin
+    const { data, error } = await getSupabaseAdmin()
       .from('tracks')
       .select('*')
       .eq('teamid', teamId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: true });
+    if (error) throw new Error(error.message);
 
-    if (tracksError) {
-      console.error('Error fetching tracks:', tracksError);
-      return NextResponse.json({ error: tracksError.message }, { status: 500 });
-    }
-
-    return NextResponse.json(tracks || []);
-  } catch (error: any) {
-    console.error('Error in GET /api/team-data/tracks:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json(mapRows(data, rowToTrack));
+  } catch (error) {
+    return jsonError(error);
   }
 }
 
-// POST - Opprett ny track for aktivt team
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    
-    const userId = session?.user?.googleId || session?.user?.email;
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     const body = await request.json();
-    const { teamId, name, points, color, shotPairId, mode, localId } = body;
+    const teamId = body.teamId as string | undefined;
+    const localId = String(body.localId || '').trim();
+    if (!teamId) throw new HttpError(400, 'Team ID is required');
+    if (!localId) throw new HttpError(400, 'localId is required');
+    const { userId } = await requireTeamAccess(teamId);
 
-    if (!teamId) {
-      return NextResponse.json({ error: 'Team ID is required' }, { status: 400 });
-    }
-
-    // Verify user has access to this team
-    const supabaseAdmin = getSupabaseAdmin();
-    const { data: teamAccess, error: accessError } = await supabaseAdmin
-      .from('team_members')
-      .select('*')
-      .eq('teamid', teamId)
-      .eq('userid', userId)
-      .single();
-
-    if (accessError && accessError.code !== 'PGRST116') {
-      console.error('Error checking team access:', accessError);
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
-    }
-
-    // Also check if user is owner of the team
-    const { data: ownedTeam, error: ownerError } = await supabaseAdmin
-      .from('teams')
-      .select('*')
-      .eq('id', teamId)
-      .eq('ownerid', userId)
-      .single();
-
-    if (!teamAccess && !ownedTeam) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
-    }
-
-    // Create new track (store geometry and pairing if available)
-    const { data: newTrack, error: createError } = await supabaseAdmin
-      .from('tracks')
-      .insert({
-        teamid: teamId,
-        createdby: userId,
-        name: name || 'Unnamed Track',
-        color: color || '#3b82f6',
-        local_id: localId,
-        // Persist points JSON if the column exists in DB schema
-        points: points ? JSON.stringify(points) : null,
-        // Persist linkage to shot pair if supplied
-        shot_pair_id: shotPairId || null
-      })
-      .select()
-      .single();
-
-    if (createError) {
-      console.error('Error creating track:', createError);
-      return NextResponse.json({ error: createError.message }, { status: 500 });
-    }
-
-    return NextResponse.json(newTrack);
-  } catch (error: any) {
-    console.error('Error in POST /api/team-data/tracks:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    const saved = await upsertTrack({
+      teamId,
+      userId,
+      localId,
+      name: body.name,
+      color: body.color,
+      points: body.points,
+      shotPairId: body.shotPairId,
+    });
+    return NextResponse.json(saved);
+  } catch (error) {
+    return jsonError(error);
   }
 }
 
-// DELETE - Slett track for aktivt team via local_id eller id
+export async function PATCH(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const teamId = body.teamId as string | undefined;
+    const localId = String(body.localId || '').trim();
+    if (!teamId) throw new HttpError(400, 'Team ID is required');
+    if (!localId) throw new HttpError(400, 'localId is required');
+    const { userId } = await requireTeamAccess(teamId);
+
+    const saved = await upsertTrack({
+      teamId,
+      userId,
+      localId,
+      name: body.name,
+      color: body.color,
+      points: body.points,
+      shotPairId: body.shotPairId,
+    });
+    return NextResponse.json(saved);
+  } catch (error) {
+    return jsonError(error);
+  }
+}
+
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    const userId = session?.user?.googleId || session?.user?.email;
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
     const body = await request.json().catch(() => ({}));
-    const { teamId, localId, id } = body || {};
-    if (!teamId || (!localId && !id)) {
-      return NextResponse.json({ error: 'teamId and (localId or id) required' }, { status: 400 });
-    }
-    const supabaseAdmin = getSupabaseAdmin();
-    const { data: teamAccess } = await supabaseAdmin
-      .from('team_members')
-      .select('id')
-      .eq('teamid', teamId)
-      .eq('userid', userId)
-      .maybeSingle();
-    const { data: ownedTeam } = await supabaseAdmin
-      .from('teams')
-      .select('id')
-      .eq('id', teamId)
-      .eq('ownerid', userId)
-      .maybeSingle();
-    if (!teamAccess && !ownedTeam) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
-    }
-    let query = supabaseAdmin.from('tracks').delete().eq('teamid', teamId);
+    const teamId = body.teamId as string | undefined;
+    const localId = body.localId as string | undefined;
+    const id = body.id as string | number | undefined;
+    if (!teamId || (!localId && id == null)) throw new HttpError(400, 'teamId and (localId or id) required');
+    await requireTeamAccess(teamId);
+
+    let query = getSupabaseAdmin().from('tracks').delete().eq('teamid', teamId);
     if (localId) query = query.eq('local_id', localId);
-    else if (id) query = query.eq('id', id);
+    else query = query.eq('id', id);
     const { error } = await query;
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) throw new Error(error.message);
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Internal error' }, { status: 500 });
+  } catch (error) {
+    return jsonError(error);
   }
+}
+
+async function upsertTrack(input: {
+  teamId: string;
+  userId: string;
+  localId: string;
+  name?: string;
+  color?: string;
+  points?: Coord[];
+  shotPairId?: string;
+}) {
+  const supabase = getSupabaseAdmin();
+  const { data: existing, error: existingError } = await supabase
+    .from('tracks')
+    .select('*')
+    .eq('teamid', input.teamId)
+    .eq('local_id', input.localId)
+    .maybeSingle();
+  if (existingError) throw new Error(existingError.message);
+
+  const payload: Record<string, unknown> = {
+    name: input.name || existing?.name || 'Spor',
+    color: input.color || existing?.color || '#EAB308',
+    points: serializeTrackPoints(Array.isArray(input.points) ? input.points : []),
+    shot_pair_id: input.shotPairId || existing?.shot_pair_id || null,
+  };
+
+  if (existing?.id) {
+    if (!Array.isArray(input.points)) payload.points = existing.points;
+    const { data, error } = await supabase.from('tracks').update(payload).eq('id', existing.id).select().single();
+    if (error) throw new Error(error.message);
+    return rowToTrack(data as Record<string, unknown>);
+  }
+
+  const { data, error } = await supabase
+    .from('tracks')
+    .insert({
+      ...payload,
+      teamid: input.teamId,
+      createdby: input.userId,
+      local_id: input.localId,
+    })
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return rowToTrack(data as Record<string, unknown>);
 }

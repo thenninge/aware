@@ -25,6 +25,7 @@ import { useViewshed } from '@/components/useViewshed';
 import ViewshedLeafletOverlay from '@/components/ViewshedLeafletOverlay';
 import { getMapService } from '@/lib/map/MapService';
 import { EARTH_RADIUS_M, destination, distance as geoDistance } from '@/lib/geo/coordinates';
+import { deleteTeamItem, fetchTeamSearchData, saveTeamFind, saveTeamObservation, upsertTeamTrack } from '@/lib/db/teamClient';
 
 interface Position {
   lat: number;
@@ -1143,14 +1144,6 @@ export default function MapComponent({
   const [elevLoading, setElevLoading] = useState(false);
   const [elevError, setElevError] = useState<string | null>(null);
 
-  // --- Helpers for stable pair identity (for deletion) ---
-  const toFixed6 = (n: number | undefined) => (typeof n === 'number' && Number.isFinite(n) ? n.toFixed(6) : '');
-  const pairSignature = (p: any): string => {
-    const a = p?.current ? `${toFixed6(p.current.lat)},${toFixed6(p.current.lng)}` : '';
-    const b = p?.target ? `${toFixed6(p.target.lat)},${toFixed6(p.target.lng)}` : '';
-    // Normalize ordering for stability
-    return a <= b ? `${a}|${b}` : `${b}|${a}`;
-  };
   // LOS state
   const [isLosAwaitingClick, setIsLosAwaitingClick] = useState(false);
   const los = useViewshed({
@@ -1283,6 +1276,9 @@ export default function MapComponent({
   const [showSaveNoHuntZoneDialog, setShowSaveNoHuntZoneDialog] = useState(false);
   const [noHuntZoneName, setNoHuntZoneName] = useState('');
   const [currentTrackingId, setCurrentTrackingId] = useState<string | null>(null);
+  const currentTrackingIdRef = useRef<string | null>(null);
+  const liveTrackTimerRef = useRef<number | null>(null);
+  const liveTrackWriteRef = useRef<Promise<unknown>>(Promise.resolve());
   const [showFindDialog, setShowFindDialog] = useState(false);
   const [newFindPosition, setNewFindPosition] = useState<Position | null>(null);
   const [findName, setFindName] = useState('');
@@ -1558,15 +1554,24 @@ export default function MapComponent({
   
   // Start sporing - generer ny tracking ID og start med tom liste
   const startTracking = () => {
-    // Remember current states (no automatic toggling of GPS/compass here)
     prevLiveRef.current = !!isLiveMode;
     prevCompassModeRef.current = (compassMode as any) || 'off';
-    // Request screen wake lock
     void wakeLock.acquire();
     const newTrackingId = `tracking_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    currentTrackingIdRef.current = newTrackingId;
     setCurrentTrackingId(newTrackingId);
     onTrackingPointsChange?.([]);
     onTrackingChange?.(true);
+    if (activeTeam) {
+      liveTrackWriteRef.current = Promise.resolve();
+      void queueLiveTrackWrite(() => upsertTeamTrack(activeTeam, {
+        localId: newTrackingId,
+        name: 'Live spor',
+        color: '#EAB308',
+        points: [],
+        shotPairId: getActiveShotPairId(),
+      }));
+    }
   };
 
   // Stopp sporing og vis prompt
@@ -1585,10 +1590,10 @@ export default function MapComponent({
         // Vis dialog for å navngi og velge farge
         setShowSaveTrackDialog(true);
       } else {
-        // Slett sporet
-        onTrackingPointsChange?.([]);
-        setCurrentTrackingId(null);
+        discardLiveTrack(currentTrackingId);
       }
+    } else if (currentTrackingId) {
+      discardLiveTrack(currentTrackingId);
     }
     onTrackingChange?.(false);
     // Persist segment to IndexedDB for recovery
@@ -1602,517 +1607,117 @@ export default function MapComponent({
     } catch {}
   };
 
-  // Lagre spor til localStorage
-  const saveTrackToLocalStorage = (trackId: string | null, points: Position[], name: string, color: string) => {
-    if (!trackId) return;
-    
-    try {
-      // Hent eksisterende spor
-      const existingTracks = JSON.parse(localStorage.getItem('searchTracks') || '{}');
-      
-      // Finn aktivt skuddpar ID - bruk selectedTarget i søk-modus, lastPair i andre moduser
-      let activeShotPairId: string;
-      if (mode === 'søk' && hasSavedPairs && safeSavedPairs.length > 0) {
-        // I søk-modus: bruk det aktive treffpunktet
-        const treffpunkter = safeSavedPairs.filter(p => p.category === 'Treffpunkt');
-        const reversedTreffpunkter = treffpunkter.length > 0 ? [...treffpunkter].reverse() : [];
-        const selectedTarget = reversedTreffpunkter[adjustedSelectedTargetIndex];
-        activeShotPairId = selectedTarget?.id?.toString() || 'unknown';
-      } else {
-        // I andre moduser: bruk lastPair
-        activeShotPairId = lastPair?.id?.toString() || 'unknown';
-      }
-      
-      // Lagre nytt spor med timestamp og skuddpar info
-      const newTrack: SavedTrack = {
-        id: trackId,
-        points: points,
-        createdAt: new Date().toISOString(),
-        shotPairId: activeShotPairId,
-        mode: 'søk',
-        name: name,
-        color: color
-      };
-      
-      // Legg til i eksisterende spor (ikke overskriv)
-      if (!existingTracks[trackId]) {
-        existingTracks[trackId] = newTrack;
-        localStorage.setItem('searchTracks', JSON.stringify(existingTracks));
-        
-        // Oppdater state for å vise det nye sporet umiddelbart
-        setSavedTracks(prev => [...prev, newTrack]);
-
-        // Sync til server i bakgrunnen (best-effort)
-        syncTrackToServer(newTrack);
-      }
-    } catch (error) {
-      console.error('Feil ved lagring av spor:', error);
+  const getActiveShotPairId = () => {
+    if (mode === 'søk' && hasSavedPairs && safeSavedPairs.length > 0) {
+      const treffpunkter = safeSavedPairs.filter(p => p.category === 'Treffpunkt');
+      const reversedTreffpunkter = treffpunkter.length > 0 ? [...treffpunkter].reverse() : [];
+      const selectedTarget = reversedTreffpunkter[adjustedSelectedTargetIndex];
+      return selectedTarget?.id?.toString() || 'unknown';
     }
+    return lastPair?.id?.toString() || 'unknown';
   };
 
-  // Last alle lagrede spor fra localStorage
+  const applySearchData = (tracks: SavedTrack[], finds: SavedFind[], observations: SavedObservation[]) => {
+    const liveId = currentTrackingIdRef.current;
+    setSavedTracks(liveId ? tracks.filter((track) => track.id !== liveId) : tracks);
+    setSavedFinds(finds);
+    setSavedObservations(observations);
+    try {
+      localStorage.setItem('searchTracks', JSON.stringify(Object.fromEntries(tracks.map((track) => [track.id, track]))));
+      localStorage.setItem('searchFinds', JSON.stringify(Object.fromEntries(finds.map((find) => [find.id, find]))));
+      localStorage.setItem('searchObservations', JSON.stringify(Object.fromEntries(observations.map((obs) => [obs.id, obs]))));
+    } catch {}
+  };
+
+  const loadTeamSearchData = async () => {
+    if (!activeTeam) return;
+    const data = await fetchTeamSearchData(activeTeam);
+    applySearchData(data.tracks, data.finds, data.observations);
+    await fetchPosts();
+  };
+
+  const queueLiveTrackWrite = (task: () => Promise<unknown>) => {
+    liveTrackWriteRef.current = liveTrackWriteRef.current.then(task).catch((error) => {
+      console.error('Spor-skriving feilet:', error);
+    });
+    return liveTrackWriteRef.current;
+  };
+
+  const syncLiveTrack = async (trackId: string | null, points: Position[], extra?: { name?: string; color?: string }) => {
+    if (!activeTeam || !trackId) return;
+    await queueLiveTrackWrite(() => upsertTeamTrack(activeTeam, {
+      localId: trackId,
+      name: extra?.name,
+      color: extra?.color,
+      points,
+      shotPairId: getActiveShotPairId(),
+    }, 'PATCH'));
+  };
+
+  const saveTrackToTeam = async (trackId: string | null, points: Position[], name: string, color: string) => {
+    if (!trackId) return;
+    const newTrack: SavedTrack = {
+      id: trackId,
+      points,
+      createdAt: new Date().toISOString(),
+      shotPairId: getActiveShotPairId(),
+      mode: 'søk',
+      name,
+      color,
+    };
+    if (activeTeam) {
+      await liveTrackWriteRef.current;
+      await upsertTeamTrack(activeTeam, {
+        localId: trackId,
+        name,
+        color,
+        points,
+        shotPairId: newTrack.shotPairId,
+      }, 'PATCH');
+    }
+    setSavedTracks((prev) => [...prev.filter((track) => track.id !== trackId), newTrack]);
+  };
+
   const loadSavedTracks = (): SavedTrack[] => {
     try {
-      const savedTracks = JSON.parse(localStorage.getItem('searchTracks') || '{}');
-      const allTracks = Object.values(savedTracks) as SavedTrack[] || [];
-      return allTracks;
-    } catch (error) {
-      console.error('Feil ved lasting av lagrede spor:', error);
+      return Object.values(JSON.parse(localStorage.getItem('searchTracks') || '{}')) as SavedTrack[];
+    } catch {
       return [];
     }
   };
 
-  // Synkroniser team-data (kun hent data, ikke push)
   const syncTeamData = async () => {
     if (!activeTeam) return;
-    
     try {
-      console.log('Syncing team data for team:', activeTeam);
-      
-      const response = await fetch('/api/sync', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          teamId: activeTeam,
-          localData: null // Only pull, don't push
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        console.error('Sync failed:', errorData.error || response.statusText);
-        return;
-      }
-
-      const syncResults = await response.json();
-      console.log('Sync results:', syncResults);
-      
-      // Load server data into localStorage (clean slate)
-      if (syncResults.pulled) {
-        // Load tracks for this team
-        if (syncResults.pulled.tracks) {
-          const teamTracks: { [key: string]: SavedTrack } = {};
-          
-          syncResults.pulled.tracks.forEach((track: any) => {
-            const trackId = track.local_id; // Always use local_id as our local ID
-            if (!trackId) {
-              console.warn('Track missing local_id:', track);
-              return;
-            }
-            teamTracks[trackId] = {
-              id: trackId,
-              name: track.name,
-              color: track.color,
-              shotPairId: track.shot_pair_id || 'unknown',
-              points: track.points ? JSON.parse(track.points) : [], // Parse points from JSON
-              createdAt: new Date().toISOString(),
-              mode: 'søk'
-            };
-          });
-          
-          localStorage.setItem('searchTracks', JSON.stringify(teamTracks));
-          console.log('Loaded tracks for team:', syncResults.pulled.tracks.length);
-        }
-
-        // Load finds for this team
-        if (syncResults.pulled.finds) {
-          const teamFinds: { [key: string]: SavedFind } = {};
-          
-          syncResults.pulled.finds.forEach((find: any) => {
-            const findId = find.local_id; // Always use local_id as our local ID
-            if (!findId) {
-              console.warn('Find missing local_id:', find);
-              return;
-            }
-            teamFinds[findId] = {
-              id: findId,
-              name: find.name,
-              position: find.position ? JSON.parse(find.position) : { lat: 0, lng: 0 },
-              shotPairId: find.shot_pair_id || 'unknown',
-              color: find.color || '#10b981',
-              createdAt: new Date().toISOString(),
-              mode: 'søk'
-            };
-          });
-          
-          localStorage.setItem('searchFinds', JSON.stringify(teamFinds));
-          console.log('Loaded finds for team:', syncResults.pulled.finds.length);
-        }
-
-        // Load observations for this team
-        if (syncResults.pulled.observations) {
-          const teamObservations: { [key: string]: SavedObservation } = {};
-          
-          syncResults.pulled.observations.forEach((obs: any) => {
-            const obsId = obs.local_id; // Always use local_id as our local ID
-            if (!obsId) {
-              console.warn('Observation missing local_id:', obs);
-              return;
-            }
-            teamObservations[obsId] = {
-              id: obsId,
-              name: obs.name,
-              position: obs.position ? JSON.parse(obs.position) : { lat: 0, lng: 0 },
-              shotPairId: obs.shot_pair_id || 'unknown',
-              color: obs.color || '#F59E0B',
-              createdAt: new Date().toISOString(),
-              mode: 'søk'
-            };
-          });
-          
-          localStorage.setItem('searchObservations', JSON.stringify(teamObservations));
-          console.log('Loaded observations for team:', syncResults.pulled.observations.length);
-        }
-
-        // Posts are handled by fetchPosts() which is called separately
-        console.log('Loaded posts for team:', syncResults.pulled.posts?.length || 0);
-      }
-
-      // Trigger re-load of data using existing logic
-      if (mode === 'søk') {
-        const tracks = loadSavedTracks();
-        setSavedTracks(tracks);
-        console.log('Set savedTracks:', tracks.length);
-        
-        const finds = loadSavedFinds();
-        setSavedFinds(finds);
-        console.log('Set savedFinds:', finds.length);
-        
-        const observations = loadSavedObservations();
-        setSavedObservations(observations);
-        console.log('Set savedObservations:', observations.length);
-      }
-
-      // Fetch posts for the active team
-      fetchPosts();
-
-      console.log('Team data synced successfully for team:', activeTeam);
+      await loadTeamSearchData();
     } catch (error) {
       console.error('Error syncing team data:', error);
     }
   };
 
-  // Auto-sync without user confirmation
-  const autoSyncData = async () => {
-    if (!activeTeam) {
-      console.log('No active team for auto-sync');
-      return;
-    }
-    
-    try {
-      // Prepare local data for sync (read directly from localStorage to get latest data)
-      const localTracks = JSON.parse(localStorage.getItem('searchTracks') || '{}');
-      const localFinds = JSON.parse(localStorage.getItem('searchFinds') || '{}');
-      const localObservations = JSON.parse(localStorage.getItem('searchObservations') || '{}');
-      
-      const localData = {
-        tracks: Object.values(localTracks).map((track: any) => ({ ...track, id: track.id, points: track.points, shotPairId: track.shotPairId })),
-        finds: Object.values(localFinds).map((find: any) => ({ ...find, id: find.id, shotPairId: find.shotPairId, position: find.position, color: find.color })),
-        observations: Object.values(localObservations).map((obs: any) => ({ ...obs, id: obs.id, position: obs.position, color: obs.color })),
-        // Skuddplasser går via /api/shot-places, ikke sync-push
-        posts: [] as any[],
-      };
-      
-      console.log('Auto-sync sending data:', {
-        teamId: activeTeam,
-        tracksCount: localData.tracks.length,
-        findsCount: localData.finds.length,
-        observationsCount: localData.observations.length,
-        postsCount: localData.posts.length,
-        tracks: localData.tracks.map(track => ({
-          id: track.id,
-          name: track.name,
-          pointsCount: track.points?.length || 0
-        }))
-      });
-
-      const response = await fetch('/api/sync', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          teamId: activeTeam,
-          localData: localData
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        console.error('Auto-sync failed:', errorData.error || response.statusText);
-        return;
-      }
-
-      const syncResults = await response.json();
-      console.log('Auto-sync results:', syncResults);
-      
-      // Load server data into localStorage (clean slate)
-      if (syncResults.pulled) {
-        // Load tracks for this team
-        if (syncResults.pulled.tracks) {
-          const teamTracks: { [key: string]: SavedTrack } = {};
-          
-          syncResults.pulled.tracks.forEach((track: any) => {
-            const trackId = track.local_id; // Always use local_id as our local ID
-            if (!trackId) {
-              console.warn('Track missing local_id:', track);
-              return;
-            }
-            teamTracks[trackId] = {
-              id: trackId,
-              name: track.name,
-              color: track.color,
-              shotPairId: track.shot_pair_id || 'unknown',
-              points: track.points ? JSON.parse(track.points) : [], // Parse points from JSON
-              createdAt: new Date().toISOString(),
-              mode: 'søk'
-            };
-          });
-          
-          localStorage.setItem('searchTracks', JSON.stringify(teamTracks));
-          console.log('Auto-synced tracks for team:', syncResults.pulled.tracks.length);
-        }
-
-        // Load finds for this team
-        if (syncResults.pulled.finds) {
-          const teamFinds: { [key: string]: SavedFind } = {};
-          
-          syncResults.pulled.finds.forEach((find: any) => {
-            const findId = find.local_id; // Always use local_id as our local ID
-            if (!findId) {
-              console.warn('Find missing local_id:', find);
-              return;
-            }
-            teamFinds[findId] = {
-              id: findId,
-              name: find.name,
-              position: find.position ? JSON.parse(find.position) : { lat: 0, lng: 0 },
-              shotPairId: find.shot_pair_id || 'unknown',
-              color: find.color || '#10b981',
-              createdAt: new Date().toISOString(),
-              mode: 'søk'
-            };
-          });
-          
-          localStorage.setItem('searchFinds', JSON.stringify(teamFinds));
-          console.log('Auto-synced finds for team:', syncResults.pulled.finds.length);
-        }
-
-        // Load observations for this team
-        if (syncResults.pulled.observations) {
-          const teamObservations: { [key: string]: SavedObservation } = {};
-          
-          syncResults.pulled.observations.forEach((obs: any) => {
-            const obsId = obs.local_id; // Always use local_id as our local ID
-            if (!obsId) {
-              console.warn('Observation missing local_id:', obs);
-              return;
-            }
-            teamObservations[obsId] = {
-              id: obsId,
-              name: obs.name,
-              position: obs.position ? JSON.parse(obs.position) : { lat: 0, lng: 0 },
-              shotPairId: obs.shot_pair_id || 'unknown',
-              color: obs.color || '#F59E0B',
-              createdAt: new Date().toISOString(),
-              mode: 'søk'
-            };
-          });
-          
-          localStorage.setItem('searchObservations', JSON.stringify(teamObservations));
-          console.log('Auto-synced observations for team:', syncResults.pulled.observations.length);
-        }
-
-        // Posts are handled by fetchPosts() which is called separately
-        console.log('Auto-synced posts for team:', syncResults.pulled.posts?.length || 0);
-      }
-
-      // Trigger re-load of data using existing logic
-      if (mode === 'søk') {
-        const tracks = loadSavedTracks();
-        setSavedTracks(tracks);
-        
-        const finds = loadSavedFinds();
-        setSavedFinds(finds);
-        
-        const observations = loadSavedObservations();
-        setSavedObservations(observations);
-      }
-
-      // Fetch posts for the active team
-      fetchPosts();
-
-      console.log('Auto-sync completed successfully for team:', activeTeam);
-    } catch (error) {
-      console.error('Auto-sync error:', error);
-    }
-  };
-
-  // Håndter synkronisering med database (push + pull)
   const handleSyncData = async () => {
     if (!activeTeam) {
       alert('Ingen aktivt team valgt. Vennligst velg et team i admin-menyen først.');
       return;
     }
-    
-    const shouldSync = window.confirm('Synkroniser alle data med teamet? Dette vil pushe dine lokale data og hente alle team-data.');
-    if (shouldSync) {
-      try {
-        // Prepare local data for sync
-        const localData = {
-          tracks: (savedTracks || []).map(track => ({ ...track, id: track.id, points: track.points, shotPairId: track.shotPairId })),
-          finds: (savedFinds || []).map(find => ({ ...find, id: find.id, shotPairId: find.shotPairId, position: find.position, color: find.color })),
-          observations: (savedObservations || []).map(obs => ({ ...obs, id: obs.id, position: obs.position, color: obs.color })),
-          // Posts pushes disabled here to avoid duplicating already auto-uploaded pairs
-          posts: []
-        };
-
-        const response = await fetch('/api/sync', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            teamId: activeTeam,
-            localData: localData
-          }),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-          throw new Error(`Sync failed: ${errorData.error || response.statusText}`);
-        }
-
-        const syncResults = await response.json();
-        console.log('Sync results:', syncResults);
-        
-        // Load server data into localStorage (clean slate)
-        if (syncResults.pulled) {
-          // Load tracks for this team
-          if (syncResults.pulled.tracks) {
-            const teamTracks: { [key: string]: SavedTrack } = {};
-            
-            syncResults.pulled.tracks.forEach((track: any) => {
-              const trackId = track.local_id || track.id;
-              teamTracks[trackId] = {
-                id: trackId,
-                name: track.name,
-                color: track.color,
-                shotPairId: track.shot_pair_id || 'unknown',
-                points: track.points ? JSON.parse(track.points) : [], // Parse points from JSON
-                createdAt: new Date().toISOString(),
-                mode: 'søk'
-              };
-            });
-            
-            localStorage.setItem('searchTracks', JSON.stringify(teamTracks));
-            console.log('Loaded tracks for team:', syncResults.pulled.tracks.length);
+    if (!window.confirm('Hent siste lag-data fra databasen?')) return;
+    try {
+      await loadTeamSearchData();
+      let huntingAreasCount = 0;
+      if (onRefreshHuntingAreas) {
+        onRefreshHuntingAreas();
+        try {
+          const huntingAreasResponse = await fetch(`/api/hunting-areas?teamId=${activeTeam}`);
+          if (huntingAreasResponse.ok) {
+            const areas = await huntingAreasResponse.json();
+            huntingAreasCount = Array.isArray(areas) ? areas.length : 0;
           }
-
-          // Load finds for this team
-          if (syncResults.pulled.finds) {
-            const teamFinds: { [key: string]: SavedFind } = {};
-            
-            syncResults.pulled.finds.forEach((find: any) => {
-              const findId = find.local_id || find.id;
-              teamFinds[findId] = {
-                id: findId,
-                name: find.name,
-                position: find.position ? JSON.parse(find.position) : { lat: 0, lng: 0 },
-                shotPairId: find.shot_pair_id || 'unknown',
-                color: find.color || '#10b981',
-                createdAt: new Date().toISOString(),
-                mode: 'søk'
-              };
-            });
-            
-            localStorage.setItem('searchFinds', JSON.stringify(teamFinds));
-            console.log('Loaded finds for team:', syncResults.pulled.finds.length);
-          }
-
-          // Load observations for this team
-          if (syncResults.pulled.observations) {
-            const teamObservations: { [key: string]: SavedObservation } = {};
-            
-            syncResults.pulled.observations.forEach((obs: any) => {
-              const obsId = obs.local_id || obs.id;
-              teamObservations[obsId] = {
-                id: obsId,
-                name: obs.name,
-                position: obs.position ? JSON.parse(obs.position) : { lat: 0, lng: 0 },
-                shotPairId: obs.shot_pair_id || 'unknown',
-                color: obs.color || '#F59E0B',
-                createdAt: new Date().toISOString(),
-                mode: 'søk'
-              };
-            });
-            
-            localStorage.setItem('searchObservations', JSON.stringify(teamObservations));
-            console.log('Loaded observations for team:', syncResults.pulled.observations.length);
-          }
-
-          // Posts are handled by fetchPosts() which is called separately
-          console.log('Loaded posts for team:', syncResults.pulled.posts?.length || 0);
-        }
-
-        // Trigger re-load of data using existing logic
-        if (mode === 'søk') {
-          const tracks = loadSavedTracks();
-          setSavedTracks(tracks);
-          console.log('Set savedTracks:', tracks.length);
-          
-          const finds = loadSavedFinds();
-          setSavedFinds(finds);
-          console.log('Set savedFinds:', finds.length);
-          
-          const observations = loadSavedObservations();
-          setSavedObservations(observations);
-          console.log('Set savedObservations:', observations.length);
-        }
-
-        // Fetch posts for the active team
-        fetchPosts();
-        
-        // Refresh hunting areas and get count
-        let huntingAreasCount = 0;
-        if (onRefreshHuntingAreas) {
-          onRefreshHuntingAreas();
-          // Also fetch count directly for sync message
-          try {
-            const huntingAreasResponse = await fetch(`/api/hunting-areas?teamId=${activeTeam}`);
-            if (huntingAreasResponse.ok) {
-              const areas = await huntingAreasResponse.json();
-              huntingAreasCount = areas.length;
-            }
-          } catch (error) {
-            console.error('Error fetching hunting areas count:', error);
-          }
-        }
-
-        // Show sync results: only count pulled (downloaded) items
-        const pullMessage = [];
-        if (syncResults.pulled.tracks.length > 0) pullMessage.push(`${syncResults.pulled.tracks.length} spor`);
-        if (syncResults.pulled.finds.length > 0) pullMessage.push(`${syncResults.pulled.finds.length} funn`);
-        if (syncResults.pulled.observations.length > 0) pullMessage.push(`${syncResults.pulled.observations.length} observasjoner`);
-        if (syncResults.pulled.posts.length > 0) pullMessage.push(`${syncResults.pulled.posts.length} skuddpar`);
-        if (huntingAreasCount > 0) pullMessage.push(`${huntingAreasCount} jaktfelt`);
-
-        let message = 'Synkronisering fullført!';
-        if (pullMessage.length > 0) message += `\nHentet: ${pullMessage.join(', ')}`;
-        if (syncResults.errors.length > 0) {
-          message += `\nFeil: ${syncResults.errors.length}`;
-          // Vis de faktiske feilmeldingene for feilsøking
-          const details = syncResults.errors.slice(0, 10).join('\n');
-          if (details) message += `\n\nFeilmeldinger:\n${details}`;
-        }
-
-        alert(message);
-      } catch (error) {
-        console.error('Error syncing data:', error);
-        alert('Feil ved synkronisering: ' + (error as Error).message);
+        } catch {}
       }
+      alert(huntingAreasCount > 0 ? `Lag-data oppdatert (${huntingAreasCount} jaktfelt).` : 'Lag-data oppdatert.');
+    } catch (error) {
+      console.error('Error syncing data:', error);
+      alert('Feil ved synkronisering: ' + (error as Error).message);
     }
   };
 
@@ -2130,237 +1735,151 @@ export default function MapComponent({
     }
   }, [onRegisterCalibration]);
 
-  // Håndter lagring av spor fra dialog
   const handleSaveTrackFromDialog = () => {
     let finalTrackName = trackName.trim();
-    
-    // Legg til DTG hvis checkbox er på
     if (trackIncludeDTG) {
       const now = new Date();
       const date = now.toLocaleDateString('nb-NO', { day: '2-digit', month: '2-digit' });
       const time = now.toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit', hour12: false });
       const dtg = `${date} ${time}`;
-      
-      if (finalTrackName) {
-        finalTrackName = `${finalTrackName} - ${dtg}`;
-      } else {
-        finalTrackName = dtg;
-      }
+      finalTrackName = finalTrackName ? `${finalTrackName} - ${dtg}` : dtg;
     }
-    
     if (!finalTrackName) {
       alert('Vennligst skriv inn et navn eller aktiver "Legg til DTG"');
       return;
     }
-    
-    // Sjekk at spor har punkter
     const pointsToSave = trackingPoints || [];
     if (pointsToSave.length === 0) {
       alert('Spor har ingen punkter. Start tracking og beveg deg på kartet før du lagrer.');
       return;
     }
-    
-    saveTrackToLocalStorage(currentTrackingId, pointsToSave, finalTrackName, trackColor);
-    console.log('Spor lagret til localStorage:', { 
-      id: currentTrackingId, 
-      name: finalTrackName, 
-      color: trackColor, 
-      points: pointsToSave 
+    void saveTrackToTeam(currentTrackingId, pointsToSave, finalTrackName, trackColor).catch((error) => {
+      console.error('Feil ved lagring av spor:', error);
+      alert('Feil ved lagring av spor');
     });
-    
-    // Automatically sync with database
-    if (activeTeam) {
-      console.log('Auto-syncing track to database for team:', activeTeam);
-      autoSyncData();
-    }
-    
-    // Reset dialog state
     setShowSaveTrackDialog(false);
     setTrackName('');
     setTrackColor('#EAB308');
     setTrackIncludeDTG(true);
     onTrackingPointsChange?.([]);
+    currentTrackingIdRef.current = null;
     setCurrentTrackingId(null);
   };
 
-  // Avbryt lagring av spor
+  const discardLiveTrack = (trackId: string | null) => {
+    if (activeTeam && trackId) {
+      void deleteTeamItem('tracks', activeTeam, trackId).catch(() => {});
+    }
+    onTrackingPointsChange?.([]);
+    currentTrackingIdRef.current = null;
+    setCurrentTrackingId(null);
+  };
+
   const handleCancelSaveTrack = () => {
     setShowSaveTrackDialog(false);
     setTrackName('');
     setTrackColor('#EAB308');
     setTrackIncludeDTG(true);
-    onTrackingPointsChange?.([]);
-    setCurrentTrackingId(null);
+    discardLiveTrack(currentTrackingId);
   };
 
-  // Aktiver funn-modus - bruk nåværende posisjon (rød prikk i midten)
   const toggleFindingMode = () => {
-    console.log('toggleFindingMode called, using current position');
     if (currentPosition) {
-      // Åpne direkte "Lagre funn"-dialog uten mellomdialog
-        console.log('Opening find dialog for current position...');
-        setNewFindPosition(currentPosition);
-      // Tomt navn som ønsket, DTG av/på styres av avkryssing (default på)
+      setNewFindPosition(currentPosition);
       setFindName('');
       setFindIncludeDTG(true);
-        setShowFindDialog(true);
+      setShowFindDialog(true);
     } else {
       alert('Kunne ikke finne din nåværende posisjon');
     }
   };
 
-  // Lagre funn til localStorage
-  const saveFindToLocalStorage = (position: Position, name: string, color: string) => {
-    try {
-      // Hent eksisterende funn
-      const existingFinds = JSON.parse(localStorage.getItem('searchFinds') || '{}');
-      
-      // Finn aktivt skuddpar ID - bruk selectedTarget i søk-modus, lastPair i andre moduser
-      let activeShotPairId: string;
-      if (mode === 'søk' && hasSavedPairs && safeSavedPairs.length > 0) {
-        // I søk-modus: bruk det aktive treffpunktet
-        const treffpunkter = safeSavedPairs.filter(p => p.category === 'Treffpunkt');
-        const reversedTreffpunkter = treffpunkter.length > 0 ? [...treffpunkter].reverse() : [];
-        const selectedTarget = reversedTreffpunkter[adjustedSelectedTargetIndex];
-        activeShotPairId = selectedTarget?.id?.toString() || 'unknown';
-      } else {
-        // I andre moduser: bruk lastPair
-        activeShotPairId = lastPair?.id?.toString() || 'unknown';
+  const saveFindToTeam = async (position: Position, name: string, color: string) => {
+    const newFind: SavedFind = {
+      id: `find_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`,
+      position,
+      createdAt: new Date().toISOString(),
+      shotPairId: getActiveShotPairId(),
+      mode: 'søk',
+      name,
+      color,
+    };
+    setSavedFinds((prev) => [...prev, newFind]);
+    if (activeTeam) {
+      try {
+        await saveTeamFind(activeTeam, newFind);
+      } catch (error) {
+        console.error('Feil ved lagring av funn:', error);
+        alert('Funn er synlig her, men ble ikke lagret til laget.');
       }
-      
-      // Generer unik ID for funnet
-      const findId = `find_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      
-      // Lagre nytt funn
-      const newFind: SavedFind = {
-        id: findId,
-        position: position,
-        createdAt: new Date().toISOString(),
-        shotPairId: activeShotPairId,
-        mode: 'søk',
-        name: name,
-        color: color
-      };
-      
-      // Legg til i eksisterende funn
-      existingFinds[findId] = newFind;
-      localStorage.setItem('searchFinds', JSON.stringify(existingFinds));
-      
-      // Oppdater state for å vise det nye funnet umiddelbart
-      setSavedFinds(prev => [...prev, newFind]);
-      
-      console.log('Funn lagret:', newFind);
-
-      // Sync til server i bakgrunnen (best-effort)
-      syncFindToServer(newFind);
-    } catch (error) {
-      console.error('Feil ved lagring av funn:', error);
     }
   };
 
-  // Last alle lagrede funn fra localStorage
   const loadSavedFinds = (): SavedFind[] => {
     try {
-      const savedFinds = JSON.parse(localStorage.getItem('searchFinds') || '{}');
-      const allFinds = Object.values(savedFinds) as SavedFind[] || [];
-      return allFinds;
-    } catch (error) {
-      console.error('Feil ved lasting av lagrede funn:', error);
+      return Object.values(JSON.parse(localStorage.getItem('searchFinds') || '{}')) as SavedFind[];
+    } catch {
       return [];
     }
   };
 
-  // Last alle lagrede observasjoner fra localStorage
   const loadSavedObservations = (): SavedObservation[] => {
     try {
-      const savedObservations = JSON.parse(localStorage.getItem('searchObservations') || '{}');
-      const allObservations = Object.values(savedObservations) as SavedObservation[] || [];
-      
-      // Observasjoner er frie og vises alltid (ikke filtrert på skuddpar)
-      return allObservations;
-    } catch (error) {
-      console.error('Feil ved lasting av lagrede observasjoner:', error);
+      return Object.values(JSON.parse(localStorage.getItem('searchObservations') || '{}')) as SavedObservation[];
+    } catch {
       return [];
     }
   };
 
-  // --- Delete helpers ---
-  const handleDeleteFind = (findId: string) => {
-    try {
-      // DB delete (best-effort)
-      if (activeTeam) {
-        fetch('/api/team-data/finds', {
-          method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ teamId: activeTeam, localId: findId })
-        }).catch(() => {});
+  const handleDeleteFind = async (findId: string) => {
+    if (activeTeam) {
+      try {
+        await deleteTeamItem('finds', activeTeam, findId);
+      } catch (error) {
+        console.error('Sletting av funn feilet:', error);
+        alert('Kunne ikke slette funn');
+        return;
       }
-      const existingFinds = JSON.parse(localStorage.getItem('searchFinds') || '{}');
-      if (existingFinds[findId]) {
-        delete existingFinds[findId];
-        localStorage.setItem('searchFinds', JSON.stringify(existingFinds));
-      }
-      setSavedFinds(prev => prev.filter(f => f.id !== findId));
-    } catch (e) {
-      console.error('Sletting av funn feilet:', e);
     }
+    setSavedFinds((prev) => prev.filter((find) => find.id !== findId));
   };
 
-  const handleDeleteObservation = (observationId: string) => {
-    try {
-      // DB delete (best-effort)
-      if (activeTeam) {
-        fetch('/api/team-data/observations', {
-          method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ teamId: activeTeam, localId: observationId })
-        }).catch(() => {});
+  const handleDeleteObservation = async (observationId: string) => {
+    if (activeTeam) {
+      try {
+        await deleteTeamItem('observations', activeTeam, observationId);
+      } catch (error) {
+        console.error('Sletting av observasjon feilet:', error);
+        alert('Kunne ikke slette observasjon');
+        return;
       }
-      const existing = JSON.parse(localStorage.getItem('searchObservations') || '{}');
-      if (existing[observationId]) {
-        delete existing[observationId];
-        localStorage.setItem('searchObservations', JSON.stringify(existing));
-      }
-      setSavedObservations(prev => prev.filter(o => o.id !== observationId));
-    } catch (e) {
-      console.error('Sletting av observasjon feilet:', e);
     }
+    setSavedObservations((prev) => prev.filter((obs) => obs.id !== observationId));
   };
 
-  const handleDeleteTrack = (trackId: string) => {
-    try {
-      // DB delete (best-effort)
-      if (activeTeam) {
-        fetch('/api/team-data/tracks', {
-          method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ teamId: activeTeam, localId: trackId })
-        }).catch(() => {});
+  const handleDeleteTrack = async (trackId: string) => {
+    if (activeTeam) {
+      try {
+        await deleteTeamItem('tracks', activeTeam, trackId);
+      } catch (error) {
+        console.error('Sletting av spor feilet:', error);
+        alert('Kunne ikke slette spor');
+        return;
       }
-      const existing = JSON.parse(localStorage.getItem('searchTracks') || '{}');
-      if (existing[trackId]) {
-        delete existing[trackId];
-        localStorage.setItem('searchTracks', JSON.stringify(existing));
-      }
-      setSavedTracks(prev => prev.filter(t => t.id !== trackId));
-    } catch (e) {
-      console.error('Sletting av spor feilet:', e);
     }
+    setSavedTracks((prev) => prev.filter((track) => track.id !== trackId));
   };
 
   const handleDeleteShotPair = async (clickedPairId: number) => {
     if (!window.confirm('Er du sikker på at du vil slette denne skuddplassen?')) return;
-
     try {
       const clickedPair = savedPairs.find((p) => p.id === clickedPairId);
       if (!clickedPair) {
         alert('Kunne ikke finne skuddplassen');
         return;
       }
-
       const clickedLocalId = clickedPair.pair_local_id || null;
       let postIds: number[] = [clickedPairId];
-
       if (activeTeam) {
         const response = await fetch('/api/shot-places', {
           method: 'DELETE',
@@ -2375,7 +1894,6 @@ export default function MapComponent({
         const result = await response.json();
         if (Array.isArray(result.deleted)) postIds = result.deleted;
       }
-
       setSavedPairs((prev) =>
         prev.filter((pair) => {
           if (postIds.includes(pair.id)) return false;
@@ -2389,88 +1907,9 @@ export default function MapComponent({
       setSavedFinds((prev) =>
         prev.filter((find) => !find.shotPairId || !postIds.includes(parseInt(find.shotPairId, 10)))
       );
-
-      try {
-        const tsLocalIds: string[] = JSON.parse(localStorage.getItem('deleted_pair_local_ids') || '[]');
-        if (clickedLocalId && !tsLocalIds.includes(String(clickedLocalId))) {
-          tsLocalIds.push(String(clickedLocalId));
-          localStorage.setItem('deleted_pair_local_ids', JSON.stringify(tsLocalIds));
-        }
-        const tsPostIds: number[] = JSON.parse(localStorage.getItem('deleted_post_ids') || '[]');
-        localStorage.setItem('deleted_post_ids', JSON.stringify(Array.from(new Set([...tsPostIds, ...postIds]))));
-        const tsSigs: string[] = JSON.parse(localStorage.getItem('deleted_pair_signatures') || '[]');
-        const sig = pairSignature(clickedPair);
-        if (sig && !tsSigs.includes(sig)) {
-          tsSigs.push(sig);
-          localStorage.setItem('deleted_pair_signatures', JSON.stringify(tsSigs));
-        }
-      } catch {}
-
-      alert('Skuddplass slettet!');
     } catch (error) {
       console.error('Feil ved sletting av skuddplass:', error);
       alert('Feil ved sletting av skuddplass');
-    }
-  };
-
-  // --- Server sync helpers ---
-  const syncObservationToServer = async (position: Position, name: string, color: string, localId?: string) => {
-    try {
-      await fetch('/api/team-data/observations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          teamId: activeTeam,
-          name,
-          lat: position.lat,
-          lng: position.lng,
-          color,
-          category: 'observation',
-          localId
-        })
-      });
-    } catch (e) {
-      console.error('Observasjon sync feilet:', e);
-    }
-  };
-
-  const syncFindToServer = async (find: SavedFind) => {
-    try {
-      await fetch('/api/team-data/finds', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          teamId: activeTeam,
-          name: find.name,
-          localId: find.id,
-          position: find.position,
-          color: find.color,
-          shotPairId: find.shotPairId,
-          mode: find.mode
-        })
-      });
-    } catch (e) {
-      console.error('Funn sync feilet:', e);
-    }
-  };
-
-  const syncTrackToServer = async (track: SavedTrack) => {
-    try {
-      await fetch('/api/team-data/tracks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          teamId: activeTeam,
-          name: track.name,
-          color: track.color,
-          points: track.points,
-          shotPairId: track.shotPairId,
-          mode: track.mode,
-          localId: track.id
-        })
-      });
-    } catch (e) {
-      console.error('Spor sync feilet:', e);
     }
   };
 
@@ -2497,7 +1936,7 @@ export default function MapComponent({
         return;
       }
 
-      saveFindToLocalStorage(newFindPosition, finalFindName, findColor);
+      void saveFindToTeam(newFindPosition, finalFindName, findColor);
       setShowFindDialog(false);
       setNewFindPosition(null);
       setFindName('');
@@ -2530,42 +1969,24 @@ export default function MapComponent({
     }
   };
   
-  // Lagre observasjon til localStorage
-  const saveObservationToLocalStorage = (position: Position, name: string, color: string) => {
-    try {
-      // Hent eksisterende observasjoner
-      const existingObservations = JSON.parse(localStorage.getItem('searchObservations') || '{}');
-      
-      // Observasjoner er frie og ikke koblet til skuddpar
-      const activeShotPairId = 'free';
-      
-      // Generer unik ID for observasjonen
-      const observationId = `observation_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      
-      // Lagre ny observasjon
-      const newObservation: SavedObservation = {
-        id: observationId,
-        position: position,
-        createdAt: new Date().toISOString(),
-        shotPairId: activeShotPairId,
-        mode: 'søk',
-        name: name,
-        color: color
-      };
-      
-      // Legg til i eksisterende observasjoner
-      existingObservations[observationId] = newObservation;
-      localStorage.setItem('searchObservations', JSON.stringify(existingObservations));
-      
-      // Oppdater state for å vise den nye observasjonen umiddelbart
-      setSavedObservations(prev => [...prev, newObservation]);
-      
-      console.log('Observasjon lagret:', newObservation);
-
-      // Sync til server i bakgrunnen (best-effort)
-      syncObservationToServer(position, name, color, observationId);
-    } catch (error) {
-      console.error('Feil ved lagring av observasjon:', error);
+  const saveObservationToTeam = async (position: Position, name: string, color: string) => {
+    const newObservation: SavedObservation = {
+      id: `observation_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`,
+      position,
+      createdAt: new Date().toISOString(),
+      shotPairId: 'free',
+      mode: 'søk',
+      name,
+      color,
+    };
+    setSavedObservations((prev) => [...prev, newObservation]);
+    if (activeTeam) {
+      try {
+        await saveTeamObservation(activeTeam, newObservation);
+      } catch (error) {
+        console.error('Feil ved lagring av observasjon:', error);
+        alert('Observasjon er synlig her, men ble ikke lagret til laget.');
+      }
     }
   };
   
@@ -2594,9 +2015,7 @@ export default function MapComponent({
         return;
       }
       
-      saveObservationToLocalStorage(positionToSave, finalObservationName, observationColor);
-      // Sync til server i bakgrunnen (best-effort)
-      syncObservationToServer(positionToSave, finalObservationName, observationColor);
+      void saveObservationToTeam(positionToSave, finalObservationName, observationColor);
       setShowObservationDialog(false);
       setObservationName('');
       setObservationColor('#FF6B35');
@@ -2793,22 +2212,7 @@ export default function MapComponent({
         throw new Error('Failed to fetch shot places');
       }
       const data = await response.json();
-      const uniquePairs: PointPair[] = Array.isArray(data) ? data : [];
-
-      let filtered = uniquePairs;
-      try {
-        const tsLocalIds: string[] = JSON.parse(localStorage.getItem('deleted_pair_local_ids') || '[]');
-        const tsPostIds: number[] = JSON.parse(localStorage.getItem('deleted_post_ids') || '[]');
-        const tsSigs: string[] = JSON.parse(localStorage.getItem('deleted_pair_signatures') || '[]');
-        filtered = uniquePairs.filter((p: PointPair) => {
-          if (p.pair_local_id && tsLocalIds.includes(String(p.pair_local_id))) return false;
-          if (p.id != null && tsPostIds.includes(Number(p.id))) return false;
-          const sig = pairSignature(p);
-          if (sig && tsSigs.includes(sig)) return false;
-          return true;
-        });
-      } catch {}
-      setSavedPairs(filtered);
+      setSavedPairs(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error fetching shot places:', error);
       alert('Kunne ikke hente skuddplasser fra backend.');
@@ -2817,36 +2221,48 @@ export default function MapComponent({
 
   // Posts will be fetched when activeTeam is set
 
-  // Synkroniser team-data når activeTeam endres
+  useEffect(() => {
+    currentTrackingIdRef.current = currentTrackingId;
+  }, [currentTrackingId]);
+
   useEffect(() => {
     if (activeTeam) {
-      console.log('Active team changed, syncing team data:', activeTeam);
-      
-      // Clear localStorage for clean slate
-      localStorage.removeItem('searchTracks');
-      localStorage.removeItem('searchFinds');
-      localStorage.removeItem('searchObservations');
-      
-      // Clear local state
       setSavedTracks([]);
       setSavedFinds([]);
       setSavedObservations([]);
       setSavedPairs([]);
-      
-      // Sync team data (this will populate localStorage and state with server data)
-      syncTeamData();
+      void syncTeamData();
     } else {
-      // Clear all data when no team is selected
-      console.log('No active team, clearing all data');
-      localStorage.removeItem('searchTracks');
-      localStorage.removeItem('searchFinds');
-      localStorage.removeItem('searchObservations');
       setSavedTracks([]);
       setSavedFinds([]);
       setSavedObservations([]);
       setSavedPairs([]);
     }
   }, [activeTeam]);
+
+  useEffect(() => {
+    if (!isTracking || !activeTeam || !currentTrackingId || !trackingPoints?.length) return;
+    if (liveTrackTimerRef.current) window.clearTimeout(liveTrackTimerRef.current);
+    liveTrackTimerRef.current = window.setTimeout(() => {
+      void syncLiveTrack(currentTrackingId, trackingPoints).catch((error) => {
+        console.error('Live spor-oppdatering feilet:', error);
+      });
+    }, 4000);
+    return () => {
+      if (liveTrackTimerRef.current) window.clearTimeout(liveTrackTimerRef.current);
+    };
+  }, [trackingPoints, isTracking, activeTeam, currentTrackingId]);
+
+  useEffect(() => {
+    if (!activeTeam || (mode !== 'søk' && !isTracking)) return;
+    const tick = () => {
+      void fetchTeamSearchData(activeTeam)
+        .then((data) => applySearchData(data.tracks, data.finds, data.observations))
+        .catch((error) => console.error('Live lag-oppdatering feilet:', error));
+    };
+    const id = window.setInterval(tick, 8000);
+    return () => window.clearInterval(id);
+  }, [activeTeam, mode, isTracking]);
 
   // Gamle state-variabler fjernet - ikke lenger nødvendige med forenklet workflow
 
@@ -3120,18 +2536,12 @@ export default function MapComponent({
         : reversedPairs[adjustedSelectedTargetIndex]) // Bruk justert index i søk-modus
     : undefined;
 
-  // Last lagrede spor når komponenten mountes og når modus endres
   useEffect(() => {
-    // Last data i alle modus (aware, track og søk)
-    const tracks = loadSavedTracks();
-    setSavedTracks(tracks);
-    
-    const finds = loadSavedFinds();
-    setSavedFinds(finds);
-    
-    const observations = loadSavedObservations();
-    setSavedObservations(observations);
-  }, [mode, adjustedSelectedTargetIndex, lastPair?.id, showAllTracksAndFinds]); // Reager på endringer i modus, valgt treffpunkt, skuddpar og visningsmodus
+    if (activeTeam) return;
+    setSavedTracks(loadSavedTracks());
+    setSavedFinds(loadSavedFinds());
+    setSavedObservations(loadSavedObservations());
+  }, [activeTeam]);
 
   // (duplikat fjernet) Slettefunksjon definert tidligere i filen
 

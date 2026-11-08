@@ -1,200 +1,90 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from '@/lib/db/supabaseAdmin';
+import { HttpError, jsonError, requireTeamAccess } from '@/lib/db/access';
+import { mapRows, parseCoord, rowToFind } from '@/lib/db/searchData';
 
-function getSupabaseAdmin() {
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    throw new Error('Missing Supabase environment variables');
-  }
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
-  );
-}
+export const dynamic = 'force-dynamic';
 
-// GET - Hent finds for aktivt team
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    
-    const userId = session?.user?.googleId || session?.user?.email;
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const teamId = request.nextUrl.searchParams.get('teamId');
+    if (!teamId) throw new HttpError(400, 'Team ID is required');
+    await requireTeamAccess(teamId);
 
-    const { searchParams } = new URL(request.url);
-    const teamId = searchParams.get('teamId');
-
-    if (!teamId) {
-      return NextResponse.json({ error: 'Team ID is required' }, { status: 400 });
-    }
-
-    // Verify user has access to this team
-    const supabaseAdmin = getSupabaseAdmin();
-    const { data: teamAccess, error: accessError } = await supabaseAdmin
-      .from('team_members')
-      .select('*')
-      .eq('teamid', teamId)
-      .eq('userid', userId)
-      .single();
-
-    if (accessError && accessError.code !== 'PGRST116') {
-      console.error('Error checking team access:', accessError);
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
-    }
-
-    // Also check if user is owner of the team
-    const { data: ownedTeam, error: ownerError } = await supabaseAdmin
-      .from('teams')
-      .select('*')
-      .eq('id', teamId)
-      .eq('ownerid', userId)
-      .single();
-
-    if (!teamAccess && !ownedTeam) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
-    }
-
-    // Get finds for this team
-    const { data: finds, error: findsError } = await supabaseAdmin
+    const { data, error } = await getSupabaseAdmin()
       .from('finds')
       .select('*')
       .eq('teamid', teamId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: true });
+    if (error) throw new Error(error.message);
 
-    if (findsError) {
-      console.error('Error fetching finds:', findsError);
-      return NextResponse.json({ error: findsError.message }, { status: 500 });
-    }
-
-    return NextResponse.json(finds || []);
-  } catch (error: any) {
-    console.error('Error in GET /api/team-data/finds:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json(mapRows(data, rowToFind));
+  } catch (error) {
+    return jsonError(error);
   }
 }
 
-// POST - Opprett ny find for aktivt team
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    
-    const userId = session?.user?.googleId || session?.user?.email;
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     const body = await request.json();
-    const { teamId, name, localId, position, color, shotPairId, mode } = body;
+    const teamId = body.teamId as string | undefined;
+    const localId = String(body.localId || `find_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`);
+    const position = parseCoord(body.position);
+    if (!teamId) throw new HttpError(400, 'Team ID is required');
+    if (!position) throw new HttpError(400, 'Position (lat, lng) is required');
+    const { userId } = await requireTeamAccess(teamId);
 
-    if (!teamId) {
-      return NextResponse.json({ error: 'Team ID is required' }, { status: 400 });
-    }
-
-    if (!position || !position.lat || !position.lng) {
-      return NextResponse.json({ error: 'Position (lat, lng) is required' }, { status: 400 });
-    }
-
-    // Verify user has access to this team
-    const supabaseAdmin = getSupabaseAdmin();
-    const { data: teamAccess, error: accessError } = await supabaseAdmin
-      .from('team_members')
-      .select('*')
+    const supabase = getSupabaseAdmin();
+    const { data: existing, error: existingError } = await supabase
+      .from('finds')
+      .select('id')
       .eq('teamid', teamId)
-      .eq('userid', userId)
-      .single();
-
-    if (accessError && accessError.code !== 'PGRST116') {
-      console.error('Error checking team access:', accessError);
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+      .eq('local_id', localId)
+      .maybeSingle();
+    if (existingError) throw new Error(existingError.message);
+    if (existing) {
+      const { data, error } = await supabase.from('finds').select('*').eq('id', existing.id).single();
+      if (error) throw new Error(error.message);
+      return NextResponse.json(rowToFind(data as Record<string, unknown>));
     }
 
-    // Also check if user is owner of the team
-    const { data: ownedTeam, error: ownerError } = await supabaseAdmin
-      .from('teams')
-      .select('*')
-      .eq('id', teamId)
-      .eq('ownerid', userId)
-      .single();
-
-    if (!teamAccess && !ownedTeam) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
-    }
-
-    // Create new find with complete data
-    const { data: newFind, error: createError } = await supabaseAdmin
+    const { data, error } = await supabase
       .from('finds')
       .insert({
         teamid: teamId,
         createdby: userId,
-        name: name || 'Unnamed Find',
+        name: body.name || 'Funn',
         local_id: localId,
-        position: position,
-        color: color || '#EF4444',
-        shotpairid: shotPairId || null,
-        mode: mode || 'søk'
+        position,
+        color: body.color || '#EF4444',
+        shotpairid: body.shotPairId || null,
+        mode: body.mode || 'søk',
       })
       .select()
       .single();
-
-    if (createError) {
-      console.error('Error creating find:', createError);
-      return NextResponse.json({ error: createError.message }, { status: 500 });
-    }
-
-    return NextResponse.json(newFind);
-  } catch (error: any) {
-    console.error('Error in POST /api/team-data/finds:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    if (error) throw new Error(error.message);
+    return NextResponse.json(rowToFind(data as Record<string, unknown>));
+  } catch (error) {
+    return jsonError(error);
   }
 }
 
-// DELETE - Slett find for aktivt team via local_id eller id
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    const userId = session?.user?.googleId || session?.user?.email;
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     const body = await request.json().catch(() => ({}));
-    const { teamId, localId, id } = body || {};
+    const teamId = body.teamId as string | undefined;
+    const localId = body.localId as string | undefined;
+    const id = body.id as string | number | undefined;
+    if (!teamId || (!localId && id == null)) throw new HttpError(400, 'teamId and (localId or id) required');
+    await requireTeamAccess(teamId);
 
-    if (!teamId || (!localId && !id)) {
-      return NextResponse.json({ error: 'teamId and (localId or id) required' }, { status: 400 });
-    }
-
-    const supabaseAdmin = getSupabaseAdmin();
-
-    // Authz: ensure user belongs to team or owns it
-    const { data: teamAccess } = await supabaseAdmin
-      .from('team_members')
-      .select('id')
-      .eq('teamid', teamId)
-      .eq('userid', userId)
-      .maybeSingle();
-    const { data: ownedTeam } = await supabaseAdmin
-      .from('teams')
-      .select('id')
-      .eq('id', teamId)
-      .eq('ownerid', userId)
-      .maybeSingle();
-    if (!teamAccess && !ownedTeam) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
-    }
-
-    let query = supabaseAdmin.from('finds').delete().eq('teamid', teamId);
-    if (localId) {
-      query = query.eq('local_id', localId);
-    } else if (id) {
-      query = query.eq('id', id);
-    }
+    let query = getSupabaseAdmin().from('finds').delete().eq('teamid', teamId);
+    if (localId) query = query.eq('local_id', localId);
+    else query = query.eq('id', id);
     const { error } = await query;
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) throw new Error(error.message);
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Internal error' }, { status: 500 });
+  } catch (error) {
+    return jsonError(error);
   }
 }

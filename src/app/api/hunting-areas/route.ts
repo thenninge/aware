@@ -1,260 +1,71 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from '@/lib/db/supabaseAdmin';
+import { HttpError, jsonError, requireTeamAccess } from '@/lib/db/access';
 
-function getSupabaseAdmin() {
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    console.error('Missing Supabase environment variables');
-    throw new Error('Missing Supabase environment variables');
-  }
-  console.log('Creating Supabase admin client with service role key');
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      }
-    }
-  );
-}
+export const dynamic = 'force-dynamic';
 
-// GET - Hent hunting areas for aktivt team
 export async function GET(request: NextRequest) {
   try {
-    console.log('GET /api/hunting-areas - Starting');
-    
-    const session = await getServerSession(authOptions);
-    const userId = session?.user?.googleId || session?.user?.email;
-    console.log('GET - User:', userId);
-    
-    if (!userId) {
-      console.error('GET - No userId');
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const teamId = request.nextUrl.searchParams.get('teamId');
+    if (!teamId) throw new HttpError(400, 'Team ID is required');
+    await requireTeamAccess(teamId);
 
-    const { searchParams } = new URL(request.url);
-    const teamId = searchParams.get('teamId');
-    console.log('GET - Team ID:', teamId);
-
-    if (!teamId) {
-      console.error('GET - No teamId');
-      return NextResponse.json({ error: 'Team ID is required' }, { status: 400 });
-    }
-
-    // Verify user has access to this team
-    const supabaseAdmin = getSupabaseAdmin();
-    console.log('GET - Checking team access...');
-    
-    const { data: teamAccess, error: accessError } = await supabaseAdmin
-      .from('team_members')
-      .select('*')
-      .eq('teamid', teamId)
-      .eq('userid', userId)
-      .single();
-
-    console.log('GET - Team access check:', { hasAccess: !!teamAccess, error: accessError?.code });
-
-    if (accessError && accessError.code !== 'PGRST116') {
-      console.error('Error checking team access:', accessError);
-    }
-
-    // Also check if user is owner of the team
-    const { data: ownedTeam, error: ownerError } = await supabaseAdmin
-      .from('teams')
-      .select('*')
-      .eq('id', teamId)
-      .eq('ownerid', userId)
-      .single();
-
-    console.log('GET - Owner check:', { isOwner: !!ownedTeam });
-
-    if (!teamAccess && !ownedTeam) {
-      console.error('GET - Access denied for user', userId, 'on team', teamId);
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
-    }
-
-    // Get hunting areas for this team
-    console.log('GET - Fetching hunting areas for team:', teamId);
-    
-    const { data: huntingAreas, error: huntingAreasError } = await supabaseAdmin
+    const { data, error } = await getSupabaseAdmin()
       .from('hunting_areas')
       .select('*')
       .eq('teamid', teamId)
       .order('created_at', { ascending: false });
-
-    console.log('GET - Hunting areas result:', { count: huntingAreas?.length, error: huntingAreasError });
-
-    if (huntingAreasError) {
-      console.error('Error fetching hunting areas:', huntingAreasError);
-      return NextResponse.json({ error: huntingAreasError.message }, { status: 500 });
-    }
-
-    console.log('GET - Returning', huntingAreas?.length || 0, 'hunting areas');
-    return NextResponse.json(huntingAreas || []);
-  } catch (error: any) {
-    console.error('Error in GET /api/hunting-areas:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    if (error) throw new Error(error.message);
+    return NextResponse.json(data || []);
+  } catch (error) {
+    return jsonError(error);
   }
 }
 
-// POST - Opprett ny hunting area for aktivt team
 export async function POST(request: NextRequest) {
   try {
-    console.log('POST /api/hunting-areas - Starting');
-    
-    const session = await getServerSession(authOptions);
-    console.log('Session:', { hasSession: !!session, userId: session?.user?.googleId || session?.user?.email });
-    
-    const userId = session?.user?.googleId || session?.user?.email;
-    if (!userId) {
-      console.error('No userId found in session');
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     const body = await request.json();
     const { teamId, id, name, coordinates, color, lineWeight } = body;
-    console.log('Request body:', { teamId, id, name, coordinatesLength: coordinates?.length, color, lineWeight });
-
-    if (!teamId) {
-      console.error('Missing teamId');
-      return NextResponse.json({ error: 'Team ID is required' }, { status: 400 });
-    }
-
+    if (!teamId) throw new HttpError(400, 'Team ID is required');
     if (!id || !name || !coordinates) {
-      console.error('Missing required fields:', { id: !!id, name: !!name, coordinates: !!coordinates });
-      return NextResponse.json({ error: 'Missing required fields: id, name, coordinates' }, { status: 400 });
+      throw new HttpError(400, 'Missing required fields: id, name, coordinates');
     }
+    await requireTeamAccess(teamId);
 
-    // Verify user has access to this team
-    console.log('Getting Supabase admin client...');
-    const supabaseAdmin = getSupabaseAdmin();
-    console.log('Supabase admin client created, checking team access...');
-    const { data: teamAccess, error: accessError } = await supabaseAdmin
-      .from('team_members')
-      .select('*')
-      .eq('teamid', teamId)
-      .eq('userid', userId)
-      .single();
-
-    if (accessError && accessError.code !== 'PGRST116') {
-      console.error('Error checking team access:', accessError);
-    }
-
-    // Also check if user is owner of the team
-    const { data: ownedTeam, error: ownerError } = await supabaseAdmin
-      .from('teams')
-      .select('*')
-      .eq('id', teamId)
-      .eq('ownerid', userId)
-      .single();
-
-    if (!teamAccess && !ownedTeam) {
-      console.error('Access denied - user not member or owner of team');
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
-    }
-
-    console.log('User has access to team, proceeding to insert hunting area...');
-    
-    // Create new hunting area
-    const insertData = {
-      id,
-      teamid: teamId,
-      name,
-      coordinates,
-      color: color || '#00ff00',
-      line_weight: lineWeight || 3,
-    };
-    console.log('Inserting hunting area:', insertData);
-    
-    const { data: newHuntingArea, error: createError } = await supabaseAdmin
+    const { data, error } = await getSupabaseAdmin()
       .from('hunting_areas')
-      .insert(insertData)
+      .insert({
+        id,
+        teamid: teamId,
+        name,
+        coordinates,
+        color: color || '#00ff00',
+        line_weight: lineWeight || 3,
+      })
       .select()
       .single();
-    
-    console.log('Insert result:', { success: !!newHuntingArea, error: createError });
-
-    if (createError) {
-      console.error('Error creating hunting area:', createError);
-      console.error('Insert data was:', { id, teamid: teamId, name, coordinates, color, line_weight: lineWeight });
-      return NextResponse.json({ 
-        error: createError.message,
-        details: createError.details,
-        hint: createError.hint,
-        code: createError.code 
-      }, { status: 500 });
-    }
-
-    console.log('Successfully created hunting area:', newHuntingArea);
-    return NextResponse.json(newHuntingArea);
-  } catch (error: any) {
-    console.error('Error in POST /api/hunting-areas:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    if (error) throw new Error(error.message);
+    return NextResponse.json(data);
+  } catch (error) {
+    return jsonError(error);
   }
 }
 
-// DELETE - Slett hunting area
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    
-    const userId = session?.user?.googleId || session?.user?.email;
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const huntingAreaId = request.nextUrl.searchParams.get('id');
+    const teamId = request.nextUrl.searchParams.get('teamId');
+    if (!huntingAreaId || !teamId) throw new HttpError(400, 'Hunting area ID and team ID are required');
+    await requireTeamAccess(teamId);
 
-    const { searchParams } = new URL(request.url);
-    const huntingAreaId = searchParams.get('id');
-    const teamId = searchParams.get('teamId');
-
-    if (!huntingAreaId || !teamId) {
-      return NextResponse.json({ error: 'Hunting area ID and team ID are required' }, { status: 400 });
-    }
-
-    // Verify user has access to this team
-    const supabaseAdmin = getSupabaseAdmin();
-    const { data: teamAccess, error: accessError } = await supabaseAdmin
-      .from('team_members')
-      .select('*')
-      .eq('teamid', teamId)
-      .eq('userid', userId)
-      .single();
-
-    if (accessError && accessError.code !== 'PGRST116') {
-      console.error('Error checking team access:', accessError);
-    }
-
-    // Also check if user is owner of the team
-    const { data: ownedTeam, error: ownerError } = await supabaseAdmin
-      .from('teams')
-      .select('*')
-      .eq('id', teamId)
-      .eq('ownerid', userId)
-      .single();
-
-    if (!teamAccess && !ownedTeam) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
-    }
-
-    // Delete hunting area
-    const { error: deleteError } = await supabaseAdmin
+    const { error } = await getSupabaseAdmin()
       .from('hunting_areas')
       .delete()
       .eq('id', huntingAreaId)
       .eq('teamid', teamId);
-
-    if (deleteError) {
-      console.error('Error deleting hunting area:', deleteError);
-      return NextResponse.json({ error: deleteError.message }, { status: 500 });
-    }
-
+    if (error) throw new Error(error.message);
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    console.error('Error in DELETE /api/hunting-areas:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  } catch (error) {
+    return jsonError(error);
   }
 }
-
