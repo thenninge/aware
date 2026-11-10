@@ -3,6 +3,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import OfflineMapManager from './OfflineMapManager';
+import { getOfflineAreas, isOfflineForHuntingArea, type OfflineArea } from '@/lib/idb';
 
 interface CategoryConfig {
   color: string;
@@ -111,6 +112,7 @@ interface SettingsMenuProps {
   definedOfflineBounds?: { north: number; south: number; east: number; west: number } | null;
   onConfirmOfflineDownload?: (name: string, zoomLevels: number[], includeElevation: boolean, onProgress: (progress: { current: number; total: number; percentage: number }) => void) => Promise<void>;
   onCancelOfflineDefine?: () => void;
+  onUseHuntingAreaForOffline?: () => void;
 }
 
 export interface HuntingArea {
@@ -208,9 +210,11 @@ export default function SettingsMenu({
   selectedMapLayer,
   definedOfflineBounds,
   onConfirmOfflineDownload,
-  onCancelOfflineDefine
+  onCancelOfflineDefine,
+  onUseHuntingAreaForOffline,
 }: SettingsMenuProps & { currentCenter?: { lat: number, lng: number } }) {
   const menuRef = useRef<HTMLDivElement>(null);
+  const offlineMapSectionRef = useRef<HTMLDivElement>(null);
   const [showHomeSaved, setShowHomeSaved] = useState(false);
   const [showHomeError, setShowHomeError] = useState(false);
   const [showDefaultsSaved, setShowDefaultsSaved] = useState(false);
@@ -223,8 +227,9 @@ export default function SettingsMenu({
   const [isHuntingAreaExpanded, setIsHuntingAreaExpanded] = useState(false);
   const [isZoomButtonsExpanded, setIsZoomButtonsExpanded] = useState(false);
   const [isLosExpanded, setIsLosExpanded] = useState(false);
-  const [isOfflineMapExpanded, setIsOfflineMapExpanded] = useState(false);
+  const [isOfflineMapExpanded, setIsOfflineMapExpanded] = useState(!!definedOfflineBounds);
   const [savedHomePosition, setSavedHomePosition] = useState<{ lat: number; lng: number } | null>(null);
+  const [offlineAreas, setOfflineAreas] = useState<OfflineArea[]>([]);
 
   const categoryLabels: Record<keyof CategoryFilter, string> = {
     city: 'By',
@@ -234,6 +239,21 @@ export default function SettingsMenu({
     farm: 'Gård',
     isolated_dwelling: 'Enkeltbolig',
   };
+
+  useEffect(() => {
+    if (definedOfflineBounds) setIsOfflineMapExpanded(true);
+  }, [definedOfflineBounds]);
+
+  useEffect(() => {
+    const loadOfflineAreas = () => {
+      void getOfflineAreas()
+        .then(setOfflineAreas)
+        .catch(() => setOfflineAreas([]));
+    };
+    loadOfflineAreas();
+    window.addEventListener('aware-offline-areas-changed', loadOfflineAreas);
+    return () => window.removeEventListener('aware-offline-areas-changed', loadOfflineAreas);
+  }, []);
 
   // Load saved home position from localStorage
   useEffect(() => {
@@ -695,7 +715,7 @@ export default function SettingsMenu({
 
       {/* Offline Map Settings Expander */}
       {onDefineOfflineArea && selectedMapLayer && (
-        <div className="mb-4 border border-gray-200 rounded-lg overflow-hidden">
+        <div ref={offlineMapSectionRef} className="mb-4 border border-gray-200 rounded-lg overflow-hidden">
           <button
             type="button"
             onClick={() => setIsOfflineMapExpanded(!isOfflineMapExpanded)}
@@ -712,6 +732,8 @@ export default function SettingsMenu({
                 isDefining={isDefiningOfflineArea || false}
                 selectedLayer={selectedMapLayer}
                 definedBounds={definedOfflineBounds || null}
+                huntingAreaName={huntingAreas?.find((area) => area.id === activeHuntingAreaId)?.name || null}
+                onUseHuntingArea={onUseHuntingAreaForOffline}
                 onConfirmDownload={onConfirmOfflineDownload || (async () => {})}
                 onCancelDefine={onCancelOfflineDefine || (() => {})}
               />
@@ -975,6 +997,9 @@ export default function SettingsMenu({
                   {huntingAreas.map((area) => (
                     <option key={area.id} value={area.id}>
                       {area.name}
+                      {offlineAreas.some((offline) => isOfflineForHuntingArea(offline, area.id))
+                        ? ' · offline'
+                        : ''}
                     </option>
                   ))}
                 </select>
@@ -983,6 +1008,32 @@ export default function SettingsMenu({
                     Ingen jaktfelt definert ennå
                   </p>
                 )}
+                {activeHuntingAreaId && onUseHuntingAreaForOffline && (
+                  <button
+                    type="button"
+                    disabled={
+                      (huntingAreas?.find((area) => area.id === activeHuntingAreaId)?.coordinates.length || 0) < 3
+                    }
+                    onClick={() => {
+                      onUseHuntingAreaForOffline();
+                      setIsOfflineMapExpanded(true);
+                      requestAnimationFrame(() => {
+                        offlineMapSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      });
+                    }}
+                    className="w-full mt-2 bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-3 rounded text-sm shadow disabled:bg-gray-300 disabled:text-gray-500"
+                  >
+                    {offlineAreas.some((offline) => isOfflineForHuntingArea(offline, activeHuntingAreaId))
+                      ? 'Last ned offline på nytt'
+                      : 'Last ned offline'}
+                  </button>
+                )}
+                {activeHuntingAreaId &&
+                  offlineAreas.some((offline) => isOfflineForHuntingArea(offline, activeHuntingAreaId)) && (
+                    <p className="text-[11px] text-green-700 mt-1">
+                      Jaktfeltet ligger i Offline kart
+                    </p>
+                  )}
                 {activeHuntingAreaId && onDeleteHuntingArea && (
                   <button
                     type="button"

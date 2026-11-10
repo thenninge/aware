@@ -17,6 +17,7 @@ import GoogleMapSmart from './GoogleMapSmart';
 import OfflineTileLayer from './OfflineTileLayer';
 import HogstOverlay from './HogstOverlay';
 import OfflineAreaDefiner from './OfflineAreaDefiner';
+import OfflineAreasOverlay from './OfflineAreasOverlay';
 // Database operations now go through Next.js API routes
 import { Dialog } from '@headlessui/react';
 import { createPortal } from 'react-dom';
@@ -2802,7 +2803,7 @@ export default function MapComponent({
           onPointAdded={handleAddNoHuntZonePoint}
         />
 
-        {/* Offline area definer */}
+        <OfflineAreasOverlay />
         <OfflineAreaDefiner
           isDefining={isDefiningOfflineArea}
           onAreaDefined={onOfflineAreaDefined || (() => {})}

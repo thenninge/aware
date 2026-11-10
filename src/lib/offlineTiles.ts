@@ -1,6 +1,7 @@
 import { OfflineArea, saveOfflineArea, saveTile, saveElevationTile } from './idb';
-import { coordToTile } from './geo/coordinates';
-import { TERRARIUM_TILE_URL } from './terrain/decode';
+import { DEM_ZOOM } from './terrain/decode';
+import { tileCountForZooms, tilesInBounds, type GeoBounds } from './geo/tiles';
+import { elevationTileProxyUrl, mapTileProxyUrl, offlineStorageLayer } from './map/offlineLayers';
 
 export interface DownloadProgress {
   current: number;
@@ -10,183 +11,116 @@ export interface DownloadProgress {
 
 export type ProgressCallback = (progress: DownloadProgress) => void;
 
-function getTilesInBounds(
-  bounds: { north: number; south: number; east: number; west: number },
-  zoom: number
-): Array<{ x: number; y: number; z: number }> {
-  const nw = coordToTile({ lat: bounds.north, lng: bounds.west }, zoom);
-  const se = coordToTile({ lat: bounds.south, lng: bounds.east }, zoom);
-  
-  const tiles: Array<{ x: number; y: number; z: number }> = [];
-  
-  for (let x = Math.min(nw.x, se.x); x <= Math.max(nw.x, se.x); x++) {
-    for (let y = Math.min(nw.y, se.y); y <= Math.max(nw.y, se.y); y++) {
-      tiles.push({ x, y, z: zoom });
-    }
-  }
-  
-  return tiles;
+export const MAX_OFFLINE_MAP_TILES = 3500;
+
+export function calculateTileCount(bounds: GeoBounds, zoomLevels: number[]): number {
+  return tileCountForZooms(bounds, zoomLevels);
 }
 
-// Calculate total number of tiles for given bounds and zoom levels
-export function calculateTileCount(
-  bounds: { north: number; south: number; east: number; west: number },
-  zoomLevels: number[]
-): number {
-  let total = 0;
-  for (const zoom of zoomLevels) {
-    const tiles = getTilesInBounds(bounds, zoom);
-    total += tiles.length;
-  }
-  return total;
+export function estimateOfflineJob(bounds: GeoBounds, zoomLevels: number[], includeElevation: boolean) {
+  const mapTiles = tileCountForZooms(bounds, zoomLevels);
+  const elevationTiles = includeElevation ? tilesInBounds(bounds, DEM_ZOOM).length : 0;
+  return { mapTiles, elevationTiles, total: mapTiles + elevationTiles };
 }
 
-// Format tile URL based on template
-function formatTileUrl(urlTemplate: string, x: number, y: number, z: number): string {
-  return urlTemplate
-    .replace('{x}', x.toString())
-    .replace('{y}', y.toString())
-    .replace('{z}', z.toString())
-    .replace('{s}', ['a', 'b', 'c'][Math.floor(Math.random() * 3)]); // Random subdomain for load balancing
-}
-
-const ELEVATION_TILE_URL = TERRARIUM_TILE_URL;
-
-// Download tiles for an offline area (both map tiles and elevation data)
 export async function downloadOfflineArea(
   area: Omit<OfflineArea, 'createdAt' | 'tileCount' | 'elevationTileCount' | 'includesElevation'>,
-  tileUrlTemplate: string,
+  _tileUrlTemplate: string,
   onProgress?: ProgressCallback,
   signal?: AbortSignal,
   includeElevation: boolean = true
 ): Promise<void> {
-  // Calculate all tiles needed (map tiles + elevation tiles if requested)
-  const mapTiles: Array<{ x: number; y: number; z: number; type: 'map' }> = [];
-  const elevationTiles: Array<{ x: number; y: number; z: number; type: 'elevation' }> = [];
-  
-  for (const zoom of area.zoomLevels) {
-    const tiles = getTilesInBounds(area.bounds, zoom);
-    mapTiles.push(...tiles.map(t => ({ ...t, type: 'map' as const })));
-    
-    // Also download elevation tiles if requested
-    if (includeElevation) {
-      elevationTiles.push(...tiles.map(t => ({ ...t, type: 'elevation' as const })));
-    }
+  const layer = offlineStorageLayer(area.layer);
+  const mapTiles = area.zoomLevels.flatMap((zoom) =>
+    tilesInBounds(area.bounds, zoom).map((tile) => ({ ...tile, type: 'map' as const }))
+  );
+  const elevationTiles = includeElevation
+    ? tilesInBounds(area.bounds, DEM_ZOOM).map((tile) => ({ ...tile, type: 'elevation' as const }))
+    : [];
+
+  if (mapTiles.length > MAX_OFFLINE_MAP_TILES) {
+    throw new Error(
+      `Området er for stort (${mapTiles.length} kartfliser). Velg færre zoom-nivåer eller et mindre rektangel.`
+    );
   }
-  
+
   const allTiles = [...mapTiles, ...elevationTiles];
   const total = allTiles.length;
   let completed = 0;
   let failed = 0;
 
-  // Download tiles with concurrency limit
   const CONCURRENT_DOWNLOADS = 4;
   const RETRY_ATTEMPTS = 2;
-  const DELAY_BETWEEN_BATCHES = 100; // ms
-  
+
   for (let i = 0; i < allTiles.length; i += CONCURRENT_DOWNLOADS) {
-    if (signal?.aborted) {
-      throw new Error('Download cancelled');
-    }
-    
+    if (signal?.aborted) throw new Error('Download cancelled');
     const batch = allTiles.slice(i, i + CONCURRENT_DOWNLOADS);
-    
+
     await Promise.all(
       batch.map(async ({ x, y, z, type }) => {
         let attempts = 0;
         let success = false;
-        
         while (attempts < RETRY_ATTEMPTS && !success) {
           try {
-            if (signal?.aborted) {
-              throw new Error('Download cancelled');
-            }
-            
-            // Use appropriate URL based on tile type
-            const url = type === 'elevation' 
-              ? formatTileUrl(ELEVATION_TILE_URL, x, y, z)
-              : formatTileUrl(tileUrlTemplate, x, y, z);
-            
+            if (signal?.aborted) throw new Error('Download cancelled');
+            const url =
+              type === 'elevation' ? elevationTileProxyUrl(z, x, y) : mapTileProxyUrl(layer, z, x, y);
             const response = await fetch(url, { signal });
-            
-            if (!response.ok) {
-              throw new Error(`HTTP ${response.status}`);
-            }
-            
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const blob = await response.blob();
-            
-            // Save to appropriate store
-            if (type === 'elevation') {
-              await saveElevationTile(z, x, y, blob);
-            } else {
-              await saveTile(area.layer, z, x, y, blob);
-            }
-            
+            if (type === 'elevation') await saveElevationTile(z, x, y, blob);
+            else await saveTile(layer, z, x, y, blob);
             success = true;
             completed++;
-            
-            if (onProgress) {
-              onProgress({
-                current: completed,
-                total,
-                percentage: Math.round((completed / total) * 100),
-              });
-            }
+            onProgress?.({
+              current: completed,
+              total,
+              percentage: total ? Math.round((completed / total) * 100) : 100,
+            });
           } catch (error) {
             attempts++;
             if (attempts >= RETRY_ATTEMPTS) {
-              console.warn(`Failed to download ${type} tile ${z}/${x}/${y} after ${RETRY_ATTEMPTS} attempts:`, error);
+              console.warn(`Failed to download ${type} tile ${z}/${x}/${y}:`, error);
               failed++;
-              completed++; // Count as completed to move progress forward
-              
-              if (onProgress) {
-                onProgress({
-                  current: completed,
-                  total,
-                  percentage: Math.round((completed / total) * 100),
-                });
-              }
+              completed++;
+              onProgress?.({
+                current: completed,
+                total,
+                percentage: total ? Math.round((completed / total) * 100) : 100,
+              });
             } else {
-              // Wait before retry
-              await new Promise(resolve => setTimeout(resolve, 500 * attempts));
+              await new Promise((resolve) => setTimeout(resolve, 400 * attempts));
             }
           }
         }
       })
     );
-    
-    // Small delay between batches to avoid overwhelming the server
-    if (i + CONCURRENT_DOWNLOADS < allTiles.length) {
-      await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_BATCHES));
-    }
   }
-  
-  // Save offline area metadata
+
   const offlineArea: OfflineArea = {
     ...area,
+    layer,
+    huntingAreaId: area.huntingAreaId,
     createdAt: Date.now(),
     tileCount: mapTiles.length,
     elevationTileCount: elevationTiles.length,
     includesElevation: includeElevation,
   };
-  
+  if (total > 0 && failed === total) {
+    throw new Error('Ingen fliser ble lastet ned. Sjekk nettet og prøv igjen.');
+  }
+
   await saveOfflineArea(offlineArea);
-  
+
   if (failed > 0) {
     console.warn(`Download completed with ${failed} failed tiles out of ${total}`);
   }
 }
 
-// Estimate storage size for an area
-// Map tiles: ~30KB per tile
-// Elevation tiles: ~15KB per tile (PNG with elevation data)
-export function estimateStorageSize(tileCount: number, includeElevation: boolean = true): number {
-  const mapTileSize = tileCount * 30 * 1024; // 30KB per map tile
-  const elevationTileSize = includeElevation ? tileCount * 15 * 1024 : 0; // 15KB per elevation tile
-  return mapTileSize + elevationTileSize;
+export function estimateStorageSize(mapTiles: number, elevationTiles: number = 0): number {
+  return mapTiles * 30 * 1024 + elevationTiles * 15 * 1024;
 }
 
-// Format bytes to human-readable format
 export function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B';
   const k = 1024;

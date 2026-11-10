@@ -8,8 +8,7 @@ import {
   OfflineArea 
 } from '@/lib/idb';
 import {
-  calculateTileCount,
-  downloadOfflineArea,
+  estimateOfflineJob,
   estimateStorageSize,
   formatBytes,
   DownloadProgress,
@@ -24,6 +23,8 @@ interface OfflineMapManagerProps {
     url: string;
   };
   definedBounds: { north: number; south: number; east: number; west: number } | null;
+  huntingAreaName?: string | null;
+  onUseHuntingArea?: () => void;
   onConfirmDownload: (name: string, zoomLevels: number[], includeElevation: boolean, onProgress: (progress: DownloadProgress) => void) => Promise<void>;
   onCancelDefine: () => void;
 }
@@ -33,6 +34,8 @@ export default function OfflineMapManager({
   isDefining,
   selectedLayer,
   definedBounds,
+  huntingAreaName,
+  onUseHuntingArea,
   onConfirmDownload,
   onCancelDefine,
 }: OfflineMapManagerProps) {
@@ -40,12 +43,14 @@ export default function OfflineMapManager({
   const [cacheSize, setCacheSize] = useState<number>(0);
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
   
   // Download configuration
   const [areaName, setAreaName] = useState('');
-  const [selectedZooms, setSelectedZooms] = useState<number[]>([14, 15, 16]);
+  const [selectedZooms, setSelectedZooms] = useState<number[]>([13, 14, 15]);
   const [includeElevation, setIncludeElevation] = useState(true);
   const [estimatedTiles, setEstimatedTiles] = useState(0);
+  const [estimatedElevationTiles, setEstimatedElevationTiles] = useState(0);
 
   const loadAreas = async () => {
     const areas = await getOfflineAreas();
@@ -55,15 +60,27 @@ export default function OfflineMapManager({
   };
 
   useEffect(() => {
-    loadAreas();
+    const refresh = () => {
+      void loadAreas();
+    };
+    refresh();
+    window.addEventListener('aware-offline-areas-changed', refresh);
+    return () => window.removeEventListener('aware-offline-areas-changed', refresh);
   }, []);
 
   useEffect(() => {
     if (definedBounds) {
-      const count = calculateTileCount(definedBounds, selectedZooms);
-      setEstimatedTiles(count);
+      const job = estimateOfflineJob(definedBounds, selectedZooms, includeElevation);
+      setEstimatedTiles(job.mapTiles);
+      setEstimatedElevationTiles(job.elevationTiles);
     }
   }, [definedBounds, selectedZooms, includeElevation]);
+
+  useEffect(() => {
+    if (definedBounds && huntingAreaName && !areaName.trim()) {
+      setAreaName(huntingAreaName);
+    }
+  }, [definedBounds, huntingAreaName]);
 
   const handleDelete = async (areaId: string) => {
     if (!confirm('Er du sikker på at du vil slette dette offline-området?')) return;
@@ -83,19 +100,18 @@ export default function OfflineMapManager({
     }
     
     setIsDownloading(true);
-    const totalTiles = includeElevation ? estimatedTiles * 2 : estimatedTiles; // Double if including elevation
-    setDownloadProgress({ current: 0, total: totalTiles, percentage: 0 });
+    setDownloadError(null);
+    setDownloadProgress({ current: 0, total: estimatedTiles + estimatedElevationTiles, percentage: 0 });
     
     try {
-      // Call download with current values and progress callback
-      await onConfirmDownload(areaName, selectedZooms, includeElevation, (progress) => {
+      await onConfirmDownload(areaName.trim() || huntingAreaName || 'Offline-område', selectedZooms, includeElevation, (progress) => {
         setDownloadProgress(progress);
       });
-      
-      // Reset form after successful download
       setAreaName('');
       setIncludeElevation(true);
-      await loadAreas(); // Reload areas to show the new one
+      await loadAreas();
+    } catch (error) {
+      setDownloadError((error as Error).message || 'Nedlasting feilet');
     } finally {
       setIsDownloading(false);
       setDownloadProgress(null);
@@ -113,9 +129,25 @@ export default function OfflineMapManager({
   return (
     <div className="space-y-3">
       {/* Current cache size */}
-      <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded">
-        <strong>Total cache:</strong> {formatBytes(cacheSize)}
+      <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded space-y-1">
+        <div><strong>Total cache:</strong> {formatBytes(cacheSize)}</div>
+        <div className="text-[10px] text-gray-500">
+          Lagrer Kartverket-topo og høydedata. Google-satellitt kan ikke lastes ned for offline.
+        </div>
       </div>
+      {downloadError && (
+        <div className="text-xs text-red-700 bg-red-50 p-2 rounded">{downloadError}</div>
+      )}
+      {huntingAreaName && onUseHuntingArea && !definedBounds && !isDefining && (
+        <button
+          type="button"
+          onClick={onUseHuntingArea}
+          disabled={isDownloading}
+          className="w-full py-2 px-4 rounded font-semibold text-sm shadow bg-green-600 hover:bg-green-700 text-white disabled:bg-gray-300"
+        >
+          Last ned jaktfeltet «{huntingAreaName}»
+        </button>
+      )}
 
       {/* Download configuration (shown when bounds are defined) */}
       {definedBounds && !isDownloading && (
@@ -149,7 +181,7 @@ export default function OfflineMapManager({
               ))}
             </div>
             <div className="text-[10px] text-gray-500 mt-1">
-              Anbefalt: 14-16 for jakt. Høyere = mer detalj, men flere tiles
+              Anbefalt: 13–15 for jakt. Høyere = mer detalj, men flere fliser.
             </div>
           </div>
 
@@ -161,18 +193,18 @@ export default function OfflineMapManager({
                 onChange={(e) => setIncludeElevation(e.target.checked)}
                 className="w-4 h-4"
               />
-              <span>Inkluder høydedata (for offline høydeprofiler)</span>
+              <span>Inkluder høydedata (LOS og profil uten nett)</span>
             </label>
             <div className="text-[10px] text-gray-500 mt-1 ml-6">
-              +50% lagringsplass, men gir offline høydeprofiler
+              Terrarium-høyde lastes på zoom 13 for samme område
             </div>
           </div>
 
           <div className="text-xs text-gray-700 bg-white p-2 rounded">
-            <strong>Estimat:</strong> {includeElevation ? estimatedTiles * 2 : estimatedTiles} tiles (~{formatBytes(estimateStorageSize(estimatedTiles, includeElevation))})
+            <strong>Estimat:</strong> {estimatedTiles + estimatedElevationTiles} fliser (~{formatBytes(estimateStorageSize(estimatedTiles, estimatedElevationTiles))})
             {includeElevation && (
               <div className="text-[10px] text-gray-600 mt-1">
-                {estimatedTiles} kartbilder + {estimatedTiles} høydedata
+                {estimatedTiles} kart + {estimatedElevationTiles} høyde (z13)
               </div>
             )}
           </div>
@@ -240,7 +272,12 @@ export default function OfflineMapManager({
               className="bg-gray-50 p-2 rounded border border-gray-200 text-xs"
             >
               <div className="flex items-start justify-between mb-1">
-                <div className="font-semibold text-gray-800">{area.name}</div>
+                <div>
+                  <div className="font-semibold text-gray-800">{area.name}</div>
+                  {area.huntingAreaId && (
+                    <div className="text-[10px] text-green-700 font-medium">Jaktfelt</div>
+                  )}
+                </div>
                 <button
                   type="button"
                   onClick={() => handleDelete(area.id)}
@@ -257,7 +294,7 @@ export default function OfflineMapManager({
                 <div>
                   {area.tileCount} kart-tiles
                   {area.includesElevation && ` + ${area.elevationTileCount} høyde-tiles`}
-                  {' '}(~{formatBytes(estimateStorageSize(area.tileCount, area.includesElevation))})
+                  {' '}(~{formatBytes(estimateStorageSize(area.tileCount, area.elevationTileCount || 0))})
                 </div>
                 {area.includesElevation && (
                   <div className="text-[10px] text-green-600">

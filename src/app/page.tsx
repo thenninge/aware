@@ -7,6 +7,7 @@ import FilterMenu from '@/components/filtermenu';
 import AdminMenu from '@/components/adminmenu';
 import OfflineAreaControls from '@/components/OfflineAreaControls';
 import { useAuth } from '@/contexts/AuthContext';
+import { boundsFromPolygon } from '@/lib/geo/tiles';
 
 interface Position {
   lat: number;
@@ -95,6 +96,7 @@ export default function Home() {
   const [isDefiningOfflineArea, setIsDefiningOfflineArea] = useState(false);
   const [drawnOfflineBounds, setDrawnOfflineBounds] = useState<{ north: number; south: number; east: number; west: number } | null>(null);
   const [definedOfflineBounds, setDefinedOfflineBounds] = useState<{ north: number; south: number; east: number; west: number } | null>(null);
+  const [pendingOfflineHuntingAreaId, setPendingOfflineHuntingAreaId] = useState<string | null>(null);
   const [selectedMapLayer] = useState({
     key: 'kartverket_topo',
     name: 'Topo (Kartverket)',
@@ -794,6 +796,7 @@ export default function Home() {
             onDefineOfflineArea={() => {
               setIsDefiningOfflineArea(true);
               setDefinedOfflineBounds(null);
+              setPendingOfflineHuntingAreaId(null);
               setIsSettingsExpanded(false); // Close settings menu
             }}
             isDefiningOfflineArea={isDefiningOfflineArea}
@@ -801,42 +804,41 @@ export default function Home() {
             definedOfflineBounds={definedOfflineBounds}
             onConfirmOfflineDownload={async (name: string, zoomLevels: number[], includeElevation: boolean, onProgress) => {
               if (!definedOfflineBounds) {
-                alert('Ingen område definert');
-                return;
+                throw new Error('Ingen område definert');
               }
-              
-              // Import download function
               const { downloadOfflineArea } = await import('@/lib/offlineTiles');
-              
-              try {
-                await downloadOfflineArea(
-                  {
-                    id: `area-${Date.now()}`,
-                    name,
-                    bounds: definedOfflineBounds,
-                    zoomLevels,
-                    layer: selectedMapLayer.key,
-                  },
-                  selectedMapLayer.url,
-                  onProgress,
-                  undefined, // signal
-                  includeElevation
-                );
-                
-                const elevationMsg = includeElevation ? '\n\nInkluderer høydedata for offline høydeprofiler!' : '';
-                alert(`✅ Lastet ned ${name}!${elevationMsg}\n\nTiles er nå tilgjengelig offline.`);
-                
-                // Reset state after successful download
-                setDefinedOfflineBounds(null);
-              } catch (error) {
-                console.error('Download failed:', error);
-                alert('❌ Nedlasting feilet. Se konsollen for detaljer.');
-                // Keep bounds on error so user can try again
-              }
+              const { huntingAreaOfflineId } = await import('@/lib/idb');
+              await downloadOfflineArea(
+                {
+                  id: pendingOfflineHuntingAreaId
+                    ? huntingAreaOfflineId(pendingOfflineHuntingAreaId)
+                    : `area-${Date.now()}`,
+                  name,
+                  bounds: definedOfflineBounds,
+                  zoomLevels,
+                  layer: selectedMapLayer.key,
+                  huntingAreaId: pendingOfflineHuntingAreaId || undefined,
+                },
+                selectedMapLayer.url,
+                onProgress,
+                undefined,
+                includeElevation
+              );
+              setDefinedOfflineBounds(null);
+              setPendingOfflineHuntingAreaId(null);
+            }}
+            onUseHuntingAreaForOffline={() => {
+              const area = huntingAreas.find((item) => item.id === activeHuntingAreaId);
+              const bounds = area ? boundsFromPolygon(area.coordinates) : null;
+              if (!bounds || !area) return;
+              setPendingOfflineHuntingAreaId(area.id);
+              setDefinedOfflineBounds(bounds);
+              setIsDefiningOfflineArea(false);
             }}
             onCancelOfflineDefine={() => {
               setIsDefiningOfflineArea(false);
               setDefinedOfflineBounds(null);
+              setPendingOfflineHuntingAreaId(null);
             }}
           />
         </div>
@@ -972,6 +974,7 @@ export default function Home() {
         }}
         onOfflineAreaDefined={(bounds) => {
           // This is called when user clicks "Lagre"
+          setPendingOfflineHuntingAreaId(null);
           setDefinedOfflineBounds(bounds);
           setIsDefiningOfflineArea(false);
           setDrawnOfflineBounds(null);
@@ -981,6 +984,7 @@ export default function Home() {
           setIsDefiningOfflineArea(false);
           setDefinedOfflineBounds(null);
           setDrawnOfflineBounds(null);
+          setPendingOfflineHuntingAreaId(null);
         }}
       />
 
@@ -990,6 +994,7 @@ export default function Home() {
         hasDefinedArea={drawnOfflineBounds !== null}
         onSave={() => {
           if (drawnOfflineBounds) {
+            setPendingOfflineHuntingAreaId(null);
             setDefinedOfflineBounds(drawnOfflineBounds);
             setIsDefiningOfflineArea(false);
             setDrawnOfflineBounds(null);
@@ -1000,6 +1005,7 @@ export default function Home() {
           setIsDefiningOfflineArea(false);
           setDefinedOfflineBounds(null);
           setDrawnOfflineBounds(null);
+          setPendingOfflineHuntingAreaId(null);
         }}
       />
 

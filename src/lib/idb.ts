@@ -26,6 +26,21 @@ export interface OfflineArea {
   tileCount: number;
   elevationTileCount: number; // Number of elevation tiles downloaded
   includesElevation: boolean; // Whether elevation data is included
+  huntingAreaId?: string;
+}
+
+export function huntingAreaOfflineId(huntingAreaId: string): string {
+  return `hunting-area-${huntingAreaId}`;
+}
+
+export function isOfflineForHuntingArea(area: OfflineArea, huntingAreaId: string): boolean {
+  return area.huntingAreaId === huntingAreaId || area.id === huntingAreaOfflineId(huntingAreaId);
+}
+
+function notifyOfflineAreasChanged() {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('aware-offline-areas-changed'));
+  }
 }
 
 function openDB(): Promise<IDBDatabase> {
@@ -116,28 +131,29 @@ export async function getTile(layer: string, z: number, x: number, y: number): P
 }
 
 export async function deleteTilesForArea(areaId: string): Promise<void> {
-  const db = await openDB();
   const area = await getOfflineArea(areaId);
   if (!area) return;
+  const { tilesInBounds } = await import('./geo/tiles');
+  const { offlineStorageLayer } = await import('./map/offlineLayers');
+  const layer = offlineStorageLayer(area.layer);
+  const keys = new Set<string>();
+  for (const zoom of area.zoomLevels || []) {
+    for (const tile of tilesInBounds(area.bounds, zoom)) {
+      keys.add(`${layer}/${tile.z}/${tile.x}/${tile.y}`);
+    }
+  }
+  if (area.includesElevation) {
+    const { DEM_ZOOM } = await import('./terrain/decode');
+    for (const tile of tilesInBounds(area.bounds, DEM_ZOOM)) {
+      keys.add(`elevation/${tile.z}/${tile.x}/${tile.y}`);
+    }
+  }
 
+  const db = await openDB();
   return new Promise<void>((resolve, reject) => {
     const tx = db.transaction('tiles', 'readwrite');
     const store = tx.objectStore('tiles');
-    
-    // Delete all tiles for this layer within the area bounds
-    const layerPrefix = `${area.layer}/`;
-    const req = store.openCursor();
-    
-    req.onsuccess = (event) => {
-      const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
-      if (cursor) {
-        if (cursor.key.toString().startsWith(layerPrefix)) {
-          cursor.delete();
-        }
-        cursor.continue();
-      }
-    };
-    
+    for (const key of keys) store.delete(key);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
@@ -167,7 +183,10 @@ export async function saveOfflineArea(area: OfflineArea): Promise<void> {
     const tx = db.transaction('offlineAreas', 'readwrite');
     const store = tx.objectStore('offlineAreas');
     store.put(area);
-    tx.oncomplete = () => resolve();
+    tx.oncomplete = () => {
+      notifyOfflineAreasChanged();
+      resolve();
+    };
     tx.onerror = () => reject(tx.error);
   });
 }
@@ -201,7 +220,10 @@ export async function deleteOfflineArea(id: string): Promise<void> {
     const tx = db.transaction('offlineAreas', 'readwrite');
     const store = tx.objectStore('offlineAreas');
     store.delete(id);
-    tx.oncomplete = () => resolve();
+    tx.oncomplete = () => {
+      notifyOfflineAreasChanged();
+      resolve();
+    };
     tx.onerror = () => reject(tx.error);
   });
 }
