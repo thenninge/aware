@@ -27,6 +27,22 @@ export interface OfflineArea {
   elevationTileCount: number; // Number of elevation tiles downloaded
   includesElevation: boolean; // Whether elevation data is included
   huntingAreaId?: string;
+  placeCount?: number;
+  polygon?: Array<[number, number]>;
+}
+
+export interface OfflinePlacesBundle {
+  areaId: string;
+  places: Array<{
+    id: number;
+    type: string;
+    lat: number;
+    lng: number;
+    name?: string;
+    category: string;
+    tags: Record<string, string>;
+  }>;
+  updatedAt: number;
 }
 
 export function huntingAreaOfflineId(huntingAreaId: string): string {
@@ -45,7 +61,7 @@ function notifyOfflineAreasChanged() {
 
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open('aware-db', 2); // Increment version for schema change
+    const req = indexedDB.open('aware-db', 3);
     req.onupgradeneeded = (event) => {
       const db = req.result;
       const oldVersion = (event as IDBVersionChangeEvent).oldVersion;
@@ -64,6 +80,10 @@ function openDB(): Promise<IDBDatabase> {
       // Create offlineAreas store (new in version 2)
       if (oldVersion < 2 && !db.objectStoreNames.contains('offlineAreas')) {
         db.createObjectStore('offlineAreas', { keyPath: 'id' });
+      }
+
+      if (!db.objectStoreNames.contains('offlinePlaces')) {
+        db.createObjectStore('offlinePlaces', { keyPath: 'areaId' });
       }
     };
     req.onsuccess = () => resolve(req.result);
@@ -217,14 +237,36 @@ export async function deleteOfflineArea(id: string): Promise<void> {
   await deleteTilesForArea(id);
   const db = await openDB();
   return new Promise<void>((resolve, reject) => {
-    const tx = db.transaction('offlineAreas', 'readwrite');
-    const store = tx.objectStore('offlineAreas');
-    store.delete(id);
+    const names = ['offlineAreas', 'offlinePlaces'].filter((name) => db.objectStoreNames.contains(name));
+    const tx = db.transaction(names, 'readwrite');
+    tx.objectStore('offlineAreas').delete(id);
+    if (names.includes('offlinePlaces')) tx.objectStore('offlinePlaces').delete(id);
     tx.oncomplete = () => {
       notifyOfflineAreasChanged();
       resolve();
     };
     tx.onerror = () => reject(tx.error);
+  });
+}
+
+export async function saveOfflinePlaces(bundle: OfflinePlacesBundle): Promise<void> {
+  const db = await openDB();
+  return new Promise<void>((resolve, reject) => {
+    const tx = db.transaction('offlinePlaces', 'readwrite');
+    tx.objectStore('offlinePlaces').put(bundle);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+export async function getAllOfflinePlaces(): Promise<OfflinePlacesBundle[]> {
+  const db = await openDB();
+  if (!db.objectStoreNames.contains('offlinePlaces')) return [];
+  return new Promise<OfflinePlacesBundle[]>((resolve, reject) => {
+    const tx = db.transaction('offlinePlaces', 'readonly');
+    const req = tx.objectStore('offlinePlaces').getAll();
+    req.onsuccess = () => resolve((req.result as OfflinePlacesBundle[]) || []);
+    req.onerror = () => reject(req.error);
   });
 }
 

@@ -7,9 +7,19 @@ export interface DownloadProgress {
   current: number;
   total: number;
   percentage: number;
+  label?: string;
 }
 
 export type ProgressCallback = (progress: DownloadProgress) => void;
+
+export const DOWNLOAD_CANCELLED = 'Download cancelled';
+
+function isDownloadAborted(signal?: AbortSignal, error?: unknown): boolean {
+  if (signal?.aborted) return true;
+  if (!error) return false;
+  if (error instanceof DOMException && error.name === 'AbortError') return true;
+  return error instanceof Error && (error.name === 'AbortError' || error.message === DOWNLOAD_CANCELLED);
+}
 
 export const MAX_OFFLINE_MAP_TILES = 3500;
 
@@ -45,7 +55,7 @@ export async function downloadOfflineArea(
   }
 
   const allTiles = [...mapTiles, ...elevationTiles];
-  const total = allTiles.length;
+  const total = allTiles.length + 1;
   let completed = 0;
   let failed = 0;
 
@@ -53,7 +63,7 @@ export async function downloadOfflineArea(
   const RETRY_ATTEMPTS = 2;
 
   for (let i = 0; i < allTiles.length; i += CONCURRENT_DOWNLOADS) {
-    if (signal?.aborted) throw new Error('Download cancelled');
+    if (signal?.aborted) throw new Error(DOWNLOAD_CANCELLED);
     const batch = allTiles.slice(i, i + CONCURRENT_DOWNLOADS);
 
     await Promise.all(
@@ -62,7 +72,7 @@ export async function downloadOfflineArea(
         let success = false;
         while (attempts < RETRY_ATTEMPTS && !success) {
           try {
-            if (signal?.aborted) throw new Error('Download cancelled');
+            if (signal?.aborted) throw new Error(DOWNLOAD_CANCELLED);
             const url =
               type === 'elevation' ? elevationTileProxyUrl(z, x, y) : mapTileProxyUrl(layer, z, x, y);
             const response = await fetch(url, { signal });
@@ -76,8 +86,10 @@ export async function downloadOfflineArea(
               current: completed,
               total,
               percentage: total ? Math.round((completed / total) * 100) : 100,
+              label: 'Laster ned kartfliser…',
             });
           } catch (error) {
+            if (isDownloadAborted(signal, error)) throw new Error(DOWNLOAD_CANCELLED);
             attempts++;
             if (attempts >= RETRY_ATTEMPTS) {
               console.warn(`Failed to download ${type} tile ${z}/${x}/${y}:`, error);
@@ -87,6 +99,7 @@ export async function downloadOfflineArea(
                 current: completed,
                 total,
                 percentage: total ? Math.round((completed / total) * 100) : 100,
+                label: 'Laster ned kartfliser…',
               });
             } else {
               await new Promise((resolve) => setTimeout(resolve, 400 * attempts));
@@ -97,6 +110,40 @@ export async function downloadOfflineArea(
     );
   }
 
+  const tileTotal = mapTiles.length + elevationTiles.length;
+  if (tileTotal > 0 && failed === tileTotal) {
+    throw new Error('Ingen fliser ble lastet ned. Sjekk nettet og prøv igjen.');
+  }
+
+  onProgress?.({
+    current: completed,
+    total,
+    percentage: total ? Math.round((completed / total) * 100) : 100,
+    label: 'Henter bebyggelse (3 km utenfor jaktgrensen)…',
+  });
+
+  let placeCount = 0;
+  try {
+    if (signal?.aborted) throw new Error(DOWNLOAD_CANCELLED);
+    const { downloadPlacesForArea } = await import('./places/offlinePlaces');
+    placeCount = await downloadPlacesForArea({
+      areaId: area.id,
+      bounds: area.bounds,
+      polygon: area.polygon,
+      signal,
+    });
+  } catch (error) {
+    if (isDownloadAborted(signal, error)) throw new Error(DOWNLOAD_CANCELLED);
+    console.warn('Bebyggelse could not be downloaded:', error);
+  }
+  completed++;
+  onProgress?.({
+    current: completed,
+    total,
+    percentage: 100,
+    label: placeCount ? `Bebyggelse: ${placeCount} punkt` : 'Kart lastet (bebyggelse mangler)',
+  });
+
   const offlineArea: OfflineArea = {
     ...area,
     layer,
@@ -105,10 +152,8 @@ export async function downloadOfflineArea(
     tileCount: mapTiles.length,
     elevationTileCount: elevationTiles.length,
     includesElevation: includeElevation,
+    placeCount,
   };
-  if (total > 0 && failed === total) {
-    throw new Error('Ingen fliser ble lastet ned. Sjekk nettet og prøv igjen.');
-  }
 
   await saveOfflineArea(offlineArea);
 

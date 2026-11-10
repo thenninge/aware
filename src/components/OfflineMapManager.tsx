@@ -101,7 +101,7 @@ export default function OfflineMapManager({
     
     setIsDownloading(true);
     setDownloadError(null);
-    setDownloadProgress({ current: 0, total: estimatedTiles + estimatedElevationTiles, percentage: 0 });
+    setDownloadProgress({ current: 0, total: estimatedTiles + estimatedElevationTiles + 1, percentage: 0, label: 'Starter nedlasting…' });
     
     try {
       await onConfirmDownload(areaName.trim() || huntingAreaName || 'Offline-område', selectedZooms, includeElevation, (progress) => {
@@ -111,7 +111,8 @@ export default function OfflineMapManager({
       setIncludeElevation(true);
       await loadAreas();
     } catch (error) {
-      setDownloadError((error as Error).message || 'Nedlasting feilet');
+      const message = (error as Error).message || 'Nedlasting feilet';
+      setDownloadError(message === 'Download cancelled' ? 'Nedlasting avbrutt' : message);
     } finally {
       setIsDownloading(false);
       setDownloadProgress(null);
@@ -132,7 +133,8 @@ export default function OfflineMapManager({
       <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded space-y-1">
         <div><strong>Total cache:</strong> {formatBytes(cacheSize)}</div>
         <div className="text-[10px] text-gray-500">
-          Lagrer Kartverket-topo og høydedata. Google-satellitt kan ikke lastes ned for offline.
+          Lagrer Kartverket-topo, høydedata og bebyggelse inntil 3 km utenfor jaktgrensen.
+          Google-satellitt kan ikke lastes ned for offline.
         </div>
       </div>
       {downloadError && (
@@ -248,7 +250,7 @@ export default function OfflineMapManager({
       {isDownloading && downloadProgress && (
         <div className="bg-blue-50 p-3 rounded border border-blue-200">
           <div className="text-xs font-semibold text-blue-800 mb-1">
-            Laster ned tiles...
+            {downloadProgress.label || 'Laster ned…'}
           </div>
           <div className="w-full bg-blue-200 rounded-full h-2 mb-1">
             <div
@@ -257,7 +259,7 @@ export default function OfflineMapManager({
             />
           </div>
           <div className="text-xs text-blue-700">
-            {downloadProgress.current} / {downloadProgress.total} tiles ({downloadProgress.percentage}%)
+            {downloadProgress.current} / {downloadProgress.total} ({downloadProgress.percentage}%)
           </div>
         </div>
       )}
@@ -299,6 +301,16 @@ export default function OfflineMapManager({
                 {area.includesElevation && (
                   <div className="text-[10px] text-green-600">
                     ✓ Inkluderer høydedata
+                  </div>
+                )}
+                {typeof area.placeCount === 'number' && area.placeCount > 0 && (
+                  <div className="text-[10px] text-green-600">
+                    ✓ {area.placeCount} bebyggelse-punkt (3 km utenfor grensen)
+                  </div>
+                )}
+                {area.huntingAreaId && area.placeCount === 0 && (
+                  <div className="text-[10px] text-amber-700">
+                    Ingen bebyggelse lagret — last ned på nytt med nett
                   </div>
                 )}
                 <div className="text-[10px] text-gray-500">

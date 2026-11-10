@@ -73,8 +73,7 @@ function parsePlaces(raw: OverpassJson, fallbackLat: number, fallbackLng: number
         !Number.isNaN(place.lat) &&
         !Number.isNaN(place.lng) &&
         PLACE_CATEGORIES.includes(place.category as (typeof PLACE_CATEGORIES)[number])
-    )
-    .slice(0, 50);
+    );
 }
 
 function mergeSignals(timeoutMs: number, outer?: AbortSignal): { signal: AbortSignal; cancel: () => void } {
@@ -169,5 +168,62 @@ export async function fetchPlacesAround(
     if (raw) return parsePlaces(raw, lat, lng);
   }
 
+  throw new Error('OVERPASS_UNAVAILABLE');
+}
+
+function buildBboxQuery(south: number, west: number, north: number, east: number): string {
+  return `[out:json][timeout:6];
+nwr["place"~"city|town|village|hamlet|farm|isolated_dwelling"](${south},${west},${north},${east});
+out center;`;
+}
+
+async function queryOwnApiBbox(
+  south: number,
+  west: number,
+  north: number,
+  east: number,
+  outer?: AbortSignal
+): Promise<PlaceData[] | null> {
+  if (outer?.aborted) return null;
+  const { signal, cancel } = mergeSignals(9000, outer);
+  const url = `/api/overpass?south=${south}&west=${west}&north=${north}&east=${east}`;
+  try {
+    const response = await fetch(url, { method: 'GET', cache: 'no-store', signal });
+    if (!response.ok) return null;
+    const data = await response.json();
+    if (!data?.success || !Array.isArray(data.data)) return null;
+    return data.data as PlaceData[];
+  } catch {
+    return null;
+  } finally {
+    cancel();
+  }
+}
+
+export async function fetchPlacesInBbox(
+  south: number,
+  west: number,
+  north: number,
+  east: number,
+  signal?: AbortSignal
+): Promise<PlaceData[]> {
+  if (![south, west, north, east].every(Number.isFinite) || south >= north || west >= east) {
+    throw new Error('OVERPASS_UNAVAILABLE');
+  }
+  const midLat = (south + north) / 2;
+  const midLng = (west + east) / 2;
+  if (typeof window !== 'undefined') {
+    if (signal?.aborted) throw new Error('OVERPASS_ABORTED');
+    const fromApi = await queryOwnApiBbox(south, west, north, east, signal);
+    if (fromApi) return fromApi;
+  }
+
+  const query = buildBboxQuery(south, west, north, east);
+  const endpoints = typeof window === 'undefined' ? ENDPOINTS.slice(0, 1) : ENDPOINTS;
+  for (const endpoint of endpoints) {
+    if (signal?.aborted) throw new Error('OVERPASS_ABORTED');
+    const raw = await queryEndpoint(endpoint, query, signal);
+    if (raw) return parsePlaces(raw, midLat, midLng);
+  }
   throw new Error('OVERPASS_UNAVAILABLE');
 }

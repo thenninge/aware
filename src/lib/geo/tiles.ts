@@ -1,4 +1,4 @@
-import { coordToTile } from './coordinates';
+import { coordToTile, type Coordinate } from './coordinates';
 
 export type GeoBounds = { north: number; south: number; east: number; west: number };
 
@@ -18,7 +18,7 @@ export function tilesInBounds(bounds: GeoBounds, zoom: number): Array<{ x: numbe
   return tiles;
 }
 
-export function boundsFromPolygon(coordinates: Array<[number, number]>): GeoBounds | null {
+export function rawBoundsFromPolygon(coordinates: Array<[number, number]>): GeoBounds | null {
   if (!coordinates.length) return null;
   let north = -90;
   let south = 90;
@@ -32,13 +32,19 @@ export function boundsFromPolygon(coordinates: Array<[number, number]>): GeoBoun
     west = Math.min(west, lng);
   }
   if (north < south || east < west) return null;
-  const padLat = Math.max(0.002, (north - south) * 0.08);
-  const padLng = Math.max(0.003, (east - west) * 0.08);
+  return { north, south, east, west };
+}
+
+export function boundsFromPolygon(coordinates: Array<[number, number]>): GeoBounds | null {
+  const raw = rawBoundsFromPolygon(coordinates);
+  if (!raw) return null;
+  const padLat = Math.max(0.002, (raw.north - raw.south) * 0.08);
+  const padLng = Math.max(0.003, (raw.east - raw.west) * 0.08);
   return {
-    north: Math.min(90, north + padLat),
-    south: Math.max(-90, south - padLat),
-    east: Math.min(180, east + padLng),
-    west: Math.max(-180, west - padLng),
+    north: Math.min(90, raw.north + padLat),
+    south: Math.max(-90, raw.south - padLat),
+    east: Math.min(180, raw.east + padLng),
+    west: Math.max(-180, raw.west - padLng),
   };
 }
 
@@ -56,4 +62,19 @@ export function padBounds(bounds: GeoBounds, meters = 200): GeoBounds {
 
 export function tileCountForZooms(bounds: GeoBounds, zoomLevels: number[]): number {
   return zoomLevels.reduce((sum, zoom) => sum + tilesInBounds(bounds, zoom).length, 0);
+}
+
+/** Grid of circle centers that cover bounds. Radius 3500 + step 3000 gives overlap. */
+export function coverBoundsWithCircles(bounds: GeoBounds, radiusM = 3500): Coordinate[] {
+  const step = Math.min(radiusM * 0.85, 3000);
+  const padLat = step / 111000;
+  const midLat = (bounds.north + bounds.south) / 2;
+  const padLng = step / (111000 * Math.max(0.2, Math.cos((midLat * Math.PI) / 180)));
+  const centers: Coordinate[] = [];
+  for (let lat = bounds.south; lat <= bounds.north + padLat * 0.1; lat += padLat) {
+    for (let lng = bounds.west; lng <= bounds.east + padLng * 0.1; lng += padLng) {
+      centers.push({ lat, lng });
+    }
+  }
+  return centers.length ? centers : [{ lat: midLat, lng: (bounds.east + bounds.west) / 2 }];
 }

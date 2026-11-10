@@ -521,24 +521,49 @@ function MapController({
           return;
         }
 
-        const { fetchPlacesAround } = await import('@/lib/places/overpass');
-        const foundPlaces = await fetchPlacesAround(
-          searchPos.lat,
-          searchPos.lng,
-          radius,
-          abort.signal
+        const { getCachedPlacesAround } = await import('@/lib/places/offlinePlaces');
+        const cached = await getCachedPlacesAround(searchPos.lat, searchPos.lng, radius).catch(
+          () => []
         );
+
+        if (navigator.onLine !== false) {
+          try {
+            const { fetchPlacesAround } = await import('@/lib/places/overpass');
+            const { nearestWithinRadius } = await import('@/lib/geo/polygon');
+            const foundPlaces = nearestWithinRadius(
+              await fetchPlacesAround(searchPos.lat, searchPos.lng, radius, abort.signal),
+              searchPos,
+              radius,
+              50
+            );
+            if (generation !== scanGenerationRef.current) return;
+            console.log('[Overpass] OK', { count: foundPlaces.length });
+            setPlaces(foundPlaces);
+            onPlacesChangeRef.current?.(foundPlaces);
+            return;
+          } catch (error: unknown) {
+            if (generation !== scanGenerationRef.current) return;
+            const message = error instanceof Error ? error.message : '';
+            if (message === 'OVERPASS_ABORTED') return;
+            console.error('Error fetching places:', error);
+            if (cached.length) {
+              setPlaces(cached);
+              onPlacesChangeRef.current?.(cached);
+              return;
+            }
+            alert('⏱️ Fant ikke bebyggelse.\n\nOverpass svarte ikke i tide. Prøv igjen om litt, eller bruk 2000 m radius.');
+            setPlaces([]);
+            onPlacesChangeRef.current?.([]);
+            return;
+          }
+        }
+
         if (generation !== scanGenerationRef.current) return;
-        console.log('[Overpass] OK', { count: foundPlaces.length });
-        setPlaces(foundPlaces);
-        onPlacesChangeRef.current?.(foundPlaces);
+        setPlaces(cached);
+        onPlacesChangeRef.current?.(cached);
       } catch (error: unknown) {
         if (generation !== scanGenerationRef.current) return;
-        const message = error instanceof Error ? error.message : '';
         console.error('Error fetching places:', error);
-        if (message !== 'OVERPASS_ABORTED') {
-          alert('⏱️ Fant ikke bebyggelse.\n\nOverpass svarte ikke i tide. Prøv igjen om litt, eller bruk 2000 m radius.');
-        }
         setPlaces([]);
         onPlacesChangeRef.current?.([]);
       } finally {

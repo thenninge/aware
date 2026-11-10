@@ -97,6 +97,9 @@ export default function Home() {
   const [drawnOfflineBounds, setDrawnOfflineBounds] = useState<{ north: number; south: number; east: number; west: number } | null>(null);
   const [definedOfflineBounds, setDefinedOfflineBounds] = useState<{ north: number; south: number; east: number; west: number } | null>(null);
   const [pendingOfflineHuntingAreaId, setPendingOfflineHuntingAreaId] = useState<string | null>(null);
+  const [isOfflineDownloading, setIsOfflineDownloading] = useState(false);
+  const [showLeaveDownloadConfirm, setShowLeaveDownloadConfirm] = useState(false);
+  const offlineDownloadAbortRef = useRef<AbortController | null>(null);
   const [selectedMapLayer] = useState({
     key: 'kartverket_topo',
     name: 'Topo (Kartverket)',
@@ -247,10 +250,25 @@ export default function Home() {
     }
   }, [mode]);
 
+  const requestCloseSettings = useCallback(() => {
+    if (isOfflineDownloading) {
+      setShowLeaveDownloadConfirm(true);
+      return;
+    }
+    setIsSettingsExpanded(false);
+  }, [isOfflineDownloading]);
+
+  const confirmAbortOfflineDownload = () => {
+    offlineDownloadAbortRef.current?.abort();
+    setShowLeaveDownloadConfirm(false);
+    setIsSettingsExpanded(false);
+  };
+
   // Close menus when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: Event) => {
       const target = event.target as Node;
+      if (showLeaveDownloadConfirm) return;
       
       // Don't close if clicking on the toggle buttons
       if (settingsButtonRef.current?.contains(target) || filterButtonRef.current?.contains(target)) {
@@ -258,7 +276,7 @@ export default function Home() {
       }
       
       if (isSettingsExpanded && settingsMenuRef.current && !settingsMenuRef.current.contains(target)) {
-        setIsSettingsExpanded(false);
+        requestCloseSettings();
       }
       if (isFilterExpanded && filterMenuRef.current && !filterMenuRef.current.contains(target)) {
         setIsFilterExpanded(false);
@@ -274,7 +292,7 @@ export default function Home() {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('touchstart', handleClickOutside);
     };
-  }, [isSettingsExpanded, isFilterExpanded]);
+  }, [isSettingsExpanded, isFilterExpanded, showLeaveDownloadConfirm, requestCloseSettings]);
 
 
 
@@ -657,10 +675,12 @@ export default function Home() {
         {/* Settings-knapp */}
         <button
           onClick={() => {
-            setIsSettingsExpanded(!isSettingsExpanded);
-            if (!isSettingsExpanded) {
-              setIsFilterExpanded(false); // Lukk filter-menyen hvis den er åpen
+            if (isSettingsExpanded) {
+              requestCloseSettings();
+              return;
             }
+            setIsSettingsExpanded(true);
+            setIsFilterExpanded(false);
           }}
           ref={settingsButtonRef}
           className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors border ${
@@ -693,9 +713,13 @@ export default function Home() {
         {/* Filter-knapp */}
         <button
           onClick={() => {
+            if (isSettingsExpanded && isOfflineDownloading) {
+              setShowLeaveDownloadConfirm(true);
+              return;
+            }
             setIsFilterExpanded(!isFilterExpanded);
             if (!isFilterExpanded) {
-              setIsSettingsExpanded(false); // Lukk settings-menyen hvis den er åpen
+              setIsSettingsExpanded(false);
             }
           }}
           ref={filterButtonRef}
@@ -806,26 +830,40 @@ export default function Home() {
               if (!definedOfflineBounds) {
                 throw new Error('Ingen område definert');
               }
-              const { downloadOfflineArea } = await import('@/lib/offlineTiles');
-              const { huntingAreaOfflineId } = await import('@/lib/idb');
-              await downloadOfflineArea(
-                {
-                  id: pendingOfflineHuntingAreaId
-                    ? huntingAreaOfflineId(pendingOfflineHuntingAreaId)
-                    : `area-${Date.now()}`,
-                  name,
-                  bounds: definedOfflineBounds,
-                  zoomLevels,
-                  layer: selectedMapLayer.key,
-                  huntingAreaId: pendingOfflineHuntingAreaId || undefined,
-                },
-                selectedMapLayer.url,
-                onProgress,
-                undefined,
-                includeElevation
-              );
-              setDefinedOfflineBounds(null);
-              setPendingOfflineHuntingAreaId(null);
+              const controller = new AbortController();
+              offlineDownloadAbortRef.current = controller;
+              setIsOfflineDownloading(true);
+              try {
+                const { downloadOfflineArea } = await import('@/lib/offlineTiles');
+                const { huntingAreaOfflineId } = await import('@/lib/idb');
+                const hunting = pendingOfflineHuntingAreaId
+                  ? huntingAreas.find((item) => item.id === pendingOfflineHuntingAreaId)
+                  : null;
+                await downloadOfflineArea(
+                  {
+                    id: pendingOfflineHuntingAreaId
+                      ? huntingAreaOfflineId(pendingOfflineHuntingAreaId)
+                      : `area-${Date.now()}`,
+                    name,
+                    bounds: definedOfflineBounds,
+                    zoomLevels,
+                    layer: selectedMapLayer.key,
+                    huntingAreaId: pendingOfflineHuntingAreaId || undefined,
+                    polygon: hunting?.coordinates,
+                  },
+                  selectedMapLayer.url,
+                  onProgress,
+                  controller.signal,
+                  includeElevation
+                );
+                setDefinedOfflineBounds(null);
+                setPendingOfflineHuntingAreaId(null);
+              } finally {
+                if (offlineDownloadAbortRef.current === controller) {
+                  offlineDownloadAbortRef.current = null;
+                }
+                setIsOfflineDownloading(false);
+              }
             }}
             onUseHuntingAreaForOffline={() => {
               const area = huntingAreas.find((item) => item.id === activeHuntingAreaId);
@@ -1008,6 +1046,43 @@ export default function Home() {
           setPendingOfflineHuntingAreaId(null);
         }}
       />
+
+      {showLeaveDownloadConfirm && (
+        <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/40 px-6">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="offline-download-leave-title"
+            className="w-full max-w-sm rounded-xl bg-white p-4 shadow-xl"
+            onMouseDown={(event) => event.stopPropagation()}
+            onTouchStart={(event) => event.stopPropagation()}
+          >
+            <h2 id="offline-download-leave-title" className="text-base font-semibold text-gray-900">
+              Avbryte nedlasting?
+            </h2>
+            <p className="mt-2 text-sm text-gray-700">
+              Nedlastingen pågår. Hvis du lukker nå, stoppes den, og området blir ikke lagret ferdig.
+              Fliser som allerede er hentet blir liggende på enheten.
+            </p>
+            <div className="mt-4 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setShowLeaveDownloadConfirm(false)}
+                className="flex-1 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+              >
+                Gå tilbake
+              </button>
+              <button
+                type="button"
+                onClick={confirmAbortOfflineDownload}
+                className="flex-1 rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700"
+              >
+                Bekreft
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Admin Menu */}
       <AdminMenu 
