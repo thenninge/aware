@@ -1,4 +1,3 @@
-import type { LatLngBoundsExpression } from 'leaflet';
 import type { GeoBounds } from '@/lib/geo/tiles';
 
 export type CustomHuntingImagery = {
@@ -43,13 +42,6 @@ export function customImageryForHuntingAreas(
 ): CustomHuntingImagery[] {
   if (!names?.length) return [];
   return CUSTOM_HUNTING_IMAGERY.filter((cfg) => names.some((name) => cfg.match.test(name)));
-}
-
-export function leafletBounds(cfg: CustomHuntingImagery): LatLngBoundsExpression {
-  return [
-    [cfg.bounds.south, cfg.bounds.west],
-    [cfg.bounds.north, cfg.bounds.east],
-  ];
 }
 
 export function imageryTileUrl(

@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { getTile, saveTile } from '@/lib/idb';
-import { customImageryForHuntingAreas, leafletBounds } from '@/lib/map/customHuntingImagery';
+import { customImageryForHuntingAreas } from '@/lib/map/customHuntingImagery';
 import type { CustomHuntingImagery } from '@/lib/map/customHuntingImagery';
 import type { HuntingArea } from './settingsmenu';
 
@@ -81,7 +81,10 @@ function addImageryLayer(map: L.Map, cfg: CustomHuntingImagery): L.TileLayer {
   const layer = new ImageryCachingTileLayer(cfg.tileUrl, {
     pane: PANE,
     layerKey: cfg.layerKey,
-    bounds: L.latLngBounds(leafletBounds(cfg)),
+    bounds: L.latLngBounds(
+      [cfg.bounds.south, cfg.bounds.west],
+      [cfg.bounds.north, cfg.bounds.east]
+    ),
     minZoom: cfg.minZoom,
     maxNativeZoom: cfg.maxNativeZoom,
     maxZoom: 18,
