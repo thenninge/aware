@@ -16,6 +16,7 @@ import { savePendingTrack } from '@/lib/idb';
 import GoogleMapSmart from './GoogleMapSmart';
 import OfflineTileLayer from './OfflineTileLayer';
 import HogstOverlay from './HogstOverlay';
+import CustomHuntingImageryOverlay from './CustomHuntingImageryOverlay';
 import OfflineAreaDefiner from './OfflineAreaDefiner';
 import OfflineAreasOverlay from './OfflineAreasOverlay';
 // Database operations now go through Next.js API routes
@@ -2741,6 +2742,10 @@ export default function MapComponent({
           maxZoom={18}
           layerKey={selectedLayer.key}
           enableCaching={true}
+        />
+        <CustomHuntingImageryOverlay
+          huntingAreas={huntingAreas}
+          enabled={selectedLayer.key === 'google_sat'}
         />
         
         <MapController 

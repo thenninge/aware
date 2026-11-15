@@ -24,6 +24,9 @@
 .DS_Store
 *.pem
 
+# Lokal demo av jaktfelt (?demo=), ikke i git
+/public/hogst/dev-areas.json
+
 # debug
 npm-debug.log*
 yarn-debug.log*
