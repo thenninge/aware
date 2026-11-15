@@ -24,6 +24,27 @@ interface CategoryFilter {
   isolated_dwelling: boolean;
 }
 
+function huntingAreasCacheKey(teamId: string) {
+  return `aware_hunting_areas_v1:${teamId}`;
+}
+
+function writeHuntingAreasCache(teamId: string, areas: HuntingArea[]) {
+  try {
+    localStorage.setItem(huntingAreasCacheKey(teamId), JSON.stringify(areas));
+  } catch {}
+}
+
+function readHuntingAreasCache(teamId: string): HuntingArea[] | null {
+  try {
+    const raw = localStorage.getItem(huntingAreasCacheKey(teamId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 interface CategoryConfig {
   color: string;
   opacity: number;
@@ -472,48 +493,48 @@ export default function Home() {
   };
   
   // Load hunting areas from Supabase
+  const applyHuntingAreas = (normalizedAreas: HuntingArea[]) => {
+    setHuntingAreas(normalizedAreas);
+    const currentId = activeHuntingAreaId ? String(activeHuntingAreaId) : null;
+    const defaultActiveId = localStorage.getItem('default_active_hunting_area_id');
+    const savedActiveId = localStorage.getItem('active_hunting_area_id');
+
+    if (defaultActiveId && normalizedAreas.some((a: HuntingArea) => String(a.id) === String(defaultActiveId))) {
+      setActiveHuntingAreaId(String(defaultActiveId));
+    } else if (currentId && normalizedAreas.some((a: HuntingArea) => String(a.id) === currentId)) {
+      setActiveHuntingAreaId(currentId);
+    } else if (savedActiveId && normalizedAreas.some((a: HuntingArea) => String(a.id) === String(savedActiveId))) {
+      setActiveHuntingAreaId(String(savedActiveId));
+    } else if (!currentId && normalizedAreas.length > 0) {
+      setActiveHuntingAreaId(String(normalizedAreas[0].id));
+    }
+  };
+
   const loadHuntingAreas = async () => {
     if (authState.activeTeam?.id) {
+      const teamId = authState.activeTeam.id;
       try {
-        const response = await fetch(`/api/hunting-areas?teamId=${authState.activeTeam.id}`);
+        const response = await fetch(`/api/hunting-areas?teamId=${teamId}`);
         if (response.ok) {
           const areas = await response.json();
-          // Normaliser ID til string for stabil sammenligning
           const normalizedAreas = (areas || []).map((a: any) => ({
             ...a,
             id: String(a.id),
           }));
-          setHuntingAreas(normalizedAreas);
-          
-          // Velg aktivt jaktfelt med tydelig prioritet:
-          // 1) Standardvalg fra "Lagre som standard"
-          // 2) Behold nåværende state hvis gyldig
-          // 3) Ellers bruk forrige aktive (session) fra localStorage
-          // 4) Ellers: kun hvis ingenting valgt, fallback til første
-          const currentId = activeHuntingAreaId ? String(activeHuntingAreaId) : null;
-          const defaultActiveId = localStorage.getItem('default_active_hunting_area_id');
-          const savedActiveId = localStorage.getItem('active_hunting_area_id');
-          
-          if (defaultActiveId && normalizedAreas.some((a: HuntingArea) => String(a.id) === String(defaultActiveId))) {
-            setActiveHuntingAreaId(String(defaultActiveId));
-          } else if (currentId && normalizedAreas.some((a: HuntingArea) => String(a.id) === currentId)) {
-            // Behold gjeldende valg
-            setActiveHuntingAreaId(currentId);
-          } else if (savedActiveId && normalizedAreas.some((a: HuntingArea) => String(a.id) === String(savedActiveId))) {
-            setActiveHuntingAreaId(String(savedActiveId));
-          } else if (!currentId && normalizedAreas.length > 0) {
-            // Kun hvis vi ikke har et gjeldende valg: velg første (bevarer tidligere atferd)
-            setActiveHuntingAreaId(String(normalizedAreas[0].id));
-          }
-          
+          applyHuntingAreas(normalizedAreas);
+          writeHuntingAreasCache(teamId, normalizedAreas);
           console.log(`Loaded ${normalizedAreas.length} hunting areas from Supabase`);
         } else {
           console.error('Failed to load hunting areas from Supabase');
-          setHuntingAreas([]);
+          const cached = readHuntingAreasCache(teamId);
+          if (cached) applyHuntingAreas(cached);
+          else setHuntingAreas([]);
         }
       } catch (error) {
         console.error('Error loading hunting areas:', error);
-        setHuntingAreas([]);
+        const cached = readHuntingAreasCache(teamId);
+        if (cached) applyHuntingAreas(cached);
+        else setHuntingAreas([]);
       }
     } else {
       // Kun i utvikling: ?demo=<felt> laster et jaktfelt lokalt uten innlogging (public/hogst/dev-areas.json, ikke i git)

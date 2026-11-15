@@ -70,11 +70,16 @@ export default function OfflineMapManager({
 
   useEffect(() => {
     if (definedBounds) {
-      const job = estimateOfflineJob(definedBounds, selectedZooms, includeElevation);
-      setEstimatedTiles(job.mapTiles);
+      const job = estimateOfflineJob(
+        definedBounds,
+        selectedZooms,
+        includeElevation,
+        [areaName, huntingAreaName || ''].filter(Boolean)
+      );
+      setEstimatedTiles(job.mapTiles + job.imageryTiles);
       setEstimatedElevationTiles(job.elevationTiles);
     }
-  }, [definedBounds, selectedZooms, includeElevation]);
+  }, [definedBounds, selectedZooms, includeElevation, areaName, huntingAreaName]);
 
   useEffect(() => {
     if (definedBounds && huntingAreaName && !areaName.trim()) {
@@ -134,7 +139,7 @@ export default function OfflineMapManager({
         <div><strong>Total cache:</strong> {formatBytes(cacheSize)}</div>
         <div className="text-[10px] text-gray-500">
           Lagrer Kartverket-topo, høydedata og bebyggelse inntil 3 km utenfor jaktgrensen.
-          Google-satellitt kan ikke lastes ned for offline.
+          Kongshov-flyfoto lastes ned sammen med jaktfeltet. Google-satellitt kan ikke lastes ned.
         </div>
       </div>
       {downloadError && (

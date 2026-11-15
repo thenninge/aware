@@ -29,6 +29,7 @@ export interface OfflineArea {
   huntingAreaId?: string;
   placeCount?: number;
   polygon?: Array<[number, number]>;
+  imageryIds?: string[];
 }
 
 export interface OfflinePlacesBundle {
@@ -166,6 +167,20 @@ export async function deleteTilesForArea(areaId: string): Promise<void> {
     const { DEM_ZOOM } = await import('./terrain/decode');
     for (const tile of tilesInBounds(area.bounds, DEM_ZOOM)) {
       keys.add(`elevation/${tile.z}/${tile.x}/${tile.y}`);
+    }
+  }
+  const { CUSTOM_HUNTING_IMAGERY, customImageryForHuntingAreas } = await import(
+    './map/customHuntingImagery'
+  );
+  const imagery = (area.imageryIds || [])
+    .map((id) => CUSTOM_HUNTING_IMAGERY.find((cfg) => cfg.id === id))
+    .filter((cfg): cfg is (typeof CUSTOM_HUNTING_IMAGERY)[number] => !!cfg);
+  const imageryLayers = imagery.length ? imagery : customImageryForHuntingAreas([area.name]);
+  for (const cfg of imageryLayers) {
+    for (let z = cfg.minZoom; z <= cfg.maxNativeZoom; z++) {
+      for (const tile of tilesInBounds(cfg.bounds, z)) {
+        keys.add(`${cfg.layerKey}/${tile.z}/${tile.x}/${tile.y}`);
+      }
     }
   }
 
