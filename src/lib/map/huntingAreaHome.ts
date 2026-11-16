@@ -41,8 +41,12 @@ export function centroidOfArea(area: AreaLike): HomePosition | null {
     (p): p is [number, number] => Array.isArray(p) && Number.isFinite(p[0]) && Number.isFinite(p[1])
   );
   if (pts.length === 0) return null;
-  const lat = pts.reduce((sum, p) => sum + p[0], 0) / pts.length;
-  const lng = pts.reduce((sum, p) => sum + p[1], 0) / pts.length;
+  const ring =
+    pts.length > 1 && pts[0][0] === pts[pts.length - 1][0] && pts[0][1] === pts[pts.length - 1][1]
+      ? pts.slice(0, -1)
+      : pts;
+  const lat = ring.reduce((sum, p) => sum + p[0], 0) / ring.length;
+  const lng = ring.reduce((sum, p) => sum + p[1], 0) / ring.length;
   return isValidHome({ lat, lng }) ? { lat, lng } : null;
 }
 

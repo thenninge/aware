@@ -87,10 +87,16 @@ function HuntingAreaHomeFocuser({
     if (focusedIdRef.current === String(activeHuntingAreaId)) return;
     focusedIdRef.current = String(activeHuntingAreaId);
 
+    const saved = readHomeForArea(area.id);
+    if (saved) {
+      map.setView([saved.lat, saved.lng], map.getZoom(), { animate: true });
+      return;
+    }
+
     if (area.coordinates.length < 3) return;
     const bounds = L.latLngBounds(area.coordinates.map(([lat, lng]) => L.latLng(lat, lng)));
     if (bounds.isValid()) {
-      map.fitBounds(bounds, { padding: [28, 28], maxZoom: 15, animate: true });
+      map.setView(bounds.getCenter(), map.getZoom(), { animate: true });
     }
   }, [activeHuntingAreaId, huntingAreas, isMapLocked, map]);
 
