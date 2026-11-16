@@ -4,6 +4,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import OfflineMapManager from './OfflineMapManager';
 import { getOfflineAreas, isOfflineForHuntingArea, type OfflineArea } from '@/lib/idb';
+import { readHomeForArea, writeHomeForArea } from '@/lib/map/huntingAreaHome';
 
 interface CategoryConfig {
   color: string;
@@ -255,23 +256,14 @@ export default function SettingsMenu({
     return () => window.removeEventListener('aware-offline-areas-changed', loadOfflineAreas);
   }, []);
 
-  // Load saved home position from localStorage
+  // Load saved home for the active hunting area
   useEffect(() => {
-    const loadSavedHomePosition = () => {
-      if (typeof window !== 'undefined') {
-        const saved = localStorage.getItem('aware_default_position');
-        if (saved) {
-          try {
-            const pos = JSON.parse(saved);
-            setSavedHomePosition(pos);
-          } catch (e) {
-            console.error('Error loading home position:', e);
-          }
-        }
-      }
-    };
-    loadSavedHomePosition();
-  }, [showHomeSaved]); // Reload when home position is saved
+    if (!activeHuntingAreaId) {
+      setSavedHomePosition(null);
+      return;
+    }
+    setSavedHomePosition(readHomeForArea(activeHuntingAreaId));
+  }, [showHomeSaved, activeHuntingAreaId]);
 
   // Fjernet allOpacities/globalOpacity og tilhørende useState/hook
 
@@ -339,12 +331,12 @@ export default function SettingsMenu({
           <div className="p-3 bg-white">
             <button
               type="button"
-              className={`w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded shadow-lg text-sm ${!currentCenter ? 'opacity-50 cursor-not-allowed' : ''}`}
-              disabled={!currentCenter}
+              className={`w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded shadow-lg text-sm ${!currentCenter || !activeHuntingAreaId ? 'opacity-50 cursor-not-allowed' : ''}`}
+              disabled={!currentCenter || !activeHuntingAreaId}
               onClick={() => {
-                if (currentCenter) {
-                  localStorage.setItem('aware_default_position', JSON.stringify(currentCenter));
-                  setSavedHomePosition(currentCenter); // Update displayed coordinates immediately
+                if (currentCenter && activeHuntingAreaId) {
+                  writeHomeForArea(activeHuntingAreaId, currentCenter);
+                  setSavedHomePosition(currentCenter);
                   setShowHomeSaved(true);
                   setTimeout(() => setShowHomeSaved(false), 1200);
                 } else {
@@ -355,17 +347,25 @@ export default function SettingsMenu({
             >
               Set as home position
             </button>
-            {savedHomePosition ? (
-              <div className="mt-2 p-2 bg-gray-50 rounded text-xs text-gray-700">
-                <div className="font-semibold mb-1 text-gray-600">Lagret home position:</div>
-                <div className="font-mono">
-                  <div>Lat: {savedHomePosition.lat.toFixed(6)}</div>
-                  <div>Lng: {savedHomePosition.lng.toFixed(6)}</div>
+            {activeHuntingAreaId ? (
+              savedHomePosition ? (
+                <div className="mt-2 p-2 bg-gray-50 rounded text-xs text-gray-700">
+                  <div className="font-semibold mb-1 text-gray-600">
+                    Lagret for {huntingAreas?.find((area) => area.id === activeHuntingAreaId)?.name || 'jaktfeltet'}:
+                  </div>
+                  <div className="font-mono">
+                    <div>Lat: {savedHomePosition.lat.toFixed(6)}</div>
+                    <div>Lng: {savedHomePosition.lng.toFixed(6)}</div>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="mt-2 p-2 bg-gray-100 rounded text-xs text-gray-500 italic">
+                  Ingen home lagret for dette jaktfeltet. Kartet zoomer til feltet til du setter en.
+                </div>
+              )
             ) : (
               <div className="mt-2 p-2 bg-gray-100 rounded text-xs text-gray-500 italic">
-                Ingen home position lagret ennå
+                Velg et jaktfelt for å sette home position
               </div>
             )}
             

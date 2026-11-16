@@ -543,9 +543,13 @@ export default function Home() {
         try {
           const res = await fetch('/hogst/dev-areas.json');
           const areas = res.ok ? await res.json() : {};
-          if (areas[demo]) {
-            setHuntingAreas([areas[demo]]);
-            setActiveHuntingAreaId(areas[demo].id);
+          const list = Object.values(areas || {}).filter((area): area is HuntingArea =>
+            Boolean(area && typeof area === 'object' && 'id' in area && 'coordinates' in area)
+          );
+          if (list.length > 0) {
+            setHuntingAreas(list);
+            const selected = (areas[demo] as HuntingArea | undefined) || list[0];
+            setActiveHuntingAreaId(String(selected.id));
             return;
           }
         } catch {

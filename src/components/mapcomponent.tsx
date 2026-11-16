@@ -17,6 +17,7 @@ import GoogleMapSmart from './GoogleMapSmart';
 import OfflineTileLayer from './OfflineTileLayer';
 import HogstOverlay from './HogstOverlay';
 import CustomHuntingImageryOverlay from './CustomHuntingImageryOverlay';
+import { readHomeForArea, readLegacyGlobalHome, writeHomeForArea } from '@/lib/map/huntingAreaHome';
 import OfflineAreaDefiner from './OfflineAreaDefiner';
 import OfflineAreasOverlay from './OfflineAreasOverlay';
 // Database operations now go through Next.js API routes
@@ -55,16 +56,51 @@ function isValidPosition(pos: unknown): pos is Position {
   return Number.isFinite(p.lat) && Number.isFinite(p.lng) && Math.abs(p.lat) <= 90 && Math.abs(p.lng) <= 180;
 }
 
-function readHomePosition(): Position | null {
-  try {
-    if (typeof window === 'undefined') return null;
-    const saved = localStorage.getItem('aware_default_position');
-    if (!saved) return null;
-    const pos = JSON.parse(saved);
-    return isValidPosition(pos) ? { lat: pos.lat, lng: pos.lng } : null;
-  } catch {
-    return null;
-  }
+function readHomePosition(areaId?: string | null): Position | null {
+  const id =
+    areaId ?? (typeof window !== 'undefined' ? localStorage.getItem('active_hunting_area_id') : null);
+  const perArea = readHomeForArea(id);
+  if (perArea) return perArea;
+  return readLegacyGlobalHome();
+}
+
+function HuntingAreaHomeFocuser({
+  huntingAreas,
+  activeHuntingAreaId,
+  isMapLocked,
+}: {
+  huntingAreas: HuntingArea[];
+  activeHuntingAreaId: string | null;
+  isMapLocked: boolean;
+}) {
+  const map = useMap();
+  const focusedIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (isMapLocked) return;
+    if (!activeHuntingAreaId) {
+      focusedIdRef.current = null;
+      return;
+    }
+    const area = huntingAreas.find((item) => String(item.id) === String(activeHuntingAreaId));
+    if (!area) return;
+    if (focusedIdRef.current === String(activeHuntingAreaId)) return;
+    focusedIdRef.current = String(activeHuntingAreaId);
+
+    const saved = readHomeForArea(area.id);
+    if (saved) {
+      map.setView([saved.lat, saved.lng], map.getZoom(), { animate: true });
+      return;
+    }
+    if (area.coordinates.length >= 3) {
+      const bounds = L.latLngBounds(area.coordinates.map(([lat, lng]) => L.latLng(lat, lng)));
+      if (bounds.isValid()) {
+        map.fitBounds(bounds, { padding: [28, 28], maxZoom: 14, animate: true });
+      }
+    }
+  }, [activeHuntingAreaId, huntingAreas, isMapLocked, map]);
+
+  return null;
 }
 
 interface PlaceData {
@@ -2667,7 +2703,8 @@ export default function MapComponent({
   };
 
   useEffect(() => {
-    setCurrentPosition(readHomePosition() ?? FALLBACK_POSITION);
+    const areaId = typeof window !== 'undefined' ? localStorage.getItem('active_hunting_area_id') : null;
+    setCurrentPosition(readHomePosition(areaId) ?? FALLBACK_POSITION);
   }, []);
 
   useEffect(() => {
@@ -2798,6 +2835,11 @@ export default function MapComponent({
           onCenterChange={(c) => setGoogleCenter(c)}
           isLosAwaitingClick={isLosAwaitingClick}
           onLosOriginSelected={handleLosOriginSelected}
+        />
+        <HuntingAreaHomeFocuser
+          huntingAreas={huntingAreas}
+          activeHuntingAreaId={activeHuntingAreaId}
+          isMapLocked={isMapLocked}
         />
         
         {/* Viewshed overlay (Leaflet polygon) */}
@@ -4761,7 +4803,14 @@ export default function MapComponent({
                 try {
                   const posToSave = gpsPosition || currentPosition;
                   if (posToSave && typeof window !== 'undefined') {
-                    localStorage.setItem('aware_default_position', JSON.stringify({ lat: posToSave.lat, lng: posToSave.lng }));
+                    if (activeHuntingAreaId) {
+                      writeHomeForArea(activeHuntingAreaId, { lat: posToSave.lat, lng: posToSave.lng });
+                    } else {
+                      localStorage.setItem(
+                        'aware_default_position',
+                        JSON.stringify({ lat: posToSave.lat, lng: posToSave.lng })
+                      );
+                    }
                   }
                 } catch {
                   // ignore storage errors

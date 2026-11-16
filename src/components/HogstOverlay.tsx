@@ -66,14 +66,6 @@ export default function HogstOverlay({ areaName, color = '#eb143c', opacity = 0.
     };
   }, [map, data]);
 
-  // Kun i utvikling med ?demo=...: zoom til hogstflatene når de er lastet
-  useEffect(() => {
-    if (!data || process.env.NODE_ENV !== 'development') return;
-    if (!new URLSearchParams(window.location.search).get('demo')) return;
-    const bounds = layerRef.current?.getBounds();
-    if (bounds?.isValid()) map.fitBounds(bounds, { padding: [20, 20] });
-  }, [map, data]);
-
   if (!data) return null;
 
   return (
