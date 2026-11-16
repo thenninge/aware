@@ -360,7 +360,7 @@ export default function SettingsMenu({
                 </div>
               ) : (
                 <div className="mt-2 p-2 bg-gray-100 rounded text-xs text-gray-500 italic">
-                  Ingen home lagret for dette jaktfeltet. Kartet zoomer til feltet til du setter en.
+                  Ingen home lagret for dette jaktfeltet
                 </div>
               )
             ) : (
