@@ -6,19 +6,32 @@ export type SearchKind = 'tracks' | 'finds' | 'observations';
 type PendingOp = 'upsert' | 'delete';
 
 type Pending = Record<SearchKind, Record<string, PendingOp>>;
+/** Tidspunkt (ms) for nylige slettinger, per type og id */
+type Tombstones = Record<SearchKind, Record<string, number>>;
 type TeamCache = {
   tracks: Record<string, SearchTrack>;
   finds: Record<string, SearchFind>;
   observations: Record<string, SearchObservation>;
   pending: Pending;
+  deleted: Tombstones;
 };
+
+/**
+ * Hvor lenge en sletting huskes lokalt. En henting fra serveren som startet like før
+ * slettingen kan komme tilbake etterpå med det gamle elementet; det skal ikke dukke opp igjen.
+ */
+const TOMBSTONE_TTL_MS = 5 * 60 * 1000;
 
 function emptyPending(): Pending {
   return { tracks: {}, finds: {}, observations: {} };
 }
 
+function emptyTombstones(): Tombstones {
+  return { tracks: {}, finds: {}, observations: {} };
+}
+
 function emptyTeam(): TeamCache {
-  return { tracks: {}, finds: {}, observations: {}, pending: emptyPending() };
+  return { tracks: {}, finds: {}, observations: {}, pending: emptyPending(), deleted: emptyTombstones() };
 }
 
 function readAll(): Record<string, TeamCache> {
@@ -62,6 +75,11 @@ function readTeam(teamId?: string | null): TeamCache {
           finds: current.pending?.finds || {},
           observations: current.pending?.observations || {},
         },
+        deleted: {
+          tracks: current.deleted?.tracks || {},
+          finds: current.deleted?.finds || {},
+          observations: current.deleted?.observations || {},
+        },
       }
     : emptyTeam();
   if (!current && typeof window !== 'undefined') {
@@ -97,6 +115,7 @@ export function putCachedTrack(teamId: string | null | undefined, track: SearchT
   const cache = readTeam(teamId);
   cache.tracks[track.id] = track;
   cache.pending.tracks[track.id] = 'upsert';
+  delete cache.deleted.tracks[track.id];
   writeTeam(teamId, cache);
 }
 
@@ -104,6 +123,7 @@ export function putCachedFind(teamId: string | null | undefined, find: SearchFin
   const cache = readTeam(teamId);
   cache.finds[find.id] = find;
   cache.pending.finds[find.id] = 'upsert';
+  delete cache.deleted.finds[find.id];
   writeTeam(teamId, cache);
 }
 
@@ -111,6 +131,7 @@ export function putCachedObservation(teamId: string | null | undefined, observat
   const cache = readTeam(teamId);
   cache.observations[observation.id] = observation;
   cache.pending.observations[observation.id] = 'upsert';
+  delete cache.deleted.observations[observation.id];
   writeTeam(teamId, cache);
 }
 
@@ -118,6 +139,7 @@ export function removeCachedItem(teamId: string | null | undefined, kind: Search
   const cache = readTeam(teamId);
   delete cache[kind][id];
   cache.pending[kind][id] = 'delete';
+  cache.deleted[kind][id] = Date.now();
   writeTeam(teamId, cache);
 }
 
@@ -148,6 +170,13 @@ export function mergeServerSearchData(
   server: { tracks: SearchTrack[]; finds: SearchFind[]; observations: SearchObservation[] }
 ) {
   const cache = readTeam(teamId);
+  const now = Date.now();
+  // Glem gamle slettinger
+  for (const kind of ['tracks', 'finds', 'observations'] as SearchKind[]) {
+    for (const [id, at] of Object.entries(cache.deleted[kind])) {
+      if (now - at > TOMBSTONE_TTL_MS) delete cache.deleted[kind][id];
+    }
+  }
   const merge = <T extends { id: string }>(
     kind: SearchKind,
     serverItems: T[],
@@ -156,6 +185,7 @@ export function mergeServerSearchData(
     const merged = new Map<string, T>();
     for (const item of serverItems) {
       if (cache.pending[kind][item.id] === 'delete') continue;
+      if (cache.deleted[kind][item.id]) continue; // nylig slettet her; serverdata kan være utdatert
       merged.set(item.id, item);
     }
     for (const [id, op] of Object.entries(cache.pending[kind])) {

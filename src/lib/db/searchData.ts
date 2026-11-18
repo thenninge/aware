@@ -104,7 +104,7 @@ export function matchingSearchRowIds(
   rows: Array<{ id?: unknown; local_id?: unknown }> | null | undefined,
   keys: { localId?: string; id?: string | number },
   prefix: string
-): number[] {
+): string[] {
   const wanted = [keys.localId, keys.id]
     .filter((value) => value != null && String(value) !== '')
     .map(String);
@@ -116,8 +116,9 @@ export function matchingSearchRowIds(
       const aliases = [localId, id != null ? String(id) : '', id != null ? `${prefix}_${id}` : ''];
       return wanted.some((key) => aliases.includes(key));
     })
-    .map((row) => Number(row.id))
-    .filter((id) => Number.isFinite(id));
+    // id er UUID (tekst) i databasen. Number() ga NaN, så ingenting ble slettet.
+    .map((row) => (row.id != null ? String(row.id) : ''))
+    .filter((id) => id !== '');
 }
 
 export function serializeTrackPoints(points: Coord[]): string {
