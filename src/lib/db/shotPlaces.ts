@@ -1,7 +1,15 @@
 export type Coord = { lat: number; lng: number };
 
+/** posts.id er UUID i databasen (tekst), men eldre oppsett brukte tall. Sammenlign alltid som tekst. */
+export type PostId = string | number;
+
+export const samePostId = (a: PostId | null | undefined, b: PostId | null | undefined) =>
+  a != null && b != null && String(a) === String(b);
+
 export type ShotPlace = {
-  id: number;
+  id: PostId;
+  /** Alle rader i posts som hører til paret (skyteplass og treffpunkt) */
+  post_ids: PostId[];
   pair_local_id?: string;
   name?: string;
   current?: Coord;
@@ -12,7 +20,7 @@ export type ShotPlace = {
 };
 
 export type PostRow = {
-  id: number;
+  id: PostId;
   title?: string;
   content?: string | null;
   local_id?: string | null;
@@ -94,7 +102,8 @@ export function pairPosts(posts: PostRow[]): ShotPlace[] {
       current,
       target,
       category: target ? 'Treffpunkt' : 'Skyteplass',
-      id: (g.treffpunkt?.id ?? g.skyteplass?.id ?? 0) as number,
+      id: (g.treffpunkt?.id ?? g.skyteplass?.id) as PostId,
+      post_ids: [g.skyteplass?.id, g.treffpunkt?.id].filter((id): id is PostId => id != null),
       created_at: g.treffpunkt?.created_at || g.skyteplass?.created_at,
       name: g.treffpunkt?.name || g.skyteplass?.name,
       pair_local_id: key,
@@ -119,7 +128,8 @@ export function pairPosts(posts: PostRow[]): ShotPlace[] {
       current: skyteplass.current,
       target: treffpunkt?.target,
       category: treffpunkt?.target ? 'Treffpunkt' : 'Skyteplass',
-      id: (treffpunkt?.id ?? skyteplass.id) as number,
+      id: (treffpunkt?.id ?? skyteplass.id) as PostId,
+      post_ids: [skyteplass.id, treffpunkt?.id].filter((id): id is PostId => id != null),
       created_at: skyteplass.created_at || treffpunkt?.created_at,
       name: skyteplass.name || treffpunkt?.name,
       linked: false,
@@ -130,6 +140,7 @@ export function pairPosts(posts: PostRow[]): ShotPlace[] {
     target: t.target,
     category: 'Treffpunkt',
     id: t.id,
+    post_ids: [t.id],
     created_at: t.created_at,
     name: t.name,
     linked: false,

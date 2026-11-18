@@ -4,9 +4,11 @@ import { jsonError, requireTeamAccess, requireUserId, HttpError } from '@/lib/db
 import {
   isShotPlaceRow,
   pairPosts,
+  samePostId,
   serializeSkyteplass,
   serializeTreffpunkt,
   type Coord,
+  type PostId,
   type PostRow,
 } from '@/lib/db/shotPlaces';
 
@@ -103,7 +105,13 @@ export async function DELETE(request: NextRequest) {
     const body = await request.json().catch(() => ({}));
     const teamId = (body.teamId || request.nextUrl.searchParams.get('teamId')) as string | undefined;
     const pairLocalId = body.pairLocalId as string | undefined;
-    const postId = body.postId as number | undefined;
+    // posts.id er UUID (tekst). Godta både enkelt-id og liste, og sammenlign alltid som tekst.
+    const requestedIds: string[] = [
+      ...(Array.isArray(body.postIds) ? body.postIds : []),
+      ...(body.postId != null ? [body.postId] : []),
+    ]
+      .filter((id: unknown) => id != null && String(id) !== '' && String(id) !== 'NaN')
+      .map((id: unknown) => String(id));
     const deleteAll = Boolean(body.all);
     if (!teamId) throw new HttpError(400, 'Team ID is required');
     await requireTeamAccess(teamId);
@@ -114,34 +122,35 @@ export async function DELETE(request: NextRequest) {
       .select('id, local_id, teamid, content, title')
       .eq('teamid', teamId);
     if (error) throw new Error(error.message);
+    const rows = (posts || []) as Array<{ id: PostId; local_id?: string | null; content?: string | null; title?: string | null }>;
 
-    let ids: number[] = [];
+    const ids = new Set<string>();
     if (deleteAll) {
-      ids = (posts || []).filter(isShotPlaceRow).map((p) => Number(p.id));
-    } else if (pairLocalId) {
-      ids = (posts || [])
-        .filter((p) => String(p.local_id || '') === String(pairLocalId))
-        .map((p) => Number(p.id));
-    } else if (postId) {
-      const clicked = (posts || []).find((p) => Number(p.id) === Number(postId));
-      if (clicked?.local_id) {
-        ids = (posts || [])
-          .filter((p) => String(p.local_id || '') === String(clicked.local_id))
-          .map((p) => Number(p.id));
+      rows.filter(isShotPlaceRow).forEach((p) => ids.add(String(p.id)));
+    } else {
+      const localIds = new Set<string>();
+      if (pairLocalId) localIds.add(String(pairLocalId));
+      for (const id of requestedIds) {
+        const row = rows.find((p) => samePostId(p.id, id));
+        if (!row) continue; // finnes ikke (lenger) i dette laget
+        ids.add(String(row.id));
+        if (row.local_id) localIds.add(String(row.local_id));
       }
-      if (!ids.includes(Number(postId))) ids.push(Number(postId));
+      // Ta med begge halvdelene av paret (skyteplass og treffpunkt)
+      rows
+        .filter((p) => p.local_id && localIds.has(String(p.local_id)))
+        .forEach((p) => ids.add(String(p.id)));
     }
 
-    ids = Array.from(new Set(ids.filter((id) => Number.isFinite(id))));
-    if (ids.length === 0) {
-      if (deleteAll) return NextResponse.json({ success: true, deleted: [] });
-      throw new HttpError(400, 'Nothing to delete');
+    if (ids.size === 0) {
+      // Allerede slettet (f.eks. av en annen på laget): ikke en feil for brukeren
+      return NextResponse.json({ success: true, deleted: [] });
     }
 
-    const { error: deleteError } = await supabase.from('posts').delete().in('id', ids).eq('teamid', teamId);
+    const { error: deleteError } = await supabase.from('posts').delete().in('id', Array.from(ids)).eq('teamid', teamId);
     if (deleteError) throw new Error(deleteError.message);
 
-    return NextResponse.json({ success: true, deleted: ids });
+    return NextResponse.json({ success: true, deleted: Array.from(ids) });
   } catch (error) {
     return jsonError(error);
   }
