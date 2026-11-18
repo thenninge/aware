@@ -19,7 +19,8 @@ export async function POST(request: NextRequest) {
       .eq('teamid', teamId);
     if (error) throw new Error(error.message);
 
-    const ids = (posts || []).filter(isShotPlaceRow).map((p) => Number(p.id)).filter(Number.isFinite);
+    // posts.id er UUID (tekst): ikke gjør om til tall
+    const ids = (posts || []).filter(isShotPlaceRow).map((p) => String(p.id));
     if (ids.length > 0) {
       const { error: deleteError } = await supabase.from('posts').delete().in('id', ids).eq('teamid', teamId);
       if (deleteError) throw new Error(deleteError.message);
