@@ -28,6 +28,7 @@ import { useViewshed } from '@/components/useViewshed';
 import ViewshedLeafletOverlay from '@/components/ViewshedLeafletOverlay';
 import { getMapService } from '@/lib/map/MapService';
 import { EARTH_RADIUS_M, destination, distance as geoDistance } from '@/lib/geo/coordinates';
+import { pointInPolygon } from '@/lib/geo/polygon';
 import { deleteTeamItem, fetchTeamSearchData, flushPendingSearchData, saveTeamFind, saveTeamObservation, upsertTeamTrack } from '@/lib/db/teamClient';
 import {
   listCachedFinds,
@@ -68,13 +69,32 @@ function HuntingAreaHomeFocuser({
   huntingAreas,
   activeHuntingAreaId,
   isMapLocked,
+  gpsPosition,
 }: {
   huntingAreas: HuntingArea[];
   activeHuntingAreaId: string | null;
   isMapLocked: boolean;
+  gpsPosition: Position | null;
 }) {
   const map = useMap();
   const focusedIdRef = useRef<string | null>(null);
+  const gpsAskedRef = useRef(false);
+  const [oneShotGps, setOneShotGps] = useState<Position | null>(null);
+  const gps = gpsPosition && isValidPosition(gpsPosition) ? gpsPosition : oneShotGps;
+
+  useEffect(() => {
+    if (gpsAskedRef.current || gpsPosition) return;
+    if (typeof navigator === 'undefined' || !('geolocation' in navigator)) return;
+    gpsAskedRef.current = true;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const next = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        if (isValidPosition(next)) setOneShotGps(next);
+      },
+      () => {},
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 }
+    );
+  }, [gpsPosition]);
 
   useEffect(() => {
     if (isMapLocked) return;
@@ -84,8 +104,21 @@ function HuntingAreaHomeFocuser({
     }
     const area = huntingAreas.find((item) => String(item.id) === String(activeHuntingAreaId));
     if (!area) return;
-    if (focusedIdRef.current === String(activeHuntingAreaId)) return;
-    focusedIdRef.current = String(activeHuntingAreaId);
+    const areaKey = String(activeHuntingAreaId);
+    const gpsInside =
+      Boolean(gps) &&
+      area.coordinates.length >= 3 &&
+      pointInPolygon({ lat: gps!.lat, lng: gps!.lng }, area.coordinates);
+
+    if (gpsInside && gps) {
+      if (focusedIdRef.current === `${areaKey}:gps`) return;
+      focusedIdRef.current = `${areaKey}:gps`;
+      map.setView([gps.lat, gps.lng], map.getZoom(), { animate: true });
+      return;
+    }
+
+    if (focusedIdRef.current === areaKey || focusedIdRef.current === `${areaKey}:gps`) return;
+    focusedIdRef.current = areaKey;
 
     const saved = readHomeForArea(area.id);
     if (saved) {
@@ -98,7 +131,7 @@ function HuntingAreaHomeFocuser({
     if (bounds.isValid()) {
       map.setView(bounds.getCenter(), map.getZoom(), { animate: true });
     }
-  }, [activeHuntingAreaId, huntingAreas, isMapLocked, map]);
+  }, [activeHuntingAreaId, huntingAreas, isMapLocked, map, gps]);
 
   return null;
 }
@@ -421,7 +454,6 @@ function MapController({
       };
     } catch (error) {
       console.error('Map controller error:', error);
-      onError?.();
     }
   }, [map, onError, onPositionChange, isMapLocked, onMapLockChange, onZoomChange, onLosOriginSelected, mode, isLosAwaitingClick]);
 
@@ -478,7 +510,6 @@ function MapController({
         },
         (error) => {
           console.error('GPS error:', error);
-          onError?.();
         },
         {
           enableHighAccuracy: !batterySaver,
@@ -1185,7 +1216,6 @@ export default function MapComponent({
   const [showTargetDialog, setShowTargetDialog] = useState(false);
   const instanceId = useRef(Math.random());
   const [isLeafletLoaded, setIsLeafletLoaded] = useState(false);
-  const [hasError, setHasError] = useState(false);
   const [places, setPlaces] = useState<PlaceData[]>([]);
   const [currentPosition, setCurrentPosition] = useState<Position | undefined>(undefined);
   const [gpsPosition, setGpsPosition] = useState<Position | null>(null);
@@ -1981,14 +2011,21 @@ export default function MapComponent({
 
   const handleDeleteShotPair = async (clickedPairId: number) => {
     if (!window.confirm('Er du sikker på at du vil slette denne skuddplassen?')) return;
+    const clickedPair = savedPairs.find((p) => String(p.id) === String(clickedPairId));
+    if (!clickedPair) {
+      alert('Kunne ikke finne skuddplassen');
+      return;
+    }
+    const clickedLocalId = clickedPair.pair_local_id || null;
+    const removePair = (list: PointPair[]) =>
+      list.filter((pair) => {
+        if (String(pair.id) === String(clickedPairId)) return false;
+        if (clickedLocalId && pair.pair_local_id && String(pair.pair_local_id) === String(clickedLocalId)) return false;
+        return true;
+      });
+    setSavedPairs((prev) => removePair(prev));
+    document.querySelector<HTMLElement>('.leaflet-popup-close-button')?.click();
     try {
-      const clickedPair = savedPairs.find((p) => p.id === clickedPairId);
-      if (!clickedPair) {
-        alert('Kunne ikke finne skuddplassen');
-        return;
-      }
-      const clickedLocalId = clickedPair.pair_local_id || null;
-      let postIds: number[] = [clickedPairId];
       if (activeTeam) {
         const response = await fetch('/api/shot-places', {
           method: 'DELETE',
@@ -1996,22 +2033,23 @@ export default function MapComponent({
           body: JSON.stringify({
             teamId: activeTeam,
             pairLocalId: clickedLocalId || undefined,
-            postId: clickedPairId,
+            postId: Number(clickedPairId),
           }),
         });
         if (!response.ok) throw new Error('Failed to delete shot place');
         const result = await response.json();
-        if (Array.isArray(result.deleted)) postIds = result.deleted;
+        const postIds: number[] = Array.isArray(result.deleted) ? result.deleted.map(Number) : [Number(clickedPairId)];
+        setSavedPairs((prev) =>
+          prev.filter((pair) => {
+            if (postIds.some((id) => String(id) === String(pair.id))) return false;
+            if (clickedLocalId && pair.pair_local_id && String(pair.pair_local_id) === String(clickedLocalId)) return false;
+            return true;
+          })
+        );
       }
-      setSavedPairs((prev) =>
-        prev.filter((pair) => {
-          if (postIds.includes(pair.id)) return false;
-          if (clickedLocalId && pair.pair_local_id && String(pair.pair_local_id) === String(clickedLocalId)) return false;
-          return true;
-        })
-      );
     } catch (error) {
       console.error('Feil ved sletting av skuddplass:', error);
+      await fetchPosts();
       alert('Feil ved sletting av skuddplass');
     }
   };
@@ -2284,8 +2322,6 @@ export default function MapComponent({
         }
       } catch (error) {
         console.error('Error checking Leaflet:', error);
-        setHasError(true);
-        onError?.();
       }
     };
     
@@ -2578,18 +2614,18 @@ export default function MapComponent({
   const reversedPairs = hasSavedPairs ? [...safeSavedPairs].reverse() : [];
   // Hjelper: slett skuddpar ved indeks i safeSavedPairs
   const handleDeleteShotPairByIndex = (idx: number) => {
-    const pair: any = safeSavedPairs[idx];
+    const pair: any = safeSavedPairs.filter(Boolean)[idx] || safeSavedPairs[idx];
     if (!pair) return;
-    const id = pair.id as number | undefined;
+    const id = Number(pair.id);
     if (Number.isFinite(id)) {
-      void handleDeleteShotPair(id as number);
+      void handleDeleteShotPair(id);
       return;
     }
     const localId = pair.pair_local_id || pair.local_id;
     if (localId) {
-      const candidate = savedPairs.find((p: any) => ((p as any).pair_local_id || (p as any).local_id) === localId && (p as any).id);
-      if (candidate && (candidate as any).id) {
-        void handleDeleteShotPair((candidate as any).id as number);
+      const candidate = savedPairs.find((p: any) => String(p.pair_local_id || p.local_id || '') === String(localId) && p.id != null);
+      if (candidate?.id != null) {
+        void handleDeleteShotPair(Number(candidate.id));
       }
     }
   };
@@ -2794,10 +2830,7 @@ export default function MapComponent({
             setGpsPosition(pos);
           }} 
           radius={radius}
-          onError={() => {
-            setHasError(true);
-            onError?.();
-          }}
+          onError={() => {}}
           categoryFilters={categoryFilters}
           categoryConfigs={categoryConfigs}
           shouldScan={shouldScan}
@@ -2840,6 +2873,7 @@ export default function MapComponent({
           huntingAreas={huntingAreas}
           activeHuntingAreaId={activeHuntingAreaId}
           isMapLocked={isMapLocked}
+          gpsPosition={gpsPosition}
         />
         
         {/* Viewshed overlay (Leaflet polygon) */}

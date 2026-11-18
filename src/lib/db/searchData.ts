@@ -99,6 +99,27 @@ export function mapRows<T>(rows: Row[] | null | undefined, map: (row: Row) => T 
   return (rows || []).map(map).filter((row): row is T => Boolean(row));
 }
 
+/** Match client local_id / find_123 aliases against DB rows so delete actually hits. */
+export function matchingSearchRowIds(
+  rows: Array<{ id?: unknown; local_id?: unknown }> | null | undefined,
+  keys: { localId?: string; id?: string | number },
+  prefix: string
+): number[] {
+  const wanted = [keys.localId, keys.id]
+    .filter((value) => value != null && String(value) !== '')
+    .map(String);
+  if (wanted.length === 0) return [];
+  return (rows || [])
+    .filter((row) => {
+      const id = row.id;
+      const localId = row.local_id != null && String(row.local_id).trim() ? String(row.local_id) : '';
+      const aliases = [localId, id != null ? String(id) : '', id != null ? `${prefix}_${id}` : ''];
+      return wanted.some((key) => aliases.includes(key));
+    })
+    .map((row) => Number(row.id))
+    .filter((id) => Number.isFinite(id));
+}
+
 export function serializeTrackPoints(points: Coord[]): string {
   return stringifyJson(points);
 }

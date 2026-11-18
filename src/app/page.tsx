@@ -236,14 +236,7 @@ export default function Home() {
         if (defaults.losOpacity !== undefined) setLosOpacity(defaults.losOpacity);
         if (defaults.losHoleOpacity !== undefined) setLosHoleOpacity(defaults.losHoleOpacity);
         if (defaults.showElevationProfile !== undefined) setShowElevationProfile(defaults.showElevationProfile);
-        if (defaults.activeHuntingAreaId !== undefined) {
-          setActiveHuntingAreaId(defaults.activeHuntingAreaId);
-          if (defaults.activeHuntingAreaId) {
-            localStorage.setItem('active_hunting_area_id', defaults.activeHuntingAreaId);
-          } else {
-            localStorage.removeItem('active_hunting_area_id');
-          }
-        }
+        // Sist brukte jaktfelt ligger i active_hunting_area_id og skal overleve reload.
       } catch (e) {
         console.error('Error loading defaults:', e);
       }
@@ -496,16 +489,18 @@ export default function Home() {
   const applyHuntingAreas = (normalizedAreas: HuntingArea[]) => {
     setHuntingAreas(normalizedAreas);
     const currentId = activeHuntingAreaId ? String(activeHuntingAreaId) : null;
-    const defaultActiveId = localStorage.getItem('default_active_hunting_area_id');
     const savedActiveId = localStorage.getItem('active_hunting_area_id');
+    const defaultActiveId = localStorage.getItem('default_active_hunting_area_id');
+    const exists = (id: string | null) =>
+      Boolean(id && normalizedAreas.some((area) => String(area.id) === String(id)));
 
-    if (defaultActiveId && normalizedAreas.some((a: HuntingArea) => String(a.id) === String(defaultActiveId))) {
-      setActiveHuntingAreaId(String(defaultActiveId));
-    } else if (currentId && normalizedAreas.some((a: HuntingArea) => String(a.id) === currentId)) {
-      setActiveHuntingAreaId(currentId);
-    } else if (savedActiveId && normalizedAreas.some((a: HuntingArea) => String(a.id) === String(savedActiveId))) {
+    if (exists(savedActiveId)) {
       setActiveHuntingAreaId(String(savedActiveId));
-    } else if (!currentId && normalizedAreas.length > 0) {
+    } else if (exists(currentId)) {
+      setActiveHuntingAreaId(String(currentId));
+    } else if (exists(defaultActiveId)) {
+      setActiveHuntingAreaId(String(defaultActiveId));
+    } else if (normalizedAreas.length > 0) {
       setActiveHuntingAreaId(String(normalizedAreas[0].id));
     }
   };
@@ -548,7 +543,11 @@ export default function Home() {
           );
           if (list.length > 0) {
             setHuntingAreas(list);
-            const selected = (areas[demo] as HuntingArea | undefined) || list[0];
+            const savedActiveId = localStorage.getItem('active_hunting_area_id');
+            const selected =
+              (savedActiveId && list.find((area) => String(area.id) === String(savedActiveId))) ||
+              (areas[demo] as HuntingArea | undefined) ||
+              list[0];
             setActiveHuntingAreaId(String(selected.id));
             return;
           }

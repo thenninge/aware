@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/db/supabaseAdmin';
 import { HttpError, jsonError, requireTeamAccess } from '@/lib/db/access';
-import { mapRows, parseCoord, rowToFind } from '@/lib/db/searchData';
+import { mapRows, matchingSearchRowIds, parseCoord, rowToFind } from '@/lib/db/searchData';
 
 export const dynamic = 'force-dynamic';
 
@@ -78,12 +78,18 @@ export async function DELETE(request: NextRequest) {
     if (!teamId || (!localId && id == null)) throw new HttpError(400, 'teamId and (localId or id) required');
     await requireTeamAccess(teamId);
 
-    let query = getSupabaseAdmin().from('finds').delete().eq('teamid', teamId);
-    if (localId) query = query.eq('local_id', localId);
-    else query = query.eq('id', id);
-    const { error } = await query;
-    if (error) throw new Error(error.message);
-    return NextResponse.json({ success: true });
+    const supabase = getSupabaseAdmin();
+    const { data: rows, error: listError } = await supabase
+      .from('finds')
+      .select('id, local_id')
+      .eq('teamid', teamId);
+    if (listError) throw new Error(listError.message);
+    const ids = matchingSearchRowIds(rows, { localId, id }, 'find');
+    if (ids.length > 0) {
+      const { error } = await supabase.from('finds').delete().in('id', ids).eq('teamid', teamId);
+      if (error) throw new Error(error.message);
+    }
+    return NextResponse.json({ success: true, deleted: ids });
   } catch (error) {
     return jsonError(error);
   }
