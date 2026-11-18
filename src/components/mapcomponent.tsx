@@ -75,6 +75,11 @@ function readHomePosition(areaId?: string | null): Position | null {
   return readLegacyGlobalHome();
 }
 
+/** Minste zoom når kartet hopper til et punkt i jaktfeltet */
+const FOCUS_MIN_ZOOM = 14;
+/** Sendes fra Innstillinger for å hoppe til aktivt jaktfelt */
+export const FOCUS_HUNTING_AREA_EVENT = 'aware-focus-hunting-area';
+
 function HuntingAreaHomeFocuser({
   huntingAreas,
   activeHuntingAreaId,
@@ -106,6 +111,30 @@ function HuntingAreaHomeFocuser({
     );
   }, [gpsPosition]);
 
+  // Hopp til jaktfeltet: GPS hvis du står i feltet, ellers lagret hjemposisjon, ellers hele feltet.
+  const focusArea = useCallback(
+    (area: HuntingArea, opts: { preferGps: boolean }) => {
+      const areaKey = String(area.id);
+      const gpsInside =
+        Boolean(gps) && area.coordinates.length >= 3 && pointInPolygon({ lat: gps!.lat, lng: gps!.lng }, area.coordinates);
+      if (opts.preferGps && gpsInside && gps) {
+        focusedIdRef.current = `${areaKey}:gps`;
+        map.setView([gps.lat, gps.lng], Math.max(map.getZoom(), FOCUS_MIN_ZOOM), { animate: true });
+        return;
+      }
+      focusedIdRef.current = areaKey;
+      const saved = readHomeForArea(area.id);
+      if (saved) {
+        map.setView([saved.lat, saved.lng], Math.max(map.getZoom(), FOCUS_MIN_ZOOM), { animate: true });
+        return;
+      }
+      if (area.coordinates.length < 3) return;
+      const bounds = L.latLngBounds(area.coordinates.map(([lat, lng]) => L.latLng(lat, lng)));
+      if (bounds.isValid()) map.fitBounds(bounds, { padding: [32, 32], maxZoom: 16, animate: true });
+    },
+    [gps, map]
+  );
+
   useEffect(() => {
     if (isMapLocked) return;
     if (!activeHuntingAreaId) {
@@ -115,33 +144,23 @@ function HuntingAreaHomeFocuser({
     const area = huntingAreas.find((item) => String(item.id) === String(activeHuntingAreaId));
     if (!area) return;
     const areaKey = String(activeHuntingAreaId);
+    if (focusedIdRef.current === `${areaKey}:gps`) return;
     const gpsInside =
-      Boolean(gps) &&
-      area.coordinates.length >= 3 &&
-      pointInPolygon({ lat: gps!.lat, lng: gps!.lng }, area.coordinates);
+      Boolean(gps) && area.coordinates.length >= 3 && pointInPolygon({ lat: gps!.lat, lng: gps!.lng }, area.coordinates);
+    // Første gang feltet blir aktivt, eller når GPS-posisjonen kommer og du står i feltet
+    if (focusedIdRef.current === areaKey && !gpsInside) return;
+    focusArea(area, { preferGps: true });
+  }, [activeHuntingAreaId, huntingAreas, isMapLocked, gps, focusArea]);
 
-    if (gpsInside && gps) {
-      if (focusedIdRef.current === `${areaKey}:gps`) return;
-      focusedIdRef.current = `${areaKey}:gps`;
-      map.setView([gps.lat, gps.lng], map.getZoom(), { animate: true });
-      return;
-    }
-
-    if (focusedIdRef.current === areaKey || focusedIdRef.current === `${areaKey}:gps`) return;
-    focusedIdRef.current = areaKey;
-
-    const saved = readHomeForArea(area.id);
-    if (saved) {
-      map.setView([saved.lat, saved.lng], map.getZoom(), { animate: true });
-      return;
-    }
-
-    if (area.coordinates.length < 3) return;
-    const bounds = L.latLngBounds(area.coordinates.map(([lat, lng]) => L.latLng(lat, lng)));
-    if (bounds.isValid()) {
-      map.setView(bounds.getCenter(), map.getZoom(), { animate: true });
-    }
-  }, [activeHuntingAreaId, huntingAreas, isMapLocked, map, gps]);
+  // «Vis jaktfeltet på kartet» fra Innstillinger: hopp dit selv om feltet allerede er aktivt
+  useEffect(() => {
+    const onFocus = () => {
+      const area = huntingAreas.find((item) => String(item.id) === String(activeHuntingAreaId));
+      if (area) focusArea(area, { preferGps: false });
+    };
+    window.addEventListener(FOCUS_HUNTING_AREA_EVENT, onFocus);
+    return () => window.removeEventListener(FOCUS_HUNTING_AREA_EVENT, onFocus);
+  }, [huntingAreas, activeHuntingAreaId, focusArea]);
 
   return null;
 }

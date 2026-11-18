@@ -521,7 +521,7 @@ export default function Home() {
         
         // Clear active ID if it was the deleted one
         if (activeHuntingAreaId === huntingAreaId) {
-          setActiveHuntingAreaId(null);
+          selectHuntingArea(null);
         }
         
         console.log('Hunting area deleted successfully');
@@ -558,6 +558,9 @@ export default function Home() {
   const loadHuntingAreas = async () => {
     if (authState.activeTeam?.id) {
       const teamId = authState.activeTeam.id;
+      // Vis jaktfeltene fra forrige gang med en gang (raskt, og virker uten dekning)
+      const cachedFirst = readHuntingAreasCache(teamId);
+      if (cachedFirst && cachedFirst.length) applyHuntingAreas(cachedFirst);
       try {
         const response = await fetch(`/api/hunting-areas?teamId=${teamId}`);
         if (response.ok) {
@@ -628,14 +631,41 @@ export default function Home() {
     })();
   }, [authState.activeTeam?.id]);
   
-  // Save active hunting area ID to localStorage when it changes
+  // Husk sist aktive jaktfelt. Fjernes ALDRI automatisk: ved oppstart er feltet null til
+  // listen er hentet, og da ble det lagrede valget tidligere slettet før det ble lest.
+  // Det fjernes bare når brukeren velger «Ingen» eller sletter feltet (se selectHuntingArea).
   useEffect(() => {
-    if (activeHuntingAreaId) {
-      localStorage.setItem('active_hunting_area_id', activeHuntingAreaId);
-    } else {
-      localStorage.removeItem('active_hunting_area_id');
-    }
+    if (activeHuntingAreaId) localStorage.setItem('active_hunting_area_id', activeHuntingAreaId);
   }, [activeHuntingAreaId]);
+
+  // Ved oppstart: bruk sist aktive jaktfelt med en gang, før listen er hentet fra nettet
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('active_hunting_area_id');
+      if (saved) setActiveHuntingAreaId(saved);
+    } catch {
+      // ignorer
+    }
+  }, []);
+
+  // «Vis jaktfeltet på kartet» i Innstillinger: lukk menyen så kartet synes
+  useEffect(() => {
+    const close = () => setIsSettingsExpanded(false);
+    window.addEventListener('aware-focus-hunting-area', close);
+    return () => window.removeEventListener('aware-focus-hunting-area', close);
+  }, []);
+
+  /** Brukerens eget valg av jaktfelt (også «Ingen»). */
+  const selectHuntingArea = (id: string | null) => {
+    setActiveHuntingAreaId(id);
+    if (!id) {
+      try {
+        localStorage.removeItem('active_hunting_area_id');
+      } catch {
+        // ignorer
+      }
+    }
+  };
 
   const handleDeleteAllShots = async () => {
     if (!window.confirm('Er du sikker på at du vil slette alle skuddplasser?')) return;
@@ -842,7 +872,7 @@ export default function Home() {
             activeHuntingAreaId={activeHuntingAreaId}
             onDefineNewHuntingArea={handleDefineNewHuntingArea}
             onDefineNewNoHuntZone={handleDefineNewNoHuntZone}
-            onActiveHuntingAreaChange={setActiveHuntingAreaId}
+            onActiveHuntingAreaChange={selectHuntingArea}
             onDeleteHuntingArea={handleDeleteHuntingArea}
             huntingBoundaryColor={huntingBoundaryColor}
             huntingBoundaryWeight={huntingBoundaryWeight}

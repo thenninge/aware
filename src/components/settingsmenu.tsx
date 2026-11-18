@@ -242,6 +242,12 @@ export default function SettingsMenu(props: SettingsMenuProps & { currentCenter?
 
             {activeArea && (
               <>
+                <MenuButton
+                  className="mt-2"
+                  onClick={() => window.dispatchEvent(new Event('aware-focus-hunting-area'))}
+                >
+                  Vis jaktfeltet på kartet
+                </MenuButton>
                 <GroupHeading>Hjemposisjon</GroupHeading>
                 <p className="text-sm text-gray-700 mb-2">
                   {savedHome
