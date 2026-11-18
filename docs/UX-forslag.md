@@ -156,3 +156,26 @@ Få 2–3 av brukerne med briller til å prøve fase 1–2 før fase 3 starter.
 > nederst, og lag en verktøyrad per modus rett over. Flytt LOS, Fare, Søk og MSR fra høyrekolonnen
 > til verktøyraden i Aware. Høyrekolonnen skal bare ha kartlag, kompass og GPS.
 > Behold alle funksjoner. Respekter safe-area-insets.
+
+## 6. Gjennomført: menyer og kartsymboler (nov. 2026)
+
+**To menyer med hver sin rolle**
+
+- **☑️ Vis på kartet** – det man slår av/på ute i felt, tilpasset modus:
+  rekkevidder (søkeradius, sikt, maks skuddavstand), kartlag (skuddpar, spor, funn,
+  observasjoner, jaktgrense, ikke-jakt-soner, nye hogster, høydeprofil) og bebyggelse.
+- **⚙️ Innstillinger** – oppsett og utseende, ett trekkspill åpent om gangen:
+  Visningsstørrelse · Jaktfelt (valg, hjemposisjon, offline, nye felt) · Offline kart ·
+  Farger og størrelser · Bebyggelse-sektorer · Retikkel · Kompass og zoomknapper · Data.
+- Fjernet dobbeltføring: sikt-rekkevidde/-høyde, bebyggelsesfilter, «vis hogster» og
+  «vis ikke-jakt-soner» lå begge steder.
+- «Lagre som standard» er borte: alt lagres automatisk.
+- Felles kontroller i `src/components/ui/MenuControls.tsx` (brytere, store glidebrytere, fargerader).
+
+**Kartsymboler** (`src/lib/map/symbolSize.ts`)
+
+| Type | Eksempler | Størrelse |
+|---|---|---|
+| Område | rekkevidde, sikt, jaktfelt, ikke-jakt-sone | ekte meter, zoomer med kartet |
+| Punkt | standplass, treffpunkt, observasjon, funn | ekte meter, men 12–36 px på skjermen |
+| Markør | GPS, kartmidte, sporpunkter, tegnepunkter | fast antall piksler |

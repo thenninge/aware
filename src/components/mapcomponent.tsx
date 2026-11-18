@@ -13,6 +13,7 @@ import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 import React from 'react';
 import PieChart from './piechart';
 import SettingsMenu, { HuntingArea } from './settingsmenu';
+import { SYMBOL_PX, clampedRadiusPx } from '@/lib/map/symbolSize';
 import { useWakeLock } from '@/hooks/useWakeLock';
 import { savePendingTrack } from '@/lib/idb';
 import GoogleMapSmart from './GoogleMapSmart';
@@ -1225,6 +1226,10 @@ export default function MapComponent({
   const [clearPlaces, setClearPlaces] = useState(false);
   const [isMapLocked, setIsMapLocked] = useState(false); // Default to unlocked for free map interaction
   const [leafletZoom, setLeafletZoom] = useState(13);
+  // Punktsymboler: ekte størrelse i meter, men begrenset i piksler (se lib/map/symbolSize.ts)
+  const symbolRefLat = currentPosition?.lat ?? 60;
+  const symPx = (meters: number, range: { min: number; max: number } = SYMBOL_PX.point) =>
+    clampedRadiusPx(meters, symbolRefLat, leafletZoom, range);
   const [googleCenter, setGoogleCenter] = useState<{ lat: number; lng: number } | null>(null);
 
   // Reset clearPlaces after it's been used
@@ -2955,9 +2960,9 @@ export default function MapComponent({
             position={[gpsPosition.lat, gpsPosition.lng]}
             icon={L.divIcon({
               className: 'custom-marker gps-position-marker',
-              html: `<div style="width: 12px; height: 12px; background-color: #2563eb; opacity: 1; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 4px rgba(0,0,0,0.5);"></div>`,
-              iconSize: [12, 12],
-              iconAnchor: [6, 6],
+              html: `<div style="width: 18px; height: 18px; box-sizing: border-box; background-color: #2563eb; border: 3px solid white; border-radius: 50%; box-shadow: 0 0 5px rgba(0,0,0,0.6);"></div>`,
+              iconSize: [18, 18],
+              iconAnchor: [9, 9],
             })}
           />
         )}
@@ -3013,10 +3018,10 @@ export default function MapComponent({
           <>
             {/* Show points as markers */}
             {huntingAreaPoints.map((point, index) => (
-              <Circle
+              <CircleMarker
                 key={`hunting-point-${index}`}
                 center={point}
-                radius={3}
+                radius={SYMBOL_PX.vertex}
                 pathOptions={{
                   color: huntingBoundaryColor,
                   fillColor: huntingBoundaryColor,
@@ -3045,10 +3050,10 @@ export default function MapComponent({
         {isDefiningNoHuntZone && noHuntZonePoints.length > 0 && (
           <>
             {noHuntZonePoints.map((point, index) => (
-              <Circle
+              <CircleMarker
                 key={`nohunt-point-${index}`}
                 center={point}
-                radius={3}
+                radius={SYMBOL_PX.vertex}
                 pathOptions={{
                   color: '#ef4444',
                   fillColor: '#ef4444',
@@ -3108,10 +3113,10 @@ export default function MapComponent({
           <>
             {/* Gule sirkler for hvert tracking punkt */}
             {trackingPoints.map((point, index) => (
-              <Circle
+              <CircleMarker
                 key={`tracking-point-${index}`}
                 center={[point.lat, point.lng]}
-                radius={2}
+                radius={symPx(2, SYMBOL_PX.trackDot)}
                 pathOptions={{
                   color: '#EAB308',
                   weight: 1.5,
@@ -3128,7 +3133,7 @@ export default function MapComponent({
                     </div>
                   </div>
                 </Popup>
-              </Circle>
+              </CircleMarker>
             ))}
             
             {/* Gul linje mellom tracking punktene */}
@@ -3188,10 +3193,10 @@ export default function MapComponent({
               <React.Fragment key={`saved-track-${track.id}`}>
                 {/* Fargede sirkler for hvert lagret spor */}
                 {track.points && track.points.map((point: Position, index: number) => (
-                  <Circle
+                  <CircleMarker
                     key={`saved-track-${track.id}-point-${index}`}
                     center={[point.lat, point.lng]}
-                    radius={2}
+                    radius={symPx(2, SYMBOL_PX.trackDot)}
                     pathOptions={{
                       color: track.color || '#EAB308',
                       weight: 1.5,
@@ -3212,7 +3217,7 @@ export default function MapComponent({
                         >Slett spor</button>
                       </div>
                     </Popup>
-                  </Circle>
+                  </CircleMarker>
                 ))}
                 
                 {/* Farget linje mellom punktene i lagret spor */}
@@ -3250,14 +3255,13 @@ export default function MapComponent({
           <>
             {savedFinds.map((find) => {
               // Skaler "+"-symbolet i piksel basert på nåværende zoom slik at det oppfører seg som sirkel (meter-basert)
-              const metersPerPixel = 156543.03392 * Math.cos(find.position.lat * Math.PI / 180) / Math.pow(2, leafletZoom);
-              const pxSize = Math.max(2, (2 * observationSize) / Math.max(metersPerPixel, 1e-6)); // diameter i piksler
+              const pxSize = Math.round(2 * symPx(observationSize, SYMBOL_PX.find)); // diameter i piksler
               const icon = L.divIcon({
                 className: 'custom-marker find-plus',
                 html: `
                   <div style="position:relative;width:${pxSize}px;height:${pxSize}px;">
-                    <div style="position:absolute;left:0;top:50%;width:100%;height:2px;background:${find.color};transform:translateY(-50%);"></div>
-                    <div style="position:absolute;top:0;left:50%;width:2px;height:100%;background:${find.color};transform:translateX(-50%);"></div>
+                    <div style="position:absolute;left:0;top:50%;width:100%;height:3px;background:${find.color};box-shadow:0 0 0 1px rgba(255,255,255,.8);transform:translateY(-50%);"></div>
+                    <div style="position:absolute;top:0;left:50%;width:3px;height:100%;background:${find.color};box-shadow:0 0 0 1px rgba(255,255,255,.8);transform:translateX(-50%);"></div>
                   </div>
                 `,
                 iconSize: [pxSize, pxSize] as any,
@@ -3302,10 +3306,10 @@ export default function MapComponent({
         {((mode === 'søk' && showObservations) || (mode === 'aware' && showObservations) || (mode === 'track' && showObservations)) && savedObservations && savedObservations.length > 0 && (
           <>
             {savedObservations.map((observation) => (
-            <Circle
+            <CircleMarker
                 key={`saved-observation-${observation.id}`}
                 center={[observation.position.lat, observation.position.lng]}
-                radius={observationSize}
+                radius={symPx(observationSize)}
                 pathOptions={{
                   color: observation.color,
                   fillColor: 'transparent',
@@ -3326,7 +3330,7 @@ export default function MapComponent({
                     >Slett observasjon</button>
                   </div>
                 </Popup>
-              </Circle>
+              </CircleMarker>
             ))}
           </>
         )}
@@ -3435,7 +3439,7 @@ export default function MapComponent({
               pathOptions={{ color: '#16a34a', weight: 3 }}
             />
             {/* Marker på observasjonsposisjon */}
-            <Circle
+            <CircleMarker
               center={[
                 destinationPoint(
                   lockedObservationPosition.lat,
@@ -3450,7 +3454,7 @@ export default function MapComponent({
                   observationDirection
                 ).lng,
               ]}
-              radius={observationSize}
+              radius={symPx(observationSize)}
               pathOptions={{
                 color: observationColor,
                 fillColor: observationColor,
@@ -3481,9 +3485,9 @@ export default function MapComponent({
                     <>
                         {last.current && (
                         <>
-                        <Circle
+                        <CircleMarker
                               center={[last.current.lat, last.current.lng]}
-                              radius={shotSize}
+                              radius={symPx(shotSize)}
                               pathOptions={{ color: shotColor, weight: 1.5, opacity: 1, fillColor: shotColor, fillOpacity: 0.5 }}
                             >
                               {lastId && (
@@ -3497,10 +3501,10 @@ export default function MapComponent({
                                   </div>
                                 </Popup>
                               )}
-                          </Circle>
+                          </CircleMarker>
                           <CircleMarker
                             center={[last.current.lat, last.current.lng]}
-                            radius={16}
+                            radius={SYMBOL_PX.hit}
                             pathOptions={{ color: 'transparent', opacity: 0, fillOpacity: 0 }}
                           >
                             {lastId && (
@@ -3519,9 +3523,9 @@ export default function MapComponent({
                         )}
                         {last.target && (
                           <>
-                            <Circle
+                            <CircleMarker
                               center={[last.target.lat, last.target.lng]}
-                              radius={targetSize}
+                              radius={symPx(targetSize)}
                               pathOptions={{ color: targetColor, weight: 2, opacity: 1, fillColor: targetColor, fillOpacity: 0.5 }}
                             >
                               {lastId && (
@@ -3535,10 +3539,10 @@ export default function MapComponent({
                                   </div>
                                 </Popup>
                               )}
-                            </Circle>
+                            </CircleMarker>
                             <CircleMarker
                               center={[last.target.lat, last.target.lng]}
-                              radius={16}
+                              radius={SYMBOL_PX.hit}
                               pathOptions={{ color: 'transparent', opacity: 0, fillOpacity: 0 }}
                             >
                               {lastId && (
@@ -3565,9 +3569,9 @@ export default function MapComponent({
                         <React.Fragment key={pair.id ?? idx}>
                           {pair && pair.current && (
                             <>
-                            <Circle
+                            <CircleMarker
                               center={[pair.current.lat, pair.current.lng]}
-                          radius={shotSize}
+                          radius={symPx(shotSize)}
                           pathOptions={{
                             color: shotColor,
                             weight: 1.5,
@@ -3585,11 +3589,11 @@ export default function MapComponent({
                                   >Slett skuddpar</button>
                                 </div>
                               </Popup>
-                            </Circle>
+                            </CircleMarker>
                             {/* Stor, usynlig klikksone for enklere treff */}
                             <CircleMarker
                               center={[pair.current.lat, pair.current.lng]}
-                              radius={16}
+                              radius={SYMBOL_PX.hit}
                               pathOptions={{ color: 'transparent', opacity: 0, fillOpacity: 0 }}
                             >
                               <Popup>
@@ -3606,9 +3610,9 @@ export default function MapComponent({
                           )}
                           {pair && pair.target && (
                             <>
-                        <Circle
+                        <CircleMarker
                               center={[pair.target.lat, pair.target.lng]}
-                          radius={targetSize}
+                          radius={symPx(targetSize)}
                           pathOptions={{
                             color: targetColor,
                             weight: 2,
@@ -3626,11 +3630,11 @@ export default function MapComponent({
                                   >Slett skuddpar</button>
                                 </div>
                               </Popup>
-                            </Circle>
+                            </CircleMarker>
                             {/* Stor, usynlig klikksone for enklere treff */}
                             <CircleMarker
                               center={[pair.target.lat, pair.target.lng]}
-                              radius={16}
+                              radius={SYMBOL_PX.hit}
                               pathOptions={{ color: 'transparent', opacity: 0, fillOpacity: 0 }}
                             >
                               <Popup>
@@ -3687,9 +3691,9 @@ export default function MapComponent({
                         <>
                           {last.current && (
                             <>
-                          <Circle
+                          <CircleMarker
                                 center={[last.current.lat, last.current.lng]}
-                                radius={shotSize}
+                                radius={symPx(shotSize)}
                           pathOptions={{ color: shotColor, weight: 1.5, opacity: 1, fillColor: shotColor, fillOpacity: 0.5 }}
                               >
                                 {lastId && (
@@ -3703,10 +3707,10 @@ export default function MapComponent({
                                     </div>
                                   </Popup>
                                 )}
-                              </Circle>
+                              </CircleMarker>
                               <CircleMarker
                                 center={[last.current.lat, last.current.lng]}
-                                radius={16}
+                                radius={SYMBOL_PX.hit}
                                 pathOptions={{ color: 'transparent', opacity: 0, fillOpacity: 0 }}
                               >
                                 {lastId && (
@@ -3725,9 +3729,9 @@ export default function MapComponent({
                           )}
                           {last.target && (
                             <>
-                              <Circle
+                              <CircleMarker
                                 center={[last.target.lat, last.target.lng]}
-                                radius={targetSize}
+                                radius={symPx(targetSize)}
                           pathOptions={{ color: targetColor, weight: 2, opacity: 1, fillColor: targetColor, fillOpacity: 0.5 }}
                               >
                                 {lastId && (
@@ -3741,10 +3745,10 @@ export default function MapComponent({
                                     </div>
                                   </Popup>
                                 )}
-                              </Circle>
+                              </CircleMarker>
                               <CircleMarker
                                 center={[last.target.lat, last.target.lng]}
-                                radius={16}
+                                radius={SYMBOL_PX.hit}
                                 pathOptions={{ color: 'transparent', opacity: 0, fillOpacity: 0 }}
                               >
                                 {lastId && (
@@ -3789,9 +3793,9 @@ export default function MapComponent({
                           <React.Fragment key={pair.id ?? idx}>
                             {pair && pair.current && (
                               <>
-                              <Circle
+                              <CircleMarker
                                 center={[pair.current.lat, pair.current.lng]}
-                                radius={shotSize}
+                                radius={symPx(shotSize)}
                                 pathOptions={{
                                   color: shotColor,
                                   weight: 1.5,
@@ -3809,10 +3813,10 @@ export default function MapComponent({
                                     >Slett skuddpar</button>
                                   </div>
                                 </Popup>
-                              </Circle>
+                              </CircleMarker>
                             <CircleMarker
                               center={[pair.current.lat, pair.current.lng]}
-                              radius={16}
+                              radius={SYMBOL_PX.hit}
                               pathOptions={{ color: 'transparent', opacity: 0, fillOpacity: 0 }}
                             >
                               <Popup>
@@ -3829,9 +3833,9 @@ export default function MapComponent({
                             )}
                             {pair && pair.target && (
                               <>
-                              <Circle
+                              <CircleMarker
                                 center={[pair.target.lat, pair.target.lng]}
-                            radius={targetSize}
+                            radius={symPx(targetSize)}
                             pathOptions={{
                               color: targetColor,
                               weight: 2,
@@ -3849,10 +3853,10 @@ export default function MapComponent({
                                     >Slett skuddpar</button>
                                   </div>
                                 </Popup>
-                              </Circle>
+                              </CircleMarker>
                             <CircleMarker
                               center={[pair.target.lat, pair.target.lng]}
-                              radius={16}
+                              radius={SYMBOL_PX.hit}
                               pathOptions={{ color: 'transparent', opacity: 0, fillOpacity: 0 }}
                             >
                               <Popup>
@@ -3906,9 +3910,9 @@ export default function MapComponent({
                       <>
                         {last.current && (
                           <>
-                            <Circle
+                            <CircleMarker
                               center={[last.current.lat, last.current.lng]}
-                              radius={shotSize}
+                              radius={symPx(shotSize)}
                           pathOptions={{ color: shotColor, weight: 1.5, opacity: 1, fillColor: shotColor, fillOpacity: 0.5 }}
                             >
                               {lastId && (
@@ -3922,10 +3926,10 @@ export default function MapComponent({
                                   </div>
                                 </Popup>
                               )}
-                            </Circle>
+                            </CircleMarker>
                             <CircleMarker
                               center={[last.current.lat, last.current.lng]}
-                              radius={16}
+                              radius={SYMBOL_PX.hit}
                               pathOptions={{ color: 'transparent', opacity: 0, fillOpacity: 0 }}
                             >
                               {lastId && (
@@ -3944,9 +3948,9 @@ export default function MapComponent({
                         )}
                         {last.target && (
                           <>
-                            <Circle
+                            <CircleMarker
                               center={[last.target.lat, last.target.lng]}
-                              radius={targetSize}
+                              radius={symPx(targetSize)}
                           pathOptions={{ color: targetColor, weight: 2, opacity: 1, fillColor: targetColor, fillOpacity: 0.5 }}
                             >
                               {lastId && (
@@ -3960,10 +3964,10 @@ export default function MapComponent({
                                   </div>
                                 </Popup>
                               )}
-                            </Circle>
+                            </CircleMarker>
                             <CircleMarker
                               center={[last.target.lat, last.target.lng]}
-                              radius={16}
+                              radius={SYMBOL_PX.hit}
                               pathOptions={{ color: 'transparent', opacity: 0, fillOpacity: 0 }}
                             >
                               {lastId && (
@@ -4006,9 +4010,9 @@ export default function MapComponent({
                   <React.Fragment key={pair.id ?? idx}>
                     {pair && pair.current && (
                       <>
-                      <Circle
+                      <CircleMarker
                         center={[pair.current.lat, pair.current.lng]}
-                        radius={shotSize}
+                        radius={symPx(shotSize)}
                         pathOptions={{
                           color: shotColor,
                           weight: 1.5,
@@ -4031,10 +4035,10 @@ export default function MapComponent({
                               >Slett skuddpar</button>
                             </div>
                           </Popup>
-                      </Circle>
+                      </CircleMarker>
                       <CircleMarker
                           center={[pair.current.lat, pair.current.lng]}
-                          radius={16}
+                          radius={SYMBOL_PX.hit}
                           pathOptions={{ color: 'transparent', opacity: 0, fillOpacity: 0 }}
                         >
                           <Popup>
@@ -4051,9 +4055,9 @@ export default function MapComponent({
                     )}
                     {pair && pair.target && (
                       <>
-                      <Circle
+                      <CircleMarker
                         center={[pair.target.lat, pair.target.lng]}
-                        radius={targetSize}
+                        radius={symPx(targetSize)}
                         pathOptions={{
                           color: targetColor,
                           weight: 2,
@@ -4076,10 +4080,10 @@ export default function MapComponent({
                               >Slett skuddpar</button>
                             </div>
                           </Popup>
-                      </Circle>
+                      </CircleMarker>
                       <CircleMarker
                           center={[pair.target.lat, pair.target.lng]}
-                          radius={16}
+                          radius={SYMBOL_PX.hit}
                           pathOptions={{ color: 'transparent', opacity: 0, fillOpacity: 0 }}
                         >
                           <Popup>

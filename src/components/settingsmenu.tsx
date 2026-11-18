@@ -6,6 +6,7 @@ import OfflineMapManager from './OfflineMapManager';
 import { getOfflineAreas, isOfflineForHuntingArea, type OfflineArea } from '@/lib/idb';
 import { readHomeForArea, writeHomeForArea } from '@/lib/map/huntingAreaHome';
 import { UI_SCALES, applyUiScale, readUiScale } from '@/lib/ui/uiScale';
+import { ColorRow, GroupHeading, MenuButton, MenuPanel, Section, Segmented, SliderRow, ToggleRow } from './ui/MenuControls';
 
 interface CategoryConfig {
   color: string;
@@ -13,21 +14,19 @@ interface CategoryConfig {
   icon: string;
 }
 
-interface CategoryFilter {
-  city: boolean;
-  town: boolean;
-  village: boolean;
-  hamlet: boolean;
-  farm: boolean;
-  isolated_dwelling: boolean;
-}
-
+/**
+ * Innstillinger (⚙️): oppsett og utseende. Det som slås av/på ute i felt
+ * (kartlag, rekkevidder, bebyggelse) ligger i «Vis på kartet» (filtermenu.tsx).
+ * Alt lagres automatisk (se page.tsx).
+ */
 interface SettingsMenuProps {
+  // Bebyggelse-sektorer
   categoryConfigs: Record<string, CategoryConfig>;
   angleRange: number;
   onAngleRangeChange: (angleRange: number) => void;
   onCategoryConfigChange: (category: string, config: CategoryConfig) => void;
   onDeleteAllShots?: () => void;
+  // Retikkel
   showMSRRetikkel?: boolean;
   msrRetikkelOpacity?: number;
   msrRetikkelStyle?: 'msr' | 'ivar' | 'circle';
@@ -36,14 +35,7 @@ interface SettingsMenuProps {
   onMSRRetikkelOpacityChange?: (opacity: number) => void;
   onMSRRetikkelStyleChange?: (style: 'msr' | 'ivar' | 'circle') => void;
   onMSRRetikkelVerticalPositionChange?: (position: number) => void;
-  categoryFilters?: CategoryFilter;
-  onCategoryChange?: (category: keyof CategoryFilter) => void;
-  showMarkers?: boolean;
-  onShowMarkersChange?: (show: boolean) => void;
-  showShots?: boolean;
-  showTracks?: boolean;
-  showObservations?: boolean;
-  showHuntingBoundary?: boolean;
+  // Skudd og spor
   targetSize?: number;
   shotSize?: number;
   observationSize?: number;
@@ -58,6 +50,7 @@ interface SettingsMenuProps {
   onShotColorChange?: (color: string) => void;
   onTargetColorChange?: (color: string) => void;
   onTargetLineWeightChange?: (weight: number) => void;
+  // Jaktfelt
   huntingAreas?: HuntingArea[];
   activeHuntingAreaId?: string | null;
   onDefineNewHuntingArea?: () => void;
@@ -70,14 +63,11 @@ interface SettingsMenuProps {
   onHuntingBoundaryColorChange?: (color: string) => void;
   onHuntingBoundaryWeightChange?: (weight: number) => void;
   onHuntingBoundaryOpacityChange?: (opacity: number) => void;
-  showNoHuntZones?: boolean;
-  onShowNoHuntZonesChange?: (v: boolean) => void;
-  showNewCuts?: boolean;
-  onShowNewCutsChange?: (v: boolean) => void;
   newCutsColor?: string;
   onNewCutsColorChange?: (color: string) => void;
   newCutsOpacity?: number;
   onNewCutsOpacityChange?: (opacity: number) => void;
+  // Kompass og zoom
   compassSliceLength?: number; // 0-100 (% of screen height)
   onCompassSliceLengthChange?: (length: number) => void;
   showZoomButtons?: boolean;
@@ -88,13 +78,7 @@ interface SettingsMenuProps {
   onZoomButtonsYChange?: (v: number) => void;
   zoomButtonsSide?: 'left' | 'right';
   onZoomButtonsSideChange?: (v: 'left' | 'right') => void;
-  // Elevation HUD default
-  showElevationProfile?: boolean;
-  // LOS settings
-  losObserverHeightM?: number;
-  losRadiusM?: number;
-  onLosObserverHeightChange?: (v: number) => void;
-  onLosRadiusChange?: (v: number) => void;
+  // Sikt (LOS) – utseende. Rekkevidde/høyde ligger i «Vis på kartet».
   losColor?: string;
   onLosColorChange?: (v: string) => void;
   losHoleColor?: string;
@@ -103,7 +87,7 @@ interface SettingsMenuProps {
   onLosOpacityChange?: (v: number) => void;
   losHoleOpacity?: number;
   onLosHoleOpacityChange?: (v: number) => void;
-  // Offline maps
+  // Offline kart
   onDefineOfflineArea?: () => void;
   isDefiningOfflineArea?: boolean;
   selectedMapLayer?: {
@@ -127,1242 +111,420 @@ export interface HuntingArea {
   team_id?: string; // For future Supabase integration
 }
 
-export default function SettingsMenu({ 
-  categoryConfigs, 
-  onCategoryConfigChange, 
-  angleRange, 
-  onAngleRangeChange, 
-  onDeleteAllShots, 
-  currentCenter,
-  showMSRRetikkel,
-  msrRetikkelOpacity,
-  msrRetikkelStyle,
-  msrRetikkelVerticalPosition,
-  onShowMSRRetikkelChange,
-  onMSRRetikkelOpacityChange,
-  onMSRRetikkelStyleChange,
-  onMSRRetikkelVerticalPositionChange,
-  categoryFilters,
-  onCategoryChange,
-  showMarkers,
-  onShowMarkersChange,
-  showShots,
-  showTracks,
-  showObservations,
-  showHuntingBoundary,
-  targetSize,
-  shotSize,
-  observationSize,
-  targetLineColor,
-  shotColor,
-  targetColor,
-  targetLineWeight,
-  onTargetSizeChange,
-  onShotSizeChange,
-  onObservationSizeChange,
-  onTargetLineColorChange,
-  onShotColorChange,
-  onTargetColorChange,
-  onTargetLineWeightChange,
-  huntingAreas,
-  activeHuntingAreaId,
-  onDefineNewHuntingArea,
-  onDefineNewNoHuntZone,
-  onActiveHuntingAreaChange,
-  onDeleteHuntingArea,
-  huntingBoundaryColor,
-  huntingBoundaryWeight,
-  huntingBoundaryOpacity,
-  onHuntingBoundaryColorChange,
-  onHuntingBoundaryWeightChange,
-  onHuntingBoundaryOpacityChange,
-  showNoHuntZones,
-  onShowNoHuntZonesChange,
-  showNewCuts,
-  onShowNewCutsChange,
-  newCutsColor,
-  onNewCutsColorChange,
-  newCutsOpacity,
-  onNewCutsOpacityChange,
-  compassSliceLength,
-  onCompassSliceLengthChange,
-  showZoomButtons,
-  onShowZoomButtonsChange,
-  zoomButtonsX,
-  zoomButtonsY,
-  onZoomButtonsXChange,
-  onZoomButtonsYChange,
-  zoomButtonsSide,
-  onZoomButtonsSideChange,
-  showElevationProfile,
-  losObserverHeightM,
-  losRadiusM,
-  onLosObserverHeightChange,
-  onLosRadiusChange,
-  losColor,
-  onLosColorChange,
-  losHoleColor,
-  onLosHoleColorChange,
-  losOpacity,
-  onLosOpacityChange,
-  losHoleOpacity,
-  onLosHoleOpacityChange,
-  onDefineOfflineArea,
-  isDefiningOfflineArea,
-  selectedMapLayer,
-  definedOfflineBounds,
-  onConfirmOfflineDownload,
-  onCancelOfflineDefine,
-  onUseHuntingAreaForOffline,
-}: SettingsMenuProps & { currentCenter?: { lat: number, lng: number } }) {
-  const menuRef = useRef<HTMLDivElement>(null);
-  const offlineMapSectionRef = useRef<HTMLDivElement>(null);
-  const [showHomeSaved, setShowHomeSaved] = useState(false);
-  const [showHomeError, setShowHomeError] = useState(false);
-  const [showDefaultsSaved, setShowDefaultsSaved] = useState(false);
-  const [isHomeExpanded, setIsHomeExpanded] = useState(false);
-  const [isPieSliceExpanded, setIsPieSliceExpanded] = useState(false);
-  const [isReticleExpanded, setIsReticleExpanded] = useState(false);
-  const [isCompassExpanded, setIsCompassExpanded] = useState(false);
-  const [isFilterExpanded, setIsFilterExpanded] = useState(false);
-  const [isShootTrackExpanded, setIsShootTrackExpanded] = useState(false);
-  const [isHuntingAreaExpanded, setIsHuntingAreaExpanded] = useState(false);
-  const [isZoomButtonsExpanded, setIsZoomButtonsExpanded] = useState(false);
-  const [isLosExpanded, setIsLosExpanded] = useState(false);
-  const [isOfflineMapExpanded, setIsOfflineMapExpanded] = useState(!!definedOfflineBounds);
-  const [savedHomePosition, setSavedHomePosition] = useState<{ lat: number; lng: number } | null>(null);
-  const [offlineAreas, setOfflineAreas] = useState<OfflineArea[]>([]);
+type SectionKey = 'area' | 'offline' | 'look' | 'sectors' | 'reticle' | 'controls' | 'data';
 
-  const categoryLabels: Record<keyof CategoryFilter, string> = {
-    city: 'By',
-    town: 'Tettsted',
-    village: 'Landsby',
-    hamlet: 'Grend',
-    farm: 'Gård',
-    isolated_dwelling: 'Enkeltbolig',
+const CATEGORY_LABELS: Record<string, string> = {
+  city: 'By',
+  town: 'Tettsted',
+  village: 'Landsby',
+  hamlet: 'Grend',
+  farm: 'Gård',
+  isolated_dwelling: 'Enkeltbolig',
+};
+
+const pct = (v: number) => `${Math.round(v)} %`;
+
+function Toast({ text, tone }: { text: string; tone: 'ok' | 'error' }) {
+  if (typeof window === 'undefined') return null;
+  return createPortal(
+    <div
+      role="status"
+      className={`fixed top-24 left-1/2 -translate-x-1/2 z-[3000] px-6 py-3 rounded-full shadow-lg text-lg font-semibold text-white ${
+        tone === 'ok' ? 'bg-green-700' : 'bg-gray-700'
+      }`}
+    >
+      {text}
+    </div>,
+    document.body
+  );
+}
+
+export default function SettingsMenu(props: SettingsMenuProps & { currentCenter?: { lat: number; lng: number } }) {
+  const {
+    categoryConfigs,
+    onCategoryConfigChange,
+    angleRange,
+    onAngleRangeChange,
+    currentCenter,
+    huntingAreas,
+    activeHuntingAreaId,
+    definedOfflineBounds,
+  } = props;
+
+  const offlineSectionRef = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState<SectionKey | null>(definedOfflineBounds ? 'offline' : null);
+  const [toast, setToast] = useState<{ text: string; tone: 'ok' | 'error' } | null>(null);
+  const [savedHome, setSavedHome] = useState<{ lat: number; lng: number } | null>(null);
+  const [offlineAreas, setOfflineAreas] = useState<OfflineArea[]>([]);
+  const [uiScale, setUiScale] = useState<number>(() => (typeof window === 'undefined' ? 1 : readUiScale()));
+
+  const activeArea = huntingAreas?.find((a) => a.id === activeHuntingAreaId) ?? null;
+  const activeAreaIsOffline =
+    !!activeHuntingAreaId && offlineAreas.some((o) => isOfflineForHuntingArea(o, activeHuntingAreaId));
+
+  const toggle = (key: SectionKey) => setOpen((cur) => (cur === key ? null : key));
+  const flash = (text: string, tone: 'ok' | 'error' = 'ok') => {
+    setToast({ text, tone });
+    setTimeout(() => setToast(null), 1400);
   };
 
   useEffect(() => {
-    if (definedOfflineBounds) setIsOfflineMapExpanded(true);
+    if (definedOfflineBounds) setOpen('offline');
   }, [definedOfflineBounds]);
 
   useEffect(() => {
-    const loadOfflineAreas = () => {
+    const load = () => {
       void getOfflineAreas()
         .then(setOfflineAreas)
         .catch(() => setOfflineAreas([]));
     };
-    loadOfflineAreas();
-    window.addEventListener('aware-offline-areas-changed', loadOfflineAreas);
-    return () => window.removeEventListener('aware-offline-areas-changed', loadOfflineAreas);
+    load();
+    window.addEventListener('aware-offline-areas-changed', load);
+    return () => window.removeEventListener('aware-offline-areas-changed', load);
   }, []);
 
-  // Load saved home for the active hunting area
   useEffect(() => {
-    if (!activeHuntingAreaId) {
-      setSavedHomePosition(null);
-      return;
-    }
-    setSavedHomePosition(readHomeForArea(activeHuntingAreaId));
-  }, [showHomeSaved, activeHuntingAreaId]);
+    setSavedHome(activeHuntingAreaId ? readHomeForArea(activeHuntingAreaId) : null);
+  }, [activeHuntingAreaId]);
 
-  // Fjernet allOpacities/globalOpacity og tilhørende useState/hook
-
-  const handleColorChange = (category: string, color: string) => {
-    const currentConfig = categoryConfigs[category];
-    onCategoryConfigChange(category, {
-      ...currentConfig,
-      color
-    });
-  };
-
-  const handleOpacityChange = (category: string, opacity: number) => {
-    const currentConfig = categoryConfigs[category];
-    onCategoryConfigChange(category, {
-      ...currentConfig,
-      opacity
-    });
-  };
-
-  // Ny funksjon: Sett opacity for alle kategorier
-  const handleGlobalOpacityChange = (opacity: number) => {
+  // Felles opasitet for alle bebyggelse-sektorer
+  const opacities = Object.values(categoryConfigs).map((c) => c.opacity);
+  const sameOpacity = opacities.every((o) => o === opacities[0]);
+  const setAllOpacities = (opacity: number) => {
     Object.entries(categoryConfigs).forEach(([category, config]) => {
-      if (config.opacity !== opacity) {
-        onCategoryConfigChange(category, { ...config, opacity });
-      }
+      if (config.opacity !== opacity) onCategoryConfigChange(category, { ...config, opacity });
     });
   };
-
-  const [uiScale, setUiScale] = useState<number>(() => (typeof window === 'undefined' ? 1 : readUiScale()));
 
   return (
-    <div ref={menuRef} className="bg-white/95 backdrop-blur-sm p-4 rounded-2xl shadow-lg w-[min(24rem,calc(100vw-1rem))] max-h-[calc(100dvh-env(safe-area-inset-top,0px)-10rem)] overflow-y-auto">
-      {showHomeSaved && typeof window !== 'undefined' && createPortal(
-        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[3000] bg-gray-700 text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-2 animate-bounce">
-          <span className="font-semibold text-lg">Home position saved!</span>
-        </div>,
-        document.body
-      )}
-      {showHomeError && typeof window !== 'undefined' && createPortal(
-        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[3000] bg-gray-500 text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-2 animate-bounce">
-          <span className="font-semibold text-lg">Kartposisjon ikke klar</span>
-        </div>,
-        document.body
-      )}
-      {showDefaultsSaved && typeof window !== 'undefined' && createPortal(
-        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[3000] bg-green-600 text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-2 animate-bounce">
-          <span className="font-semibold text-lg">💾 Innstillinger lagret!</span>
-        </div>,
-        document.body
-      )}
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-xl font-bold text-gray-900">Innstillinger</h3>
-      </div>
+    <>
+      {toast && <Toast text={toast.text} tone={toast.tone} />}
+      <MenuPanel title="Innstillinger" subtitle="Endringer lagres automatisk">
+        <Segmented
+          label="Visningsstørrelse"
+          options={UI_SCALES.map((o) => ({ value: o.value, label: o.label }))}
+          value={uiScale}
+          onChange={(v) => {
+            applyUiScale(v);
+            setUiScale(v);
+          }}
+        />
 
-      {/* Visningsstørrelse: alltid synlig øverst */}
-      <div className="mb-4">
-        <div className="text-base font-semibold text-gray-900 mb-2">Visningsstørrelse</div>
-        <div className="grid grid-cols-3 gap-1 rounded-xl bg-gray-100 p-1" role="radiogroup" aria-label="Visningsstørrelse">
-          {UI_SCALES.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              role="radio"
-              aria-checked={uiScale === opt.value}
-              onClick={() => {
-                applyUiScale(opt.value);
-                setUiScale(opt.value);
-              }}
-              className={`min-h-[3rem] rounded-lg font-semibold leading-tight transition-colors ${
-                uiScale === opt.value ? 'bg-blue-600 text-white shadow' : 'text-gray-800 hover:bg-white'
-              }`}
-              style={{ fontSize: `${opt.value}rem` }}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-        <p className="mt-1 text-sm text-gray-600">Gjør knapper og tekst større. Kartet påvirkes ikke.</p>
-      </div>
-      
-      {/* Home Position Settings Expander */}
-      <div className="mb-4 border border-gray-200 rounded-lg overflow-hidden">
-        <button
-          type="button"
-          onClick={() => setIsHomeExpanded(!isHomeExpanded)}
-          className="w-full min-h-[3rem] flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors"
-        >
-          <span className="text-base font-semibold text-gray-900">Home position settings</span>
-          <span className="text-gray-600 text-base">{isHomeExpanded ? '▼' : '▶'}</span>
-        </button>
-        
-        {isHomeExpanded && (
-          <div className="p-3 bg-white">
-            <button
-              type="button"
-              className={`w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded shadow-lg text-sm ${!currentCenter || !activeHuntingAreaId ? 'opacity-50 cursor-not-allowed' : ''}`}
-              disabled={!currentCenter || !activeHuntingAreaId}
-              onClick={() => {
-                if (currentCenter && activeHuntingAreaId) {
-                  writeHomeForArea(activeHuntingAreaId, currentCenter);
-                  setSavedHomePosition(currentCenter);
-                  setShowHomeSaved(true);
-                  setTimeout(() => setShowHomeSaved(false), 1200);
-                } else {
-                  setShowHomeError(true);
-                  setTimeout(() => setShowHomeError(false), 1200);
-                }
-              }}
-            >
-              Set as home position
-            </button>
-            {activeHuntingAreaId ? (
-              savedHomePosition ? (
-                <div className="mt-2 p-2 bg-gray-50 rounded text-sm text-gray-700">
-                  <div className="font-semibold mb-1 text-gray-600">
-                    Lagret for {huntingAreas?.find((area) => area.id === activeHuntingAreaId)?.name || 'jaktfeltet'}:
-                  </div>
-                  <div className="font-mono">
-                    <div>Lat: {savedHomePosition.lat.toFixed(6)}</div>
-                    <div>Lng: {savedHomePosition.lng.toFixed(6)}</div>
-                  </div>
-                </div>
-              ) : (
-                <div className="mt-2 p-2 bg-gray-100 rounded text-sm text-gray-500 italic">
-                  Ingen home lagret for dette jaktfeltet
-                </div>
-              )
-            ) : (
-              <div className="mt-2 p-2 bg-gray-100 rounded text-sm text-gray-500 italic">
-                Velg et jaktfelt for å sette home position
-              </div>
-            )}
-            
-          </div>
-        )}
-      </div>
-      
-      {/* Reticle Settings Expander */}
-      {showMSRRetikkel !== undefined && onShowMSRRetikkelChange && (
-        <div className="mb-4 border border-gray-200 rounded-lg overflow-hidden">
-          <button
-            type="button"
-            onClick={() => setIsReticleExpanded(!isReticleExpanded)}
-            className="w-full min-h-[3rem] flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors"
+        <div className="mt-2 border-t border-gray-200">
+          {/* 1. Jaktfelt: valg, hjem, offline, nye felt */}
+          <Section
+            title="Jaktfelt"
+            summary={activeArea ? `${activeArea.name}${activeAreaIsOffline ? ' · offline' : ''}` : 'Ingen valgt'}
+            open={open === 'area'}
+            onToggle={() => toggle('area')}
           >
-            <span className="text-base font-semibold text-gray-900">Reticle settings</span>
-            <span className="text-gray-600 text-base">{isReticleExpanded ? '▼' : '▶'}</span>
-          </button>
-          
-          {isReticleExpanded && (
-            <div className="p-3 bg-white">
-              {/* Show/Hide MSR-retikkel */}
-              <div className="mb-3">
-                <label className="flex items-center gap-2 cursor-pointer text-sm">
-                  <input
-                    type="checkbox"
-                    checked={showMSRRetikkel}
-                    onChange={(e) => onShowMSRRetikkelChange(e.target.checked)}
-                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                  />
-                  Vis MSR-retikkel
-                </label>
-              </div>
-              
-              {/* MSR-retikkel Opacity */}
-              {showMSRRetikkel && msrRetikkelOpacity !== undefined && onMSRRetikkelOpacityChange && (
-                <div className="mb-3">
-                  <label className="text-sm font-medium text-gray-700 block mb-1">
-                    Opasitet markeringer: {msrRetikkelOpacity}%
-                  </label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    step="5"
-                    value={msrRetikkelOpacity}
-                    onChange={(e) => onMSRRetikkelOpacityChange(Number(e.target.value))}
-                    className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer hover:bg-gray-300 transition-colors"
-                    style={{
-                      background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${msrRetikkelOpacity}%, #e5e7eb ${msrRetikkelOpacity}%, #e5e7eb 100%)`
-                    }}
-                  />
-                </div>
-              )}
-              
-              {/* MSR-retikkel Style Toggle */}
-              {showMSRRetikkel && msrRetikkelStyle !== undefined && onMSRRetikkelStyleChange && (
-                <div className="mb-3">
-                  <label className="text-sm font-medium text-gray-700 block mb-2">
-                    Plassering:
-                  </label>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => onMSRRetikkelStyleChange('msr')}
-                      className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
-                        msrRetikkelStyle === 'msr'
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                      }`}
-                    >
-                      MSR-style
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onMSRRetikkelStyleChange('ivar')}
-                      className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
-                        msrRetikkelStyle === 'ivar'
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                      }`}
-                    >
-                      Ivar-style
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onMSRRetikkelStyleChange('circle')}
-                      className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
-                        msrRetikkelStyle === 'circle'
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                      }`}
-                    >
-                      Circle
-                    </button>
-                  </div>
-                </div>
-              )}
-              
-              {/* Vertical Position Slider - only for Ivar-style */}
-              {showMSRRetikkel && msrRetikkelStyle === 'ivar' && msrRetikkelVerticalPosition !== undefined && onMSRRetikkelVerticalPositionChange && (
-                <div className="mb-3">
-                  <label className="text-sm font-medium text-gray-700 block mb-1">
-                    Vertikal posisjon: {Math.round(60 + (msrRetikkelVerticalPosition / 100) * 25)}%
-                  </label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    step="5"
-                    value={msrRetikkelVerticalPosition}
-                    onChange={(e) => onMSRRetikkelVerticalPositionChange(Number(e.target.value))}
-                    className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer hover:bg-gray-300 transition-colors"
-                    style={{
-                      background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${msrRetikkelVerticalPosition}%, #e5e7eb ${msrRetikkelVerticalPosition}%, #e5e7eb 100%)`
-                    }}
-                  />
-                  <div className="text-sm text-gray-500 mt-1">
-                    0 = 60% ned (høyere opp), 100 = 85% ned (lenger ned)
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-      
-      {/* Compass Settings Expander */}
-      {compassSliceLength !== undefined && onCompassSliceLengthChange && (
-        <div className="mb-4 border border-gray-200 rounded-lg overflow-hidden">
-          <button
-            type="button"
-            onClick={() => setIsCompassExpanded(!isCompassExpanded)}
-            className="w-full min-h-[3rem] flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors"
-          >
-            <span className="text-base font-semibold text-gray-900">Compass settings</span>
-            <span className="text-gray-600 text-base">{isCompassExpanded ? '▼' : '▶'}</span>
-          </button>
-          
-          {isCompassExpanded && (
-            <div className="p-3 bg-white">
-              {/* Compass Slice Length */}
-              <div className="mb-3">
-                <label className="text-sm font-medium text-gray-700 block mb-1">
-                  Indikatorlengde: {compassSliceLength}%
-                </label>
-                <input
-                  type="range"
-                  min="10"
-                  max="50"
-                  step="5"
-                  value={compassSliceLength}
-                  onChange={(e) => onCompassSliceLengthChange(Number(e.target.value))}
-                  className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer hover:bg-gray-300 transition-colors"
-                  style={{
-                    background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${(compassSliceLength - 10) / 40 * 100}%, #e5e7eb ${(compassSliceLength - 10) / 40 * 100}%, #e5e7eb 100%)`
-                  }}
-                />
-                <div className="text-sm text-gray-500 mt-1">
-                  Prosent av skjermhøyde
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Zoom Buttons Settings Expander */}
-      <div className="mb-4 border border-gray-200 rounded-lg overflow-hidden">
-        <button
-          type="button"
-          onClick={() => setIsZoomButtonsExpanded(!isZoomButtonsExpanded)}
-          className="w-full min-h-[3rem] flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors"
-        >
-          <span className="text-base font-semibold text-gray-900">Zoom buttons settings</span>
-          <span className="text-gray-600 text-base">{isZoomButtonsExpanded ? '▼' : '▶'}</span>
-        </button>
-        {isZoomButtonsExpanded && (
-        <div className="p-3 bg-white">
-          {onShowZoomButtonsChange && (
-            <div className="mb-3">
-              <label className="flex items-center gap-2 cursor-pointer text-sm">
-                <input
-                  type="checkbox"
-                  checked={!!showZoomButtons}
-                  onChange={e => onShowZoomButtonsChange(e.target.checked)}
-                  className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                />
-                Show zoom buttons
-              </label>
-            </div>
-          )}
-          {(onZoomButtonsSideChange && zoomButtonsSide !== undefined) && (
-            <div className="mb-3">
-              <label className="flex items-center gap-2 cursor-pointer text-sm">
-                <input
-                  type="checkbox"
-                  checked={zoomButtonsSide === 'right'}
-                  onChange={e => onZoomButtonsSideChange(e.target.checked ? 'right' : 'left')}
-                  className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                />
-                Right side
-              </label>
-            </div>
-          )}
-          {(onZoomButtonsYChange && zoomButtonsY !== undefined) && (
-            <div className="mb-3">
-              <label className="text-sm font-medium text-gray-700 block mb-1">
-                Y-position: {zoomButtonsY}px
-              </label>
-              <input
-                type="range"
-                min={0}
-                max={750}
-                step={2}
-                value={zoomButtonsY}
-                onChange={e => onZoomButtonsYChange(Number(e.target.value))}
-                className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer hover:bg-gray-300 transition-colors"
-              />
-            </div>
-          )}
-          {(onZoomButtonsXChange && zoomButtonsX !== undefined) && (
-            <div className="mb-1">
-              <label className="text-sm font-medium text-gray-700 block mb-1">
-                X-position: {zoomButtonsX}px
-              </label>
-              <input
-                type="range"
-                min={-10}
-                max={64}
-                step={1}
-                value={zoomButtonsX}
-                onChange={e => onZoomButtonsXChange(Number(e.target.value))}
-                className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer hover:bg-gray-300 transition-colors"
-              />
-            </div>
-          )}
-        </div>
-        )}
-      </div>
-
-      {/* LOS Settings Expander */}
-      <div className="mb-4 border border-gray-200 rounded-lg overflow-hidden">
-        <button
-          type="button"
-          onClick={() => setIsLosExpanded(!isLosExpanded)}
-          className="w-full min-h-[3rem] flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors"
-        >
-          <span className="text-base font-semibold text-gray-900">LOS settings</span>
-          <span className="text-gray-600 text-base">{isLosExpanded ? '▼' : '▶'}</span>
-        </button>
-        {isLosExpanded && (
-          <div className="p-3 bg-white">
-            {onLosObserverHeightChange && losObserverHeightM !== undefined && (
-              <div className="mb-3">
-                <label className="text-sm font-medium text-gray-700 block mb-1">
-                  Høyde over bakken: {losObserverHeightM} m
-                </label>
-                <input
-                  type="range"
-                  min={0}
-                  max={15}
-                  step={1}
-                  value={losObserverHeightM}
-                  onChange={e => onLosObserverHeightChange(Number(e.target.value))}
-                  className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer hover:bg-gray-300 transition-colors"
-                />
-              </div>
-            )}
-            {onLosRadiusChange && losRadiusM !== undefined && (
-              <div className="mb-1">
-                <label className="text-sm font-medium text-gray-700 block mb-1">
-                  Range (radius): {losRadiusM} m
-                </label>
-                <input
-                  type="range"
-                  min={100}
-                  max={500}
-                  step={10}
-                  value={losRadiusM}
-                  onChange={e => onLosRadiusChange(Number(e.target.value))}
-                  className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer hover:bg-gray-300 transition-colors"
-                />
-              </div>
-            )}
-            {onLosColorChange && (
-              <div className="mt-3">
-                <label className="text-sm font-medium text-gray-700 block mb-1">
-                  LOS color
-                </label>
-                <input
-                  type="color"
-                  value={losColor ?? '#00FFAA'}
-                  onChange={e => onLosColorChange(e.target.value)}
-                  className="w-10 h-6 p-0 border rounded cursor-pointer"
-                />
-              </div>
-            )}
-            {onLosOpacityChange && (
-              <div className="mt-2">
-                <label className="text-sm font-medium text-gray-700 block mb-1">
-                  LOS opacity: {Math.round((losOpacity ?? 0.25) * 100)}%
-                </label>
-                <input
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.01}
-                  value={losOpacity ?? 0.25}
-                  onChange={e => onLosOpacityChange(Number(e.target.value))}
-                  className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer hover:bg-gray-300 transition-colors"
-                />
-              </div>
-            )}
-            {onLosHoleColorChange && (
-              <div className="mt-3">
-                <label className="text-sm font-medium text-gray-700 block mb-1">
-                  Outside LOS color
-                </label>
-                <input
-                  type="color"
-                  value={losHoleColor ?? '#ef4444'}
-                  onChange={e => onLosHoleColorChange(e.target.value)}
-                  className="w-10 h-6 p-0 border rounded cursor-pointer"
-                />
-              </div>
-            )}
-            {onLosHoleOpacityChange && (
-              <div className="mt-2">
-                <label className="text-sm font-medium text-gray-700 block mb-1">
-                  Outside LOS opacity: {Math.round((losHoleOpacity ?? 0.12) * 100)}%
-                </label>
-                <input
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.01}
-                  value={losHoleOpacity ?? 0.12}
-                  onChange={e => onLosHoleOpacityChange(Number(e.target.value))}
-                  className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer hover:bg-gray-300 transition-colors"
-                />
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Offline Map Settings Expander */}
-      {onDefineOfflineArea && selectedMapLayer && (
-        <div ref={offlineMapSectionRef} className="mb-4 border border-gray-200 rounded-lg overflow-hidden">
-          <button
-            type="button"
-            onClick={() => setIsOfflineMapExpanded(!isOfflineMapExpanded)}
-            className="w-full min-h-[3rem] flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors"
-          >
-            <span className="text-base font-semibold text-gray-900">📥 Offline kart</span>
-            <span className="text-gray-600 text-base">{isOfflineMapExpanded ? '▼' : '▶'}</span>
-          </button>
-          
-          {isOfflineMapExpanded && (
-            <div className="p-3 bg-white">
-              <OfflineMapManager
-                onDefineArea={onDefineOfflineArea}
-                isDefining={isDefiningOfflineArea || false}
-                selectedLayer={selectedMapLayer}
-                definedBounds={definedOfflineBounds || null}
-                huntingAreaName={huntingAreas?.find((area) => area.id === activeHuntingAreaId)?.name || null}
-                onUseHuntingArea={onUseHuntingAreaForOffline}
-                onConfirmDownload={onConfirmOfflineDownload || (async () => {})}
-                onCancelDefine={onCancelOfflineDefine || (() => {})}
-              />
-            </div>
-          )}
-        </div>
-      )}
-      
-      {/* Filter Settings Expander */}
-      {categoryFilters && onCategoryChange && (
-        <div className="mb-4 border border-gray-200 rounded-lg overflow-hidden">
-          <button
-            type="button"
-            onClick={() => setIsFilterExpanded(!isFilterExpanded)}
-            className="w-full min-h-[3rem] flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors"
-          >
-            <span className="text-base font-semibold text-gray-900">Filter settings</span>
-            <span className="text-gray-600 text-base">{isFilterExpanded ? '▼' : '▶'}</span>
-          </button>
-          
-          {isFilterExpanded && (
-            <div className="p-3 bg-white">
-              {/* Vis bebyggelse */}
-              {showMarkers !== undefined && onShowMarkersChange && (
-                <div className="mb-3">
-                  <label className="flex items-center gap-2 cursor-pointer text-sm bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
-                    <input
-                      type="checkbox"
-                      checked={showMarkers}
-                      onChange={e => onShowMarkersChange(e.target.checked)}
-                      className="w-3 h-3 text-blue-600 rounded focus:ring-blue-500"
-                    />
-                    <span className="font-medium text-gray-700">
-                      Vis bebyggelse
-                    </span>
-                  </label>
-                </div>
-              )}
-              
-              <div className="space-y-1">
-                {Object.entries(categoryFilters).map(([category, checked]) => (
-                  <label key={category} className="flex items-center gap-2 cursor-pointer text-sm bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() => onCategoryChange(category as keyof CategoryFilter)}
-                      className="w-3 h-3 text-blue-600 rounded focus:ring-blue-500"
-                    />
-                    <span
-                      className="font-medium"
-                      style={{ color: categoryConfigs[category as keyof CategoryFilter]?.color || '#333' }}
-                    >
-                      {categoryLabels[category as keyof CategoryFilter]}
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-      
-      {/* Shoot & Track Settings Expander */}
-      <div className="mb-4 border border-gray-200 rounded-lg overflow-hidden">
-        <button
-          type="button"
-          onClick={() => setIsShootTrackExpanded(!isShootTrackExpanded)}
-          className="w-full min-h-[3rem] flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors"
-        >
-          <span className="text-base font-semibold text-gray-900">Shoot & Track settings</span>
-          <span className="text-gray-600 text-base">{isShootTrackExpanded ? '▼' : '▶'}</span>
-        </button>
-        
-        {isShootTrackExpanded && (
-          <div className="p-3 bg-white">
-            {/* Target size */}
-            {targetSize !== undefined && onTargetSizeChange && (
-              <div className="mb-3">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Target size: {targetSize}m
-                </label>
-                <input
-                  type="range"
-                  min="5"
-                  max="50"
-                  step="5"
-                  value={targetSize}
-                  onChange={(e) => onTargetSizeChange(Number(e.target.value))}
-                  className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer hover:bg-gray-300 transition-colors"
-                />
-              </div>
-            )}
-            
-            {/* Standplass size */}
-            {shotSize !== undefined && onShotSizeChange && (
-              <div className="mb-3">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Standplass size: {shotSize}m
-                </label>
-                <input
-                  type="range"
-                  min="2"
-                  max="20"
-                  step="1"
-                  value={shotSize}
-                  onChange={(e) => onShotSizeChange(Number(e.target.value))}
-                  className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer hover:bg-gray-300 transition-colors"
-                />
-              </div>
-            )}
-            
-            {/* Observasjons size */}
-            {observationSize !== undefined && onObservationSizeChange && (
-              <div className="mb-3">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Observasjons size: {observationSize}m
-                </label>
-                <input
-                  type="range"
-                  min="1"
-                  max="10"
-                  step="0.5"
-                  value={observationSize}
-                  onChange={(e) => onObservationSizeChange(Number(e.target.value))}
-                  className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer hover:bg-gray-300 transition-colors"
-                />
-              </div>
-            )}
-            
-            {/* Skuddplass color */}
-            {shotColor !== undefined && onShotColorChange && (
-              <div className="mb-3">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Skuddplass color:
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={shotColor}
-                    onChange={(e) => onShotColorChange(e.target.value)}
-                    className="w-12 h-8 border rounded cursor-pointer"
-                  />
-                  <span className="text-sm text-gray-600">{shotColor}</span>
-                </div>
-              </div>
-            )}
-            
-            {/* Treffpunkt color */}
-            {targetColor !== undefined && onTargetColorChange && (
-              <div className="mb-3">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Treffpunkt color:
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={targetColor}
-                    onChange={(e) => onTargetColorChange(e.target.value)}
-                    className="w-12 h-8 border rounded cursor-pointer"
-                  />
-                  <span className="text-sm text-gray-600">{targetColor}</span>
-                </div>
-              </div>
-            )}
-            
-            {/* Target line color */}
-            {targetLineColor !== undefined && onTargetLineColorChange && (
-              <div className="mb-3">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Target line color:
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={targetLineColor}
-                    onChange={(e) => onTargetLineColorChange(e.target.value)}
-                    className="w-12 h-8 border rounded cursor-pointer"
-                  />
-                  <span className="text-sm text-gray-600">{targetLineColor}</span>
-                </div>
-              </div>
-            )}
-            
-            {/* Target line tykkelse */}
-            {targetLineWeight !== undefined && onTargetLineWeightChange && (
-              <div className="mb-3">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Target line tykkelse: {targetLineWeight}px
-                </label>
-                <input
-                  type="range"
-                  min="1"
-                  max="10"
-                  step="1"
-                  value={targetLineWeight}
-                  onChange={(e) => onTargetLineWeightChange(Number(e.target.value))}
-                  className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer hover:bg-gray-300 transition-colors"
-                />
-              </div>
-            )}
-            
-            {onDeleteAllShots && (
-              <button
-                type="button"
-                className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded shadow-lg text-sm mt-2"
-                onClick={onDeleteAllShots}
-              >
-                Slett alle skuddpar
-              </button>
-            )}
-          </div>
-        )}
-      </div>
-      
-      {/* Jaktfelt Expander */}
-      <div className="mb-4 border border-gray-200 rounded-lg overflow-hidden">
-        <button
-          type="button"
-          onClick={() => setIsHuntingAreaExpanded(!isHuntingAreaExpanded)}
-          className="w-full min-h-[3rem] flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors"
-        >
-          <span className="text-base font-semibold text-gray-900">Jaktfelt</span>
-          <span className="text-gray-600 text-base">{isHuntingAreaExpanded ? '▼' : '▶'}</span>
-        </button>
-        
-        {isHuntingAreaExpanded && (
-          <div className="p-3 bg-white">
-            {/* Definer nytt jaktfelt button */}
-            {onDefineNewHuntingArea && (
-              <button
-                type="button"
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded shadow-lg text-sm mb-3"
-                onClick={onDefineNewHuntingArea}
-              >
-                Definer nytt jaktfelt
-              </button>
-            )}
-            {/* Add no-hunt-zone button */}
-            {onDefineNewNoHuntZone && (
-              <button
-                type="button"
-                className="w-full bg-amber-600 hover:bg-amber-700 text-white font-semibold py-2 px-4 rounded shadow-lg text-sm mb-3"
-                onClick={onDefineNewNoHuntZone}
-              >
-                Add no-hunt-zone i aktivt jaktfelt
-              </button>
-            )}
-            
-            {/* Velg aktivt jaktfelt dropdown */}
-            {huntingAreas !== undefined && onActiveHuntingAreaChange && (
-              <div className="mb-3">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Velg aktivt jaktfelt:
-                </label>
+            {huntingAreas !== undefined && props.onActiveHuntingAreaChange && (
+              <label className="block py-2">
+                <span className="block text-base font-medium text-gray-900 mb-1">Aktivt jaktfelt</span>
                 <select
                   value={activeHuntingAreaId || ''}
-                  onChange={(e) => onActiveHuntingAreaChange(e.target.value || null)}
-                  className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-white"
+                  onChange={(e) => props.onActiveHuntingAreaChange?.(e.target.value || null)}
+                  className="w-full min-h-[3rem] px-3 text-base border-2 border-gray-300 rounded-xl text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="">Ingen</option>
                   {huntingAreas.map((area) => (
                     <option key={area.id} value={area.id}>
                       {area.name}
-                      {offlineAreas.some((offline) => isOfflineForHuntingArea(offline, area.id))
-                        ? ' · offline'
-                        : ''}
+                      {offlineAreas.some((o) => isOfflineForHuntingArea(o, area.id)) ? ' · offline' : ''}
                     </option>
                   ))}
                 </select>
                 {huntingAreas.length === 0 && (
-                  <p className="text-sm text-gray-500 mt-1 italic">
-                    Ingen jaktfelt definert ennå
-                  </p>
+                  <span className="block text-sm text-gray-600 mt-1">Ingen jaktfelt definert ennå.</span>
                 )}
-                {activeHuntingAreaId && onUseHuntingAreaForOffline && (
-                  <button
-                    type="button"
-                    disabled={
-                      (huntingAreas?.find((area) => area.id === activeHuntingAreaId)?.coordinates.length || 0) < 3
+              </label>
+            )}
+
+            {activeArea && (
+              <>
+                <GroupHeading>Hjemposisjon</GroupHeading>
+                <p className="text-sm text-gray-700 mb-2">
+                  {savedHome
+                    ? `Lagret: ${savedHome.lat.toFixed(5)}, ${savedHome.lng.toFixed(5)}`
+                    : 'Ingen hjemposisjon lagret. Kartet åpner på feltets midtpunkt.'}
+                </p>
+                <MenuButton
+                  tone="primary"
+                  disabled={!currentCenter}
+                  onClick={() => {
+                    if (!currentCenter || !activeHuntingAreaId) {
+                      flash('Kartposisjon ikke klar', 'error');
+                      return;
                     }
-                    onClick={() => {
-                      onUseHuntingAreaForOffline();
-                      setIsOfflineMapExpanded(true);
-                      requestAnimationFrame(() => {
-                        offlineMapSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                      });
-                    }}
-                    className="w-full mt-2 bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-3 rounded text-sm shadow disabled:bg-gray-300 disabled:text-gray-500"
-                  >
-                    {offlineAreas.some((offline) => isOfflineForHuntingArea(offline, activeHuntingAreaId))
-                      ? 'Last ned offline på nytt'
-                      : 'Last ned offline'}
-                  </button>
+                    writeHomeForArea(activeHuntingAreaId, currentCenter);
+                    setSavedHome(currentCenter);
+                    flash('Hjemposisjon lagret');
+                  }}
+                >
+                  Bruk kartets midtpunkt som hjem
+                </MenuButton>
+
+                {props.onUseHuntingAreaForOffline && (
+                  <>
+                    <GroupHeading>Offline</GroupHeading>
+                    <MenuButton
+                      tone="success"
+                      disabled={activeArea.coordinates.length < 3}
+                      onClick={() => {
+                        props.onUseHuntingAreaForOffline?.();
+                        setOpen('offline');
+                        requestAnimationFrame(() =>
+                          offlineSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                        );
+                      }}
+                    >
+                      {activeAreaIsOffline ? 'Last ned feltet på nytt' : 'Last ned feltet for offline bruk'}
+                    </MenuButton>
+                  </>
                 )}
-                {activeHuntingAreaId &&
-                  offlineAreas.some((offline) => isOfflineForHuntingArea(offline, activeHuntingAreaId)) && (
-                    <p className="text-[11px] text-green-700 mt-1">
-                      Jaktfeltet ligger i Offline kart
-                    </p>
+              </>
+            )}
+
+            <GroupHeading>Tegn nytt</GroupHeading>
+            <div className="grid gap-2">
+              {props.onDefineNewHuntingArea && (
+                <MenuButton onClick={props.onDefineNewHuntingArea}>Nytt jaktfelt</MenuButton>
+              )}
+              {props.onDefineNewNoHuntZone && activeArea && (
+                <MenuButton onClick={props.onDefineNewNoHuntZone}>Ny ikke-jakt-sone i feltet</MenuButton>
+              )}
+              {activeArea && props.onDeleteHuntingArea && (
+                <MenuButton
+                  tone="danger"
+                  onClick={() => {
+                    if (window.confirm(`Slette jaktfeltet «${activeArea.name}»?`)) {
+                      props.onDeleteHuntingArea?.(activeArea.id);
+                    }
+                  }}
+                >
+                  Slett «{activeArea.name}»
+                </MenuButton>
+              )}
+            </div>
+          </Section>
+
+          {/* 2. Offline kart */}
+          {props.onDefineOfflineArea && props.selectedMapLayer && (
+            <Section
+              innerRef={offlineSectionRef}
+              title="Offline kart"
+              summary={offlineAreas.length ? `${offlineAreas.length} område${offlineAreas.length === 1 ? '' : 'r'} lagret` : 'Ingen lagret'}
+              open={open === 'offline'}
+              onToggle={() => toggle('offline')}
+            >
+              <OfflineMapManager
+                onDefineArea={props.onDefineOfflineArea}
+                isDefining={props.isDefiningOfflineArea || false}
+                selectedLayer={props.selectedMapLayer}
+                definedBounds={definedOfflineBounds || null}
+                huntingAreaName={activeArea?.name || null}
+                onUseHuntingArea={props.onUseHuntingAreaForOffline}
+                onConfirmDownload={props.onConfirmOfflineDownload || (async () => {})}
+                onCancelDefine={props.onCancelOfflineDefine || (() => {})}
+              />
+            </Section>
+          )}
+
+          {/* 3. Farger og størrelser på kartet */}
+          <Section
+            title="Farger og størrelser"
+            summary="Skudd, spor, jaktgrense, hogst, sikt"
+            open={open === 'look'}
+            onToggle={() => toggle('look')}
+          >
+            <p className="text-sm text-gray-700 pt-1">
+              Punktene tegnes i riktig størrelse i meter, men blir aldri så små at de forsvinner eller så store at
+              de dekker kartet.
+            </p>
+            <GroupHeading>Skudd og treff</GroupHeading>
+            {props.shotColor !== undefined && props.onShotColorChange && (
+              <ColorRow label="Standplass" value={props.shotColor} onChange={props.onShotColorChange} />
+            )}
+            {props.shotSize !== undefined && props.onShotSizeChange && (
+              <SliderRow label="Standplass, størrelse" value={props.shotSize} min={2} max={20} onChange={props.onShotSizeChange} format={(v) => `${v} m`} />
+            )}
+            {props.targetColor !== undefined && props.onTargetColorChange && (
+              <ColorRow label="Treffpunkt" value={props.targetColor} onChange={props.onTargetColorChange} />
+            )}
+            {props.targetSize !== undefined && props.onTargetSizeChange && (
+              <SliderRow label="Treffpunkt, størrelse" value={props.targetSize} min={5} max={50} step={5} onChange={props.onTargetSizeChange} format={(v) => `${v} m`} />
+            )}
+            {props.targetLineColor !== undefined && props.onTargetLineColorChange && (
+              <ColorRow label="Skuddlinje" value={props.targetLineColor} onChange={props.onTargetLineColorChange} />
+            )}
+            {props.targetLineWeight !== undefined && props.onTargetLineWeightChange && (
+              <SliderRow label="Skuddlinje, tykkelse" value={props.targetLineWeight} min={1} max={10} onChange={props.onTargetLineWeightChange} format={(v) => `${v} px`} />
+            )}
+            {props.observationSize !== undefined && props.onObservationSizeChange && (
+              <SliderRow label="Observasjon, størrelse" value={props.observationSize} min={1} max={10} step={0.5} onChange={props.onObservationSizeChange} format={(v) => `${v} m`} />
+            )}
+
+            <GroupHeading>Jaktgrense</GroupHeading>
+            {props.huntingBoundaryColor !== undefined && props.onHuntingBoundaryColorChange && (
+              <ColorRow label="Farge" value={props.huntingBoundaryColor} onChange={props.onHuntingBoundaryColorChange} />
+            )}
+            {props.huntingBoundaryWeight !== undefined && props.onHuntingBoundaryWeightChange && (
+              <SliderRow label="Tykkelse" value={props.huntingBoundaryWeight} min={1} max={10} onChange={props.onHuntingBoundaryWeightChange} format={(v) => `${v} px`} />
+            )}
+            {props.huntingBoundaryOpacity !== undefined && props.onHuntingBoundaryOpacityChange && (
+              <SliderRow label="Synlighet" value={props.huntingBoundaryOpacity} min={0} max={100} step={5} onChange={props.onHuntingBoundaryOpacityChange} format={pct} />
+            )}
+
+            <GroupHeading>Nye hogster</GroupHeading>
+            {props.newCutsColor !== undefined && props.onNewCutsColorChange && (
+              <ColorRow label="Farge" value={props.newCutsColor} onChange={props.onNewCutsColorChange} />
+            )}
+            {props.newCutsOpacity !== undefined && props.onNewCutsOpacityChange && (
+              <SliderRow label="Synlighet" value={props.newCutsOpacity} min={0} max={100} step={5} onChange={props.onNewCutsOpacityChange} format={pct} />
+            )}
+
+            <GroupHeading>Sikt (LOS)</GroupHeading>
+            {props.onLosColorChange && (
+              <ColorRow label="Synlig område" value={props.losColor ?? '#00FFAA'} onChange={props.onLosColorChange} />
+            )}
+            {props.onLosOpacityChange && (
+              <SliderRow label="Synlig område, synlighet" value={Math.round((props.losOpacity ?? 0.25) * 100)} min={0} max={100} onChange={(v) => props.onLosOpacityChange?.(v / 100)} format={pct} />
+            )}
+            {props.onLosHoleColorChange && (
+              <ColorRow label="Skjult område" value={props.losHoleColor ?? '#ef4444'} onChange={props.onLosHoleColorChange} />
+            )}
+            {props.onLosHoleOpacityChange && (
+              <SliderRow label="Skjult område, synlighet" value={Math.round((props.losHoleOpacity ?? 0.12) * 100)} min={0} max={100} onChange={(v) => props.onLosHoleOpacityChange?.(v / 100)} format={pct} />
+            )}
+          </Section>
+
+          {/* 4. Bebyggelse-sektorer (Aware) */}
+          <Section
+            title="Bebyggelse-sektorer"
+            summary={`±${angleRange}° · farger per type`}
+            open={open === 'sectors'}
+            onToggle={() => toggle('sectors')}
+          >
+            <SliderRow label="Sektorbredde" value={angleRange} min={1} max={45} onChange={onAngleRangeChange} format={(v) => `±${v}°`} />
+            <SliderRow
+              label={sameOpacity ? 'Synlighet, alle' : 'Synlighet, alle (ulike nå)'}
+              value={Math.round(opacities[0] * 100)}
+              min={10}
+              max={70}
+              step={5}
+              onChange={(v) => setAllOpacities(v / 100)}
+              format={pct}
+            />
+            <GroupHeading>Farge per type</GroupHeading>
+            {Object.entries(categoryConfigs).map(([category, config]) => (
+              <ColorRow
+                key={category}
+                label={`${config.icon} ${CATEGORY_LABELS[category] ?? category}`}
+                value={config.color}
+                onChange={(color) => onCategoryConfigChange(category, { ...config, color })}
+              />
+            ))}
+          </Section>
+
+          {/* 5. Retikkel */}
+          {props.showMSRRetikkel !== undefined && props.onShowMSRRetikkelChange && (
+            <Section
+              title="Retikkel (MSR)"
+              summary={props.showMSRRetikkel ? 'På' : 'Av'}
+              open={open === 'reticle'}
+              onToggle={() => toggle('reticle')}
+            >
+              <ToggleRow label="Vis retikkel" checked={props.showMSRRetikkel} onChange={props.onShowMSRRetikkelChange} />
+              {props.showMSRRetikkel && (
+                <>
+                  {props.msrRetikkelStyle !== undefined && props.onMSRRetikkelStyleChange && (
+                    <Segmented
+                      label="Type"
+                      options={[
+                        { value: 'msr' as const, label: 'MSR' },
+                        { value: 'ivar' as const, label: 'Ivar' },
+                        { value: 'circle' as const, label: 'Sirkel' },
+                      ]}
+                      value={props.msrRetikkelStyle}
+                      onChange={props.onMSRRetikkelStyleChange}
+                    />
                   )}
-                {activeHuntingAreaId && onDeleteHuntingArea && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (window.confirm('Er du sikker på at du vil slette dette jaktfeltet?')) {
-                        onDeleteHuntingArea(activeHuntingAreaId);
-                      }
-                    }}
-                    className="w-full mt-2 bg-red-600 hover:bg-red-700 text-white font-semibold py-1.5 px-3 rounded text-sm"
-                  >
-                    🗑️ Slett aktivt jaktfelt
-                  </button>
+                  {props.msrRetikkelOpacity !== undefined && props.onMSRRetikkelOpacityChange && (
+                    <SliderRow label="Synlighet" value={props.msrRetikkelOpacity} min={0} max={100} step={5} onChange={props.onMSRRetikkelOpacityChange} format={pct} />
+                  )}
+                  {props.msrRetikkelStyle === 'ivar' &&
+                    props.msrRetikkelVerticalPosition !== undefined &&
+                    props.onMSRRetikkelVerticalPositionChange && (
+                      <SliderRow
+                        label="Høyde på skjermen"
+                        value={props.msrRetikkelVerticalPosition}
+                        min={0}
+                        max={100}
+                        step={5}
+                        onChange={props.onMSRRetikkelVerticalPositionChange}
+                        format={(v) => `${Math.round(60 + (v / 100) * 25)} % ned`}
+                      />
+                    )}
+                </>
+              )}
+            </Section>
+          )}
+
+          {/* 6. Kompass og zoom */}
+          <Section
+            title="Kompass og zoomknapper"
+            summary={props.showZoomButtons ? 'Zoomknapper på' : 'Zoomknapper av'}
+            open={open === 'controls'}
+            onToggle={() => toggle('controls')}
+          >
+            {props.compassSliceLength !== undefined && props.onCompassSliceLengthChange && (
+              <SliderRow
+                label="Lengde på kompasspil"
+                value={props.compassSliceLength}
+                min={10}
+                max={50}
+                step={5}
+                onChange={props.onCompassSliceLengthChange}
+                format={pct}
+                hint="Andel av skjermhøyden"
+              />
+            )}
+            {props.onShowZoomButtonsChange && (
+              <ToggleRow label="Vis + / − for zoom" checked={!!props.showZoomButtons} onChange={props.onShowZoomButtonsChange} />
+            )}
+            {props.showZoomButtons && (
+              <>
+                {props.onZoomButtonsSideChange && props.zoomButtonsSide !== undefined && (
+                  <Segmented
+                    label="Side"
+                    options={[
+                      { value: 'left' as const, label: 'Venstre' },
+                      { value: 'right' as const, label: 'Høyre' },
+                    ]}
+                    value={props.zoomButtonsSide}
+                    onChange={props.onZoomButtonsSideChange}
+                  />
                 )}
-              </div>
+                {props.onZoomButtonsYChange && props.zoomButtonsY !== undefined && (
+                  <SliderRow label="Avstand fra toppen" value={props.zoomButtonsY} min={0} max={750} step={2} onChange={props.onZoomButtonsYChange} format={(v) => `${v} px`} />
+                )}
+                {props.onZoomButtonsXChange && props.zoomButtonsX !== undefined && (
+                  <SliderRow label="Avstand fra kanten" value={props.zoomButtonsX} min={-10} max={64} onChange={props.onZoomButtonsXChange} format={(v) => `${v} px`} />
+                )}
+              </>
             )}
-            
-            {/* Jaktgrense farge */}
-            {huntingBoundaryColor !== undefined && onHuntingBoundaryColorChange && (
-              <div className="mb-3">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Jaktgrense farge:
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={huntingBoundaryColor}
-                    onChange={(e) => onHuntingBoundaryColorChange(e.target.value)}
-                    className="w-12 h-8 border rounded cursor-pointer"
-                  />
-                  <span className="text-sm text-gray-600">{huntingBoundaryColor}</span>
-                </div>
-              </div>
-            )}
-            
-            {/* Jaktgrense tykkelse */}
-            {huntingBoundaryWeight !== undefined && onHuntingBoundaryWeightChange && (
-              <div className="mb-3">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Jaktgrense tykkelse: {huntingBoundaryWeight}px
-                </label>
-                <input
-                  type="range"
-                  min="1"
-                  max="10"
-                  step="1"
-                  value={huntingBoundaryWeight}
-                  onChange={(e) => onHuntingBoundaryWeightChange(Number(e.target.value))}
-                  className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer hover:bg-gray-300 transition-colors"
-                />
-              </div>
-            )}
-            
-            {/* Jaktgrense opasitet */}
-            {huntingBoundaryOpacity !== undefined && onHuntingBoundaryOpacityChange && (
-              <div className="mb-3">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Jaktgrense opasitet: {huntingBoundaryOpacity}%
-                </label>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  step="5"
-                  value={huntingBoundaryOpacity}
-                  onChange={(e) => onHuntingBoundaryOpacityChange(Number(e.target.value))}
-                  className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer hover:bg-gray-300 transition-colors"
-                />
-              </div>
-            )}
-            
-            {/* Vis No-hunt zones */}
-            {onShowNoHuntZonesChange && (
-              <div className="mb-1">
-                <label className="flex items-center gap-2 cursor-pointer text-sm">
-                  <input
-                    type="checkbox"
-                    checked={!!showNoHuntZones}
-                    onChange={e => onShowNoHuntZonesChange(e.target.checked)}
-                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                  />
-                  Vis No-hunt zones
-                </label>
-              </div>
-            )}
+          </Section>
 
-            {/* Vis nye hogster (Sentinel-2) */}
-            {onShowNewCutsChange && (
-              <div className="mt-2 mb-1">
-                <label className="flex items-center gap-2 cursor-pointer text-sm">
-                  <input
-                    type="checkbox"
-                    checked={!!showNewCuts}
-                    onChange={e => onShowNewCutsChange(e.target.checked)}
-                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                  />
-                  Vis nye hogster
-                </label>
-              </div>
-            )}
-
-            {/* Nye hogster farge */}
-            {showNewCuts && newCutsColor !== undefined && onNewCutsColorChange && (
-              <div className="mt-2 mb-3">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Nye hogster farge:
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={newCutsColor}
-                    onChange={(e) => onNewCutsColorChange(e.target.value)}
-                    className="w-12 h-8 border rounded cursor-pointer"
-                  />
-                  <span className="text-sm text-gray-600">{newCutsColor}</span>
-                </div>
-              </div>
-            )}
-
-            {/* Nye hogster opasitet */}
-            {showNewCuts && newCutsOpacity !== undefined && onNewCutsOpacityChange && (
-              <div className="mb-3">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Nye hogster opasitet: {newCutsOpacity}%
-                </label>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  step="5"
-                  value={newCutsOpacity}
-                  onChange={(e) => onNewCutsOpacityChange(Number(e.target.value))}
-                  className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer hover:bg-gray-300 transition-colors"
-                />
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-      
-      {/* Pie Slice Settings Expander */}
-      <div className="mb-4 border border-gray-200 rounded-lg overflow-hidden">
-        <button
-          type="button"
-          onClick={() => setIsPieSliceExpanded(!isPieSliceExpanded)}
-          className="w-full min-h-[3rem] flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors"
-        >
-          <span className="text-base font-semibold text-gray-900">Pie slice settings</span>
-          <span className="text-gray-600 text-base">{isPieSliceExpanded ? '▼' : '▶'}</span>
-        </button>
-        
-        {isPieSliceExpanded && (
-          <div className="p-3 bg-white">
-            {/* Angle Range Setting */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Retningsvinkel (±grader):</label>
-              <input
-                type="range"
-                min={1}
-                max={45}
-                value={angleRange}
-                onChange={e => onAngleRangeChange(Number(e.target.value))}
-                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-              />
-              <div className="text-sm text-gray-600 mt-1">±{angleRange}°</div>
-            </div>
-            
-            {/* Global Opacity Slider */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Opasitet alle kakestykker:</label>
-              <input
-                type="range"
-                min={0.1}
-                max={0.7}
-                step={0.05}
-                value={(() => {
-                  const opacities = Object.values(categoryConfigs).map(c => c.opacity);
-                  return opacities.every(o => o === opacities[0]) ? opacities[0] : opacities[0];
-                })()}
-                onChange={e => handleGlobalOpacityChange(Number(e.target.value))}
-                className={`w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer ${(() => {
-                  const opacities = Object.values(categoryConfigs).map(c => c.opacity);
-                  return opacities.every(o => o === opacities[0]) ? '' : 'opacity-50 pointer-events-none';
-                })()}`}
-                disabled={(() => {
-                  const opacities = Object.values(categoryConfigs).map(c => c.opacity);
-                  return !opacities.every(o => o === opacities[0]);
-                })()}
-              />
-              <div className="text-sm text-gray-600 mt-1">
-                {(() => {
-                  const opacities = Object.values(categoryConfigs).map(c => c.opacity);
-                  if (opacities.every(o => o === opacities[0])) {
-                    return Math.round(opacities[0] * 100) + '%';
-                  } else {
-                    return Math.round(opacities[0] * 100) + '% (blandet)';
-                  }
-                })()}
-              </div>
-              {/* Reset-knapp for opasitet */}
-              <button
-                type="button"
-                className="mt-2 mb-2 px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 text-sm font-medium text-gray-700 transition-colors"
-                onClick={() => {
-                  Object.keys(categoryConfigs).forEach((key) => {
-                    onCategoryConfigChange(key, {
-                      ...categoryConfigs[key],
-                      opacity: 0.5,
-                    });
-                  });
-                }}
-              >
-                Tilbakestill opasitet til 50%
-              </button>
-            </div>
-            
-            {/* Kategori-farger og opasitet */}
-            <div>
-              <div className="text-sm font-medium text-gray-700 mb-2">Farger og opasitet:</div>
-              {Object.entries(categoryConfigs).map(([category, config]) => (
-                <div key={category} className="flex items-center gap-2 mb-2">
-                  <span className="text-lg" title={category}>{config.icon}</span>
-                  <input
-                    type="color"
-                    value={config.color}
-                    onChange={e => handleColorChange(category, e.target.value)}
-                    className="w-8 h-8 border rounded"
-                  />
-                  <input
-                    type="range"
-                    min={0.1}
-                    max={0.7}
-                    step={0.05}
-                    value={config.opacity}
-                    onChange={e => handleOpacityChange(category, Number(e.target.value))}
-                    className="w-24 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                  />
-                  <span className="text-sm text-gray-600">{Math.round(config.opacity * 100)}%</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-      {/* Save defaults button */}
-      <button
-        type="button"
-        className="mb-3 w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded shadow-lg text-sm"
-        onClick={() => {
-          const defaults = {
-            angleRange,
-            showMSRRetikkel,
-            msrRetikkelOpacity,
-            msrRetikkelStyle,
-            msrRetikkelVerticalPosition,
-            categoryConfigs,
-            categoryFilters,
-            showMarkers,
-            showShots,
-            showTracks,
-            showObservations,
-            showHuntingBoundary,
-            showElevationProfile,
-            activeHuntingAreaId,
-            targetSize,
-            shotSize,
-            observationSize,
-            targetLineColor,
-            shotColor,
-            targetColor,
-            targetLineWeight,
-            huntingBoundaryColor,
-            huntingBoundaryWeight,
-            huntingBoundaryOpacity,
-            showNewCuts,
-            newCutsColor,
-            newCutsOpacity,
-            showZoomButtons,
-            zoomButtonsX,
-            zoomButtonsY,
-            zoomButtonsSide,
-            losObserverHeightM,
-            losRadiusM,
-            losColor,
-            losHoleColor,
-            losOpacity,
-            losHoleOpacity
-          };
-          localStorage.setItem('aware_settings_defaults', JSON.stringify(defaults));
-          // Lagre valgt jaktfelt som standard (egen nøkkel for default)
-          if (activeHuntingAreaId) {
-            localStorage.setItem('default_active_hunting_area_id', activeHuntingAreaId);
-          } else {
-            localStorage.removeItem('default_active_hunting_area_id');
-          }
-          setShowDefaultsSaved(true);
-          setTimeout(() => setShowDefaultsSaved(false), 1200);
-        }}
-      >
-        💾 Lagre som standard
-      </button>
-    </div>
+          {/* 7. Data (farlige handlinger nederst) */}
+          {props.onDeleteAllShots && (
+            <Section title="Data" summary="Slett skuddpar" open={open === 'data'} onToggle={() => toggle('data')}>
+              <MenuButton tone="danger" onClick={props.onDeleteAllShots}>
+                Slett alle skuddpar
+              </MenuButton>
+            </Section>
+          )}
+        </div>
+      </MenuPanel>
+    </>
   );
 }

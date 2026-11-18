@@ -263,3 +263,46 @@ html {
 .aware-bottom { bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem); }
 /* Bunnraden ligger mellom venstre- og høyrekolonnen (3.5rem knapp + marg). */
 .aware-bottom-bar { padding-inline: 4.25rem !important; }
+
+/* Store glidebrytere i menyene (følger --ui-scale via rem) */
+input[type="range"].aware-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 2.5rem;
+  background: transparent;
+  cursor: pointer;
+  touch-action: pan-y;
+}
+input[type="range"].aware-range::-webkit-slider-runnable-track {
+  height: 0.5rem;
+  border-radius: 9999px;
+  background: linear-gradient(to right, #2563eb 0 var(--pct, 50%), #d1d5db var(--pct, 50%) 100%);
+}
+input[type="range"].aware-range::-moz-range-track {
+  height: 0.5rem;
+  border-radius: 9999px;
+  background: #d1d5db;
+}
+input[type="range"].aware-range::-moz-range-progress {
+  height: 0.5rem;
+  border-radius: 9999px;
+  background: #2563eb;
+}
+input[type="range"].aware-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 1.75rem;
+  height: 1.75rem;
+  margin-top: -0.625rem;
+  border-radius: 9999px;
+  background: #fff;
+  border: 3px solid #2563eb;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+input[type="range"].aware-range::-moz-range-thumb {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 9999px;
+  background: #fff;
+  border: 3px solid #2563eb;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}

@@ -238,12 +238,60 @@ export default function Home() {
         if (defaults.losOpacity !== undefined) setLosOpacity(defaults.losOpacity);
         if (defaults.losHoleOpacity !== undefined) setLosHoleOpacity(defaults.losHoleOpacity);
         if (defaults.showElevationProfile !== undefined) setShowElevationProfile(defaults.showElevationProfile);
+        if (defaults.showHuntingBoundaryByMode !== undefined) setShowHuntingBoundaryByMode(defaults.showHuntingBoundaryByMode);
+        if (defaults.showNoHuntZones !== undefined) setShowNoHuntZones(defaults.showNoHuntZones);
+        if (defaults.showFinds !== undefined) setShowFinds(defaults.showFinds);
+        if (defaults.showSearchTracks !== undefined) setShowSearchTracks(defaults.showSearchTracks);
+        if (defaults.showSearchFinds !== undefined) setShowSearchFinds(defaults.showSearchFinds);
+        if (defaults.showOnlyLastShot !== undefined) setShowOnlyLastShot(defaults.showOnlyLastShot);
+        if (defaults.radius !== undefined) setRadius(defaults.radius);
+        if (defaults.targetRangeSetting !== undefined) setTargetRangeSetting(defaults.targetRangeSetting);
+        if (defaults.batterySaver !== undefined) setBatterySaver(defaults.batterySaver);
+        if (defaults.compassSliceLength !== undefined) setCompassSliceLength(defaults.compassSliceLength);
         // Sist brukte jaktfelt ligger i active_hunting_area_id og skal overleve reload.
       } catch (e) {
         console.error('Error loading defaults:', e);
       }
     }
   }, []);
+
+  // Lagre innstillinger automatisk (erstatter «Lagre som standard»).
+  // Første kjøring hoppes over, så startverdiene ikke overskriver det som nettopp ble lastet.
+  const settingsHydratedRef = useRef(false);
+  useEffect(() => {
+    if (!settingsHydratedRef.current) {
+      settingsHydratedRef.current = true;
+      return;
+    }
+    const t = window.setTimeout(() => {
+      try {
+        localStorage.setItem('aware_settings_defaults', JSON.stringify({
+          angleRange, showMSRRetikkel, msrRetikkelOpacity, msrRetikkelStyle, msrRetikkelVerticalPosition,
+          categoryConfigs, categoryFilters, showMarkers, showShots, showTracks, showObservations,
+          showHuntingBoundaryByMode, showElevationProfile, showNoHuntZones, showFinds, showSearchTracks,
+          showSearchFinds, showOnlyLastShot, radius, targetRangeSetting, batterySaver,
+          targetSize, shotSize, observationSize, targetLineColor, shotColor, targetColor, targetLineWeight,
+          huntingBoundaryColor, huntingBoundaryWeight, huntingBoundaryOpacity,
+          showNewCuts, newCutsColor, newCutsOpacity, compassSliceLength,
+          showZoomButtons, zoomButtonsX, zoomButtonsY, zoomButtonsSide,
+          losObserverHeightM, losRadiusM, losColor, losHoleColor, losOpacity, losHoleOpacity,
+        }));
+      } catch {
+        // Privat modus eller full lagring: innstillingene gjelder bare denne økten.
+      }
+    }, 300);
+    return () => window.clearTimeout(t);
+  }, [
+    angleRange, showMSRRetikkel, msrRetikkelOpacity, msrRetikkelStyle, msrRetikkelVerticalPosition,
+    categoryConfigs, categoryFilters, showMarkers, showShots, showTracks, showObservations,
+    showHuntingBoundaryByMode, showElevationProfile, showNoHuntZones, showFinds, showSearchTracks,
+    showSearchFinds, showOnlyLastShot, radius, targetRangeSetting, batterySaver,
+    targetSize, shotSize, observationSize, targetLineColor, shotColor, targetColor, targetLineWeight,
+    huntingBoundaryColor, huntingBoundaryWeight, huntingBoundaryOpacity,
+    showNewCuts, newCutsColor, newCutsOpacity, compassSliceLength,
+    showZoomButtons, zoomButtonsX, zoomButtonsY, zoomButtonsSide,
+    losObserverHeightM, losRadiusM, losColor, losHoleColor, losOpacity, losHoleOpacity,
+  ]);
 
   useEffect(() => {
     if (mode === 'track') {
@@ -768,7 +816,6 @@ export default function Home() {
             onAngleRangeChange={handleAngleRangeChange}
             onDeleteAllShots={handleDeleteAllShots}
             currentCenter={currentCenter || undefined}
-            showElevationProfile={showElevationProfile}
             showMSRRetikkel={showMSRRetikkel}
             msrRetikkelOpacity={msrRetikkelOpacity}
             msrRetikkelStyle={msrRetikkelStyle}
@@ -777,13 +824,6 @@ export default function Home() {
             onMSRRetikkelOpacityChange={setMSRRetikkelOpacity}
             onMSRRetikkelStyleChange={setMSRRetikkelStyle}
             onMSRRetikkelVerticalPositionChange={setMSRRetikkelVerticalPosition}
-            categoryFilters={categoryFilters}
-            onCategoryChange={handleCategoryChange}
-            showMarkers={showMarkers}
-            onShowMarkersChange={handleShowMarkersChange}
-            showShots={showShots}
-            showTracks={showTracks}
-            showObservations={showObservations}
             targetSize={targetSize}
             shotSize={shotSize}
             observationSize={observationSize}
@@ -810,10 +850,6 @@ export default function Home() {
             onHuntingBoundaryColorChange={setHuntingBoundaryColor}
             onHuntingBoundaryWeightChange={setHuntingBoundaryWeight}
             onHuntingBoundaryOpacityChange={setHuntingBoundaryOpacity}
-            showNoHuntZones={showNoHuntZones}
-            onShowNoHuntZonesChange={setShowNoHuntZones}
-            showNewCuts={showNewCuts}
-            onShowNewCutsChange={setShowNewCuts}
             newCutsColor={newCutsColor}
             onNewCutsColorChange={setNewCutsColor}
             newCutsOpacity={newCutsOpacity}
@@ -828,10 +864,6 @@ export default function Home() {
           onZoomButtonsYChange={setZoomButtonsY}
           zoomButtonsSide={zoomButtonsSide}
           onZoomButtonsSideChange={setZoomButtonsSide}
-          losObserverHeightM={losObserverHeightM}
-          losRadiusM={losRadiusM}
-          onLosObserverHeightChange={setLosObserverHeightM}
-          onLosRadiusChange={setLosRadiusM}
           losColor={losColor}
           onLosColorChange={setLosColor}
             losHoleColor={losHoleColor}
@@ -913,14 +945,10 @@ export default function Home() {
           onRadiusChange={handleRadiusChange}
           showMarkers={showMarkers}
           onShowMarkersChange={handleShowMarkersChange}
-          orientationMode={orientationMode}
-          onOrientationModeChange={setOrientationMode}
           categoryConfigs={categoryConfigs}
           showOnlyLastShot={showOnlyLastShot}
           onShowOnlyLastShotChange={setShowOnlyLastShot}
           mode={mode}
-          showAllTracksAndFinds={showAllTracksAndFinds}
-          onShowAllTracksAndFindsChange={setShowAllTracksAndFinds}
           showSearchTracks={showSearchTracks}
           onShowSearchTracksChange={setShowSearchTracks}
           showSearchFinds={showSearchFinds}
@@ -946,6 +974,10 @@ export default function Home() {
           onLosHeightChange={setLosObserverHeightM}
           showElevationProfile={showElevationProfile}
           onShowElevationProfileChange={setShowElevationProfile}
+          showNoHuntZones={showNoHuntZones}
+          onShowNoHuntZonesChange={setShowNoHuntZones}
+          showNewCuts={showNewCuts}
+          onShowNewCutsChange={setShowNewCuts}
         />
         </div>
       )}
