@@ -14,6 +14,7 @@ import React from 'react';
 import PieChart from './piechart';
 import SettingsMenu, { HuntingArea } from './settingsmenu';
 import { SYMBOL_PX, clampedRadiusPx } from '@/lib/map/symbolSize';
+import { attachOneFingerZoom } from '@/lib/map/oneFingerZoom';
 import { useWakeLock } from '@/hooks/useWakeLock';
 import { savePendingTrack } from '@/lib/idb';
 import GoogleMapSmart from './GoogleMapSmart';
@@ -2816,6 +2817,7 @@ export default function MapComponent({
         {showZoomButtons && (
           <ZoomControl position={zoomButtonsSide === 'left' ? 'topleft' : 'topright'} />
         )}
+        <OneFingerZoom />
         <OfflineTileLayer
           url={selectedLayer.url}
           attribution={selectedLayer.attribution}
@@ -5646,4 +5648,9 @@ export default function MapComponent({
   );
 }
 
-
+/** Énhånds-zoom: dobbelttrykk og dra loddrett (se lib/map/oneFingerZoom.ts). */
+function OneFingerZoom() {
+  const map = useMap();
+  useEffect(() => attachOneFingerZoom(map), [map]);
+  return null;
+}
