@@ -3220,64 +3220,63 @@ export default function MapComponent({
         {/* Alle lagrede spor i søk-modus */}
         {((mode === 'søk' && showSearchTracks) || (mode === 'aware' && showTracks) || (mode === 'track' && showTracks)) && savedTracks && savedTracks.length > 0 && (
           <>
-            {savedTracks.map((track) => (
-              <React.Fragment key={`saved-track-${track.id}`}>
-                {/* Fargede sirkler for hvert lagret spor */}
-                {track.points && track.points.map((point: Position, index: number) => (
-                  <CircleMarker
-                    key={`saved-track-${track.id}-point-${index}`}
-                    center={[point.lat, point.lng]}
-                    radius={symPx(2, SYMBOL_PX.trackDot)}
-                    pathOptions={{
-                      color: track.color || '#EAB308',
-                      weight: 1.5,
-                      fillColor: track.color || '#EAB308',
-                      fillOpacity: 0.3, // Litt mer transparent enn aktive spor
-                    }}
-                    
-                  >
-                    <Popup>
-                      <div className="text-center">
-                        <div className="font-semibold text-sm">{track.name || 'Unnamed track'}</div>
-                        <div className="text-xs text-gray-600 mt-1">
-                          {new Date(track.createdAt).toLocaleDateString('nb-NO')}
-                        </div>
-                        <button
-                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteTrack(track.id); }}
-                          className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
-                        >Slett spor</button>
-                      </div>
-                    </Popup>
-                  </CircleMarker>
-                ))}
-                
-                {/* Farget linje mellom punktene i lagret spor */}
-                {track.points && track.points.length > 1 && (
-                  <Polyline
-                    positions={track.points.map((point: Position) => [point.lat, point.lng])}
-                    pathOptions={{ 
-                      color: track.color || '#EAB308', 
-                      weight: 1.5,
-                      opacity: 0.6 // Litt mer transparent enn aktive spor
-                    }}
-                    
-                  >
-                    <Popup>
-                      <div className="text-center">
-                        <div className="font-semibold text-sm">{track.name || 'Unnamed track'}</div>
-                        <div className="text-xs text-gray-600 mt-1">
-                          {new Date(track.createdAt).toLocaleDateString('nb-NO')}
-                        </div>
-                        <button
-                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteTrack(track.id); }}
-                          className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
-                        >Slett spor</button>
-                      </div>
-                    </Popup>
-                  </Polyline>
-                )}
-              </React.Fragment>
-            ))}
+            {savedTracks.map((track) => {
+              const color = track.color || '#EAB308';
+              const positions = (track.points || []).map((point: Position) => [point.lat, point.lng] as [number, number]);
+              const popup = (
+                <Popup>
+                  <div className="text-center">
+                    <div className="font-semibold text-sm">{track.name || 'Spor uten navn'}</div>
+                    <div className="text-xs text-gray-600 mt-1">
+                      {new Date(track.createdAt).toLocaleDateString('nb-NO')}
+                    </div>
+                    <button
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteTrack(track.id); }}
+                      className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
+                    >Slett spor</button>
+                  </div>
+                </Popup>
+              );
+              return (
+                <React.Fragment key={`saved-track-${track.id}`}>
+                  {/* Punktene i sporet (bare visning; trykk tas av den brede usynlige linjen under) */}
+                  {track.points && track.points.map((point: Position, index: number) => (
+                    <CircleMarker
+                      key={`saved-track-${track.id}-point-${index}`}
+                      center={[point.lat, point.lng]}
+                      radius={symPx(2, SYMBOL_PX.trackDot)}
+                      interactive={false}
+                      pathOptions={{ color, weight: 1.5, fillColor: color, fillOpacity: 0.3 }}
+                    />
+                  ))}
+
+                  {/* Synlig linje */}
+                  {positions.length > 1 && (
+                    <Polyline positions={positions} interactive={false} pathOptions={{ color, weight: 3, opacity: 0.7 }} />
+                  )}
+
+                  {/* Usynlig, bred trykkflate langs sporet, så det er lett å treffe med fingeren */}
+                  {positions.length > 0 && (
+                    positions.length > 1 ? (
+                      <Polyline
+                        positions={positions}
+                        pathOptions={{ color, weight: SYMBOL_PX.hit * 2, opacity: 0.01, lineCap: 'round', lineJoin: 'round' }}
+                      >
+                        {popup}
+                      </Polyline>
+                    ) : (
+                      <CircleMarker
+                        center={positions[0]}
+                        radius={SYMBOL_PX.hit}
+                        pathOptions={{ color, opacity: 0.01, fillOpacity: 0.01 }}
+                      >
+                        {popup}
+                      </CircleMarker>
+                    )
+                  )}
+                </React.Fragment>
+              );
+            })}
           </>
         )}
 
