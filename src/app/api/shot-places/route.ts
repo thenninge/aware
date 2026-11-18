@@ -24,6 +24,7 @@ export async function GET(request: NextRequest) {
       .from('posts')
       .select('id, title, content, local_id, created_at, teamid')
       .eq('teamid', teamId)
+      .is('deleted_at', null)
       .order('created_at', { ascending: true });
 
     if (error) {
@@ -120,7 +121,8 @@ export async function DELETE(request: NextRequest) {
     const { data: posts, error } = await supabase
       .from('posts')
       .select('id, local_id, teamid, content, title')
-      .eq('teamid', teamId);
+      .eq('teamid', teamId)
+      .is('deleted_at', null);
     if (error) throw new Error(error.message);
     const rows = (posts || []) as Array<{ id: PostId; local_id?: string | null; content?: string | null; title?: string | null }>;
 
@@ -147,7 +149,12 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ success: true, deleted: [] });
     }
 
-    const { error: deleteError } = await supabase.from('posts').delete().in('id', Array.from(ids)).eq('teamid', teamId);
+    // Myk sletting, så de andre på laget får vite om det
+    const { error: deleteError } = await supabase
+      .from('posts')
+      .update({ deleted_at: new Date().toISOString() })
+      .in('id', Array.from(ids))
+      .eq('teamid', teamId);
     if (deleteError) throw new Error(deleteError.message);
 
     return NextResponse.json({ success: true, deleted: Array.from(ids) });

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/db/supabaseAdmin';
 import { HttpError, jsonError, requireTeamAccess } from '@/lib/db/access';
-import { mapRows, matchingSearchRowIds, parseCoord, rowToFind } from '@/lib/db/searchData';
+import { mapRows, matchingSearchRowIds, parseCoord, rowToFind, stringifyJson } from '@/lib/db/searchData';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
       .from('finds')
       .select('*')
       .eq('teamid', teamId)
+      .is('deleted_at', null)
       .order('created_at', { ascending: true });
     if (error) throw new Error(error.message);
 
@@ -51,14 +52,15 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase
       .from('finds')
       .insert({
+        // Kolonnene må stemme med tabellen: id, teamid, name, color, createdby,
+        // created_at, local_id, position (JSON-tekst), shot_pair_id
         teamid: teamId,
         createdby: userId,
         name: body.name || 'Funn',
         local_id: localId,
-        position,
+        position: stringifyJson(position),
         color: body.color || '#EF4444',
-        shotpairid: body.shotPairId || null,
-        mode: body.mode || 'søk',
+        shot_pair_id: body.shotPairId || null,
       })
       .select()
       .single();
@@ -82,11 +84,17 @@ export async function DELETE(request: NextRequest) {
     const { data: rows, error: listError } = await supabase
       .from('finds')
       .select('id, local_id')
-      .eq('teamid', teamId);
+      .eq('teamid', teamId)
+      .is('deleted_at', null);
     if (listError) throw new Error(listError.message);
     const ids = matchingSearchRowIds(rows, { localId, id }, 'find');
     if (ids.length > 0) {
-      const { error } = await supabase.from('finds').delete().in('id', ids).eq('teamid', teamId);
+      // Myk sletting: raden får et slettemerke, så de andre på laget får vite om det
+      const { error } = await supabase
+        .from('finds')
+        .update({ deleted_at: new Date().toISOString() })
+        .in('id', ids)
+        .eq('teamid', teamId);
       if (error) throw new Error(error.message);
     }
     return NextResponse.json({ success: true, deleted: ids });

@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
       .from('tracks')
       .select('*')
       .eq('teamid', teamId)
+      .is('deleted_at', null)
       .order('created_at', { ascending: true });
     if (error) throw new Error(error.message);
 
@@ -85,11 +86,17 @@ export async function DELETE(request: NextRequest) {
     const { data: rows, error: listError } = await supabase
       .from('tracks')
       .select('id, local_id')
-      .eq('teamid', teamId);
+      .eq('teamid', teamId)
+      .is('deleted_at', null);
     if (listError) throw new Error(listError.message);
     const ids = matchingSearchRowIds(rows, { localId, id }, 'track');
     if (ids.length > 0) {
-      const { error } = await supabase.from('tracks').delete().in('id', ids).eq('teamid', teamId);
+      // Myk sletting: raden får et slettemerke, så de andre på laget får vite om det
+      const { error } = await supabase
+        .from('tracks')
+        .update({ deleted_at: new Date().toISOString() })
+        .in('id', ids)
+        .eq('teamid', teamId);
       if (error) throw new Error(error.message);
     }
     return NextResponse.json({ success: true, deleted: ids });
@@ -115,6 +122,8 @@ async function upsertTrack(input: {
     .eq('local_id', input.localId)
     .maybeSingle();
   if (existingError) throw new Error(existingError.message);
+  // Slettet spor skal forbli slettet (f.eks. når et live-spor sendes etter at det er forkastet)
+  if (existing?.deleted_at) return rowToTrack(existing as Record<string, unknown>);
 
   const payload: Record<string, unknown> = {
     name: input.name || existing?.name || 'Spor',

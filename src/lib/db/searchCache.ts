@@ -205,3 +205,39 @@ export function mergeServerSearchData(
 
   return { tracks, finds, observations };
 }
+
+export type SearchChanges = {
+  tracks: { changed: SearchTrack[]; deleted: string[] };
+  finds: { changed: SearchFind[]; deleted: string[] };
+  observations: { changed: SearchObservation[]; deleted: string[] };
+};
+
+/**
+ * Legg inn bare endringene fra serveren (i motsetning til mergeServerSearchData, som får hele listen).
+ * Lokale endringer som venter på å bli sendt vinner over serverdata.
+ */
+export function applyServerChanges(teamId: string | null | undefined, changes: SearchChanges) {
+  const cache = readTeam(teamId);
+  const apply = <T extends { id: string }>(kind: SearchKind, delta: { changed: T[]; deleted: string[] }) => {
+    const items = cache[kind] as unknown as Record<string, T>;
+    for (const item of delta.changed) {
+      if (cache.pending[kind][item.id]) continue; // lokal endring venter; den sendes snart
+      if (cache.deleted[kind][item.id]) continue; // nylig slettet her
+      items[item.id] = item;
+    }
+    for (const id of delta.deleted) {
+      if (cache.pending[kind][id] === 'upsert') continue;
+      delete items[id];
+      delete cache.pending[kind][id];
+    }
+  };
+  apply('tracks', changes.tracks);
+  apply('finds', changes.finds);
+  apply('observations', changes.observations);
+  writeTeam(teamId, cache);
+  return {
+    tracks: Object.values(cache.tracks),
+    finds: Object.values(cache.finds),
+    observations: Object.values(cache.observations),
+  };
+}

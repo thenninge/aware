@@ -16,13 +16,18 @@ export async function POST(request: NextRequest) {
     const { data: posts, error } = await supabase
       .from('posts')
       .select('id, content, title')
-      .eq('teamid', teamId);
+      .eq('teamid', teamId)
+      .is('deleted_at', null);
     if (error) throw new Error(error.message);
 
     // posts.id er UUID (tekst): ikke gjør om til tall
     const ids = (posts || []).filter(isShotPlaceRow).map((p) => String(p.id));
     if (ids.length > 0) {
-      const { error: deleteError } = await supabase.from('posts').delete().in('id', ids).eq('teamid', teamId);
+      const { error: deleteError } = await supabase
+        .from('posts')
+        .update({ deleted_at: new Date().toISOString() })
+        .in('id', ids)
+        .eq('teamid', teamId);
       if (deleteError) throw new Error(deleteError.message);
     }
 

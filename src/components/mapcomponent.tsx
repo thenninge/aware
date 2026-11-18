@@ -33,12 +33,13 @@ import ViewshedLeafletOverlay from '@/components/ViewshedLeafletOverlay';
 import { getMapService } from '@/lib/map/MapService';
 import { EARTH_RADIUS_M, destination, distance as geoDistance } from '@/lib/geo/coordinates';
 import { pointInPolygon } from '@/lib/geo/polygon';
-import { deleteTeamItem, fetchTeamSearchData, flushPendingSearchData, saveTeamFind, saveTeamObservation, upsertTeamTrack } from '@/lib/db/teamClient';
+import { deleteTeamItem, fetchTeamChanges, fetchTeamSearchData, flushPendingSearchData, saveTeamFind, saveTeamObservation, upsertTeamTrack } from '@/lib/db/teamClient';
 import {
   listCachedFinds,
   listCachedObservations,
   listCachedTracks,
   mergeServerSearchData,
+  applyServerChanges,
   putCachedFind,
   putCachedObservation,
   putCachedTrack,
@@ -54,6 +55,11 @@ interface Position {
 
 const FALLBACK_POSITION: Position = { lat: 60.424834440433045, lng: 12.408766398367092 };
 const LIVE_TEAM_SYNC_MS = 4000;
+/** Endringer fra laget: hyppig i Track-modus / under sporing, ellers sjeldnere */
+const TEAM_SYNC_FAST_MS = 5000;
+const TEAM_SYNC_SLOW_MS = 15000;
+/** Full henting som sikkerhetsnett */
+const FULL_SYNC_MS = 5 * 60 * 1000;
 
 function isValidPosition(pos: unknown): pos is Position {
   if (!pos || typeof pos !== 'object') return false;
@@ -1774,6 +1780,10 @@ export default function MapComponent({
     );
   };
 
+  // Synk: hvor langt vi har kommet i endringene fra serveren (per lag)
+  const syncCursorRef = useRef<{ team: string; cursor: string } | null>(null);
+  const lastFullSyncRef = useRef(0);
+
   const loadTeamSearchData = async () => {
     if (!activeTeam) {
       loadCachedSearchData();
@@ -1781,6 +1791,10 @@ export default function MapComponent({
     }
     loadCachedSearchData();
     try {
+      // Startpunkt for endringer hentes FØR full henting, så ingenting faller mellom
+      const start = await fetchTeamChanges(activeTeam);
+      syncCursorRef.current = { team: activeTeam, cursor: start.cursor };
+      lastFullSyncRef.current = Date.now();
       const data = await fetchTeamSearchData(activeTeam);
       const merged = mergeServerSearchData(activeTeam, data);
       applySearchData(merged.tracks, merged.finds, merged.observations);
@@ -2405,35 +2419,64 @@ export default function MapComponent({
     };
   }, [trackingPoints, isTracking, activeTeam, currentTrackingId]);
 
-  useEffect(() => {
-    if (!activeTeam || (mode !== 'søk' && !isTracking)) return;
-    const tick = () => {
-      void fetchTeamSearchData(activeTeam)
-        .then((data) => {
-          const merged = mergeServerSearchData(activeTeam, data);
-          applySearchData(merged.tracks, merged.finds, merged.observations);
-          return flushPendingSearchData(activeTeam);
-        })
-        .catch((error) => console.error('Live lag-oppdatering venter på nett:', error));
-    };
-    const id = window.setInterval(tick, LIVE_TEAM_SYNC_MS);
-    return () => window.clearInterval(id);
-  }, [activeTeam, mode, isTracking]);
+  /**
+   * Hent bare endringer fra laget. Lite svar når ingenting har skjedd.
+   * Hyppig i Track-modus og under sporing, sjeldnere ellers, aldri når appen ligger i bakgrunnen.
+   * Full henting hvert 5. minutt som sikkerhetsnett.
+   */
+  const pullTeamChanges = useCallback(async () => {
+    if (!activeTeam || typeof navigator !== 'undefined' && !navigator.onLine) return;
+    const cur = syncCursorRef.current;
+    if (!cur || cur.team !== activeTeam || Date.now() - lastFullSyncRef.current > FULL_SYNC_MS) {
+      await loadTeamSearchData();
+      return;
+    }
+    try {
+      const liveId = currentTrackingIdRef.current;
+      const res = await fetchTeamChanges(activeTeam, cur.cursor, liveId ? [liveId] : []);
+      if (!('tracks' in res)) return;
+      const n =
+        res.tracks.changed.length + res.tracks.deleted.length +
+        res.finds.changed.length + res.finds.deleted.length +
+        res.observations.changed.length + res.observations.deleted.length;
+      if (n > 0) {
+        const merged = applyServerChanges(activeTeam, res);
+        applySearchData(merged.tracks, merged.finds, merged.observations);
+      }
+      if (res.shotPlacesChanged) await fetchPosts();
+      if (syncCursorRef.current?.team === activeTeam) {
+        syncCursorRef.current = { team: activeTeam, cursor: res.cursor };
+      }
+      await flushPendingSearchData(activeTeam);
+    } catch (error) {
+      console.error('Lag-endringer venter på nett:', error);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTeam]);
 
   useEffect(() => {
-    const flush = () => {
-      if (activeTeam && navigator.onLine) void flushPendingSearchData(activeTeam);
+    if (!activeTeam) return;
+    const fast = mode === 'søk' || isTracking;
+    const id = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void pullTeamChanges();
+    }, fast ? TEAM_SYNC_FAST_MS : TEAM_SYNC_SLOW_MS);
+    return () => window.clearInterval(id);
+  }, [activeTeam, mode, isTracking, pullTeamChanges]);
+
+  useEffect(() => {
+    const onOnline = () => {
+      if (activeTeam) void flushPendingSearchData(activeTeam).then(() => pullTeamChanges());
     };
     const onVisible = () => {
-      if (document.visibilityState === 'visible') flush();
+      if (document.visibilityState === 'visible') onOnline();
     };
-    window.addEventListener('online', flush);
+    window.addEventListener('online', onOnline);
     document.addEventListener('visibilitychange', onVisible);
     return () => {
-      window.removeEventListener('online', flush);
+      window.removeEventListener('online', onOnline);
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [activeTeam]);
+  }, [activeTeam, pullTeamChanges]);
 
   // Gamle state-variabler fjernet - ikke lenger nødvendige med forenklet workflow
 

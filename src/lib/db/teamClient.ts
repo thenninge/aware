@@ -6,6 +6,7 @@ import {
   getCachedTrack,
   markSynced,
   pendingEntries,
+  type SearchChanges,
 } from './searchCache';
 
 async function send<T>(path: string, init?: RequestInit): Promise<T> {
@@ -36,6 +37,20 @@ export async function fetchTeamSearchData(teamId: string) {
     fetchTeamObservations(teamId),
   ]);
   return { tracks, finds, observations };
+}
+
+export type TeamChanges = SearchChanges & { cursor: string; shotPlacesChanged: boolean };
+
+/** Henter bare det som er endret siden `since`. Uten `since`: bare et startpunkt (`cursor`). */
+export async function fetchTeamChanges(
+  teamId: string,
+  since?: string | null,
+  excludeTracks: string[] = []
+): Promise<TeamChanges | { cursor: string }> {
+  const qs = new URLSearchParams({ teamId });
+  if (since) qs.set('since', since);
+  if (excludeTracks.length) qs.set('excludeTracks', excludeTracks.join(','));
+  return send(`/api/team-data/changes?${qs.toString()}`);
 }
 
 export async function upsertTeamTrack(

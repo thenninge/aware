@@ -11,6 +11,9 @@ mot samme jaktlag og samme database.
   i `src/app/api/`. Ingen skal ha egne databasenøkler i koden.
 - **Endringer i databasestrukturen** (tabeller og kolonner) avtales med eieren først,
   siden alle front-ender bruker de samme tabellene.
+- **Sletting er et merke, ikke en fjernet rad.** Tabellene `posts`, `tracks`, `finds` og
+  `observations` har `deleted_at`. Rader der den er satt, er slettet og skal ikke vises.
+  `updated_at` settes automatisk og brukes til å hente bare endringer.
 - **Aldri committ nøkler.** `.env*` er ignorert av git. Hold det sånn.
 
 ## Komme i gang

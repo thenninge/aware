@@ -32,7 +32,7 @@ export type SearchObservation = {
 
 type Row = Record<string, unknown>;
 
-function rowLocalId(row: Row, prefix: string): string | null {
+export function rowLocalId(row: Row, prefix: string): string | null {
   const localId = row.local_id != null && String(row.local_id).trim() ? String(row.local_id) : '';
   if (localId) return localId;
   if (row.id != null) return `${prefix}_${row.id}`;
@@ -125,4 +125,4 @@ export function serializeTrackPoints(points: Coord[]): string {
   return stringifyJson(points);
 }
 
-export { finiteCoord, parseCoord, type Coord } from './parse';
+export { finiteCoord, parseCoord, stringifyJson, type Coord } from './parse';
