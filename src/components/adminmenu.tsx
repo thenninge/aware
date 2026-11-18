@@ -407,11 +407,11 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
                               displayName = memberData.userProfile?.nickname || memberData.userProfile?.display_name || memberData.userProfile?.email || `User ${memberData.userid}`;
                             }
                             return (
-                              <div key={index} className="text-xs bg-blue-100 px-2 py-1 rounded">
+                              <div key={index} className="text-sm bg-blue-100 px-2 py-1 rounded">
                                 {displayName} ({member.role})
                               </div>
                             );
-                          }) || <span className="text-xs text-gray-500">No members</span>}
+                          }) || <span className="text-sm text-gray-500">No members</span>}
                         </div>
                       </div>
                       <p className="text-sm text-blue-900 mt-2">All data (skuddpar, søkespor, funn) vises for dette teamet</p>
@@ -583,7 +583,7 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
                           <div className="text-sm text-gray-900">Obs</div>
                         </div>
                       </div>
-                      <p className="text-xs text-blue-900 mt-2">Team: {userTeams.find(t => t.id === localActiveTeam)?.name}</p>
+                      <p className="text-sm text-blue-900 mt-2">Team: {userTeams.find(t => t.id === localActiveTeam)?.name}</p>
                     </div>
                   )}
 
@@ -608,7 +608,7 @@ export default function AdminMenu({ isExpanded, onClose }: AdminMenuProps) {
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
                         <span className="text-gray-900">User ID:</span>
-                        <span className="font-mono text-xs">{authState.user?.googleId?.substring(0, 8)}...</span>
+                        <span className="font-mono text-sm">{authState.user?.googleId?.substring(0, 8)}...</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-900">Active Team:</span>

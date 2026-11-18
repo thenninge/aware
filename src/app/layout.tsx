@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import ClientProviders from "./client-providers";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
+import { UI_SCALE_BOOT_SCRIPT } from "@/lib/ui/uiScale";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,6 +30,7 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#1f3d2b",
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -37,7 +39,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="no" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: UI_SCALE_BOOT_SCRIPT }} />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

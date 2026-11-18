@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import OfflineMapManager from './OfflineMapManager';
 import { getOfflineAreas, isOfflineForHuntingArea, type OfflineArea } from '@/lib/idb';
 import { readHomeForArea, writeHomeForArea } from '@/lib/map/huntingAreaHome';
+import { UI_SCALES, applyUiScale, readUiScale } from '@/lib/ui/uiScale';
 
 interface CategoryConfig {
   color: string;
@@ -292,8 +293,10 @@ export default function SettingsMenu({
     });
   };
 
+  const [uiScale, setUiScale] = useState<number>(() => (typeof window === 'undefined' ? 1 : readUiScale()));
+
   return (
-    <div ref={menuRef} className="bg-white/95 backdrop-blur-sm p-4 rounded-lg shadow-lg min-w-[280px] max-h-[80vh] overflow-y-auto">
+    <div ref={menuRef} className="bg-white/95 backdrop-blur-sm p-4 rounded-2xl shadow-lg w-[min(24rem,calc(100vw-1rem))] max-h-[calc(100dvh-env(safe-area-inset-top,0px)-10rem)] overflow-y-auto">
       {showHomeSaved && typeof window !== 'undefined' && createPortal(
         <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[3000] bg-gray-700 text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-2 animate-bounce">
           <span className="font-semibold text-lg">Home position saved!</span>
@@ -313,7 +316,33 @@ export default function SettingsMenu({
         document.body
       )}
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-gray-800">Innstillinger</h3>
+        <h3 className="text-xl font-bold text-gray-900">Innstillinger</h3>
+      </div>
+
+      {/* Visningsstørrelse: alltid synlig øverst */}
+      <div className="mb-4">
+        <div className="text-base font-semibold text-gray-900 mb-2">Visningsstørrelse</div>
+        <div className="grid grid-cols-3 gap-1 rounded-xl bg-gray-100 p-1" role="radiogroup" aria-label="Visningsstørrelse">
+          {UI_SCALES.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              role="radio"
+              aria-checked={uiScale === opt.value}
+              onClick={() => {
+                applyUiScale(opt.value);
+                setUiScale(opt.value);
+              }}
+              className={`min-h-[3rem] rounded-lg font-semibold leading-tight transition-colors ${
+                uiScale === opt.value ? 'bg-blue-600 text-white shadow' : 'text-gray-800 hover:bg-white'
+              }`}
+              style={{ fontSize: `${opt.value}rem` }}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        <p className="mt-1 text-sm text-gray-600">Gjør knapper og tekst større. Kartet påvirkes ikke.</p>
       </div>
       
       {/* Home Position Settings Expander */}
@@ -321,10 +350,10 @@ export default function SettingsMenu({
         <button
           type="button"
           onClick={() => setIsHomeExpanded(!isHomeExpanded)}
-          className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors"
+          className="w-full min-h-[3rem] flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors"
         >
-          <span className="text-sm font-medium text-gray-700">Home position settings</span>
-          <span className="text-gray-500 text-sm">{isHomeExpanded ? '▼' : '▶'}</span>
+          <span className="text-base font-semibold text-gray-900">Home position settings</span>
+          <span className="text-gray-600 text-base">{isHomeExpanded ? '▼' : '▶'}</span>
         </button>
         
         {isHomeExpanded && (
@@ -349,7 +378,7 @@ export default function SettingsMenu({
             </button>
             {activeHuntingAreaId ? (
               savedHomePosition ? (
-                <div className="mt-2 p-2 bg-gray-50 rounded text-xs text-gray-700">
+                <div className="mt-2 p-2 bg-gray-50 rounded text-sm text-gray-700">
                   <div className="font-semibold mb-1 text-gray-600">
                     Lagret for {huntingAreas?.find((area) => area.id === activeHuntingAreaId)?.name || 'jaktfeltet'}:
                   </div>
@@ -359,12 +388,12 @@ export default function SettingsMenu({
                   </div>
                 </div>
               ) : (
-                <div className="mt-2 p-2 bg-gray-100 rounded text-xs text-gray-500 italic">
+                <div className="mt-2 p-2 bg-gray-100 rounded text-sm text-gray-500 italic">
                   Ingen home lagret for dette jaktfeltet
                 </div>
               )
             ) : (
-              <div className="mt-2 p-2 bg-gray-100 rounded text-xs text-gray-500 italic">
+              <div className="mt-2 p-2 bg-gray-100 rounded text-sm text-gray-500 italic">
                 Velg et jaktfelt for å sette home position
               </div>
             )}
@@ -379,10 +408,10 @@ export default function SettingsMenu({
           <button
             type="button"
             onClick={() => setIsReticleExpanded(!isReticleExpanded)}
-            className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors"
+            className="w-full min-h-[3rem] flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors"
           >
-            <span className="text-sm font-medium text-gray-700">Reticle settings</span>
-            <span className="text-gray-500 text-sm">{isReticleExpanded ? '▼' : '▶'}</span>
+            <span className="text-base font-semibold text-gray-900">Reticle settings</span>
+            <span className="text-gray-600 text-base">{isReticleExpanded ? '▼' : '▶'}</span>
           </button>
           
           {isReticleExpanded && (
@@ -403,7 +432,7 @@ export default function SettingsMenu({
               {/* MSR-retikkel Opacity */}
               {showMSRRetikkel && msrRetikkelOpacity !== undefined && onMSRRetikkelOpacityChange && (
                 <div className="mb-3">
-                  <label className="text-xs font-medium text-gray-700 block mb-1">
+                  <label className="text-sm font-medium text-gray-700 block mb-1">
                     Opasitet markeringer: {msrRetikkelOpacity}%
                   </label>
                   <input
@@ -424,14 +453,14 @@ export default function SettingsMenu({
               {/* MSR-retikkel Style Toggle */}
               {showMSRRetikkel && msrRetikkelStyle !== undefined && onMSRRetikkelStyleChange && (
                 <div className="mb-3">
-                  <label className="text-xs font-medium text-gray-700 block mb-2">
+                  <label className="text-sm font-medium text-gray-700 block mb-2">
                     Plassering:
                   </label>
                   <div className="flex gap-2">
                     <button
                       type="button"
                       onClick={() => onMSRRetikkelStyleChange('msr')}
-                      className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                      className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
                         msrRetikkelStyle === 'msr'
                           ? 'bg-blue-600 text-white'
                           : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -442,7 +471,7 @@ export default function SettingsMenu({
                     <button
                       type="button"
                       onClick={() => onMSRRetikkelStyleChange('ivar')}
-                      className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                      className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
                         msrRetikkelStyle === 'ivar'
                           ? 'bg-blue-600 text-white'
                           : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -453,7 +482,7 @@ export default function SettingsMenu({
                     <button
                       type="button"
                       onClick={() => onMSRRetikkelStyleChange('circle')}
-                      className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                      className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
                         msrRetikkelStyle === 'circle'
                           ? 'bg-blue-600 text-white'
                           : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -468,7 +497,7 @@ export default function SettingsMenu({
               {/* Vertical Position Slider - only for Ivar-style */}
               {showMSRRetikkel && msrRetikkelStyle === 'ivar' && msrRetikkelVerticalPosition !== undefined && onMSRRetikkelVerticalPositionChange && (
                 <div className="mb-3">
-                  <label className="text-xs font-medium text-gray-700 block mb-1">
+                  <label className="text-sm font-medium text-gray-700 block mb-1">
                     Vertikal posisjon: {Math.round(60 + (msrRetikkelVerticalPosition / 100) * 25)}%
                   </label>
                   <input
@@ -483,7 +512,7 @@ export default function SettingsMenu({
                       background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${msrRetikkelVerticalPosition}%, #e5e7eb ${msrRetikkelVerticalPosition}%, #e5e7eb 100%)`
                     }}
                   />
-                  <div className="text-xs text-gray-500 mt-1">
+                  <div className="text-sm text-gray-500 mt-1">
                     0 = 60% ned (høyere opp), 100 = 85% ned (lenger ned)
                   </div>
                 </div>
@@ -499,17 +528,17 @@ export default function SettingsMenu({
           <button
             type="button"
             onClick={() => setIsCompassExpanded(!isCompassExpanded)}
-            className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors"
+            className="w-full min-h-[3rem] flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors"
           >
-            <span className="text-sm font-medium text-gray-700">Compass settings</span>
-            <span className="text-gray-500 text-sm">{isCompassExpanded ? '▼' : '▶'}</span>
+            <span className="text-base font-semibold text-gray-900">Compass settings</span>
+            <span className="text-gray-600 text-base">{isCompassExpanded ? '▼' : '▶'}</span>
           </button>
           
           {isCompassExpanded && (
             <div className="p-3 bg-white">
               {/* Compass Slice Length */}
               <div className="mb-3">
-                <label className="text-xs font-medium text-gray-700 block mb-1">
+                <label className="text-sm font-medium text-gray-700 block mb-1">
                   Indikatorlengde: {compassSliceLength}%
                 </label>
                 <input
@@ -524,7 +553,7 @@ export default function SettingsMenu({
                     background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${(compassSliceLength - 10) / 40 * 100}%, #e5e7eb ${(compassSliceLength - 10) / 40 * 100}%, #e5e7eb 100%)`
                   }}
                 />
-                <div className="text-xs text-gray-500 mt-1">
+                <div className="text-sm text-gray-500 mt-1">
                   Prosent av skjermhøyde
                 </div>
               </div>
@@ -538,10 +567,10 @@ export default function SettingsMenu({
         <button
           type="button"
           onClick={() => setIsZoomButtonsExpanded(!isZoomButtonsExpanded)}
-          className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors"
+          className="w-full min-h-[3rem] flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors"
         >
-          <span className="text-sm font-medium text-gray-700">Zoom buttons settings</span>
-          <span className="text-gray-500 text-sm">{isZoomButtonsExpanded ? '▼' : '▶'}</span>
+          <span className="text-base font-semibold text-gray-900">Zoom buttons settings</span>
+          <span className="text-gray-600 text-base">{isZoomButtonsExpanded ? '▼' : '▶'}</span>
         </button>
         {isZoomButtonsExpanded && (
         <div className="p-3 bg-white">
@@ -573,7 +602,7 @@ export default function SettingsMenu({
           )}
           {(onZoomButtonsYChange && zoomButtonsY !== undefined) && (
             <div className="mb-3">
-              <label className="text-xs font-medium text-gray-700 block mb-1">
+              <label className="text-sm font-medium text-gray-700 block mb-1">
                 Y-position: {zoomButtonsY}px
               </label>
               <input
@@ -589,7 +618,7 @@ export default function SettingsMenu({
           )}
           {(onZoomButtonsXChange && zoomButtonsX !== undefined) && (
             <div className="mb-1">
-              <label className="text-xs font-medium text-gray-700 block mb-1">
+              <label className="text-sm font-medium text-gray-700 block mb-1">
                 X-position: {zoomButtonsX}px
               </label>
               <input
@@ -612,16 +641,16 @@ export default function SettingsMenu({
         <button
           type="button"
           onClick={() => setIsLosExpanded(!isLosExpanded)}
-          className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors"
+          className="w-full min-h-[3rem] flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors"
         >
-          <span className="text-sm font-medium text-gray-700">LOS settings</span>
-          <span className="text-gray-500 text-sm">{isLosExpanded ? '▼' : '▶'}</span>
+          <span className="text-base font-semibold text-gray-900">LOS settings</span>
+          <span className="text-gray-600 text-base">{isLosExpanded ? '▼' : '▶'}</span>
         </button>
         {isLosExpanded && (
           <div className="p-3 bg-white">
             {onLosObserverHeightChange && losObserverHeightM !== undefined && (
               <div className="mb-3">
-                <label className="text-xs font-medium text-gray-700 block mb-1">
+                <label className="text-sm font-medium text-gray-700 block mb-1">
                   Høyde over bakken: {losObserverHeightM} m
                 </label>
                 <input
@@ -637,7 +666,7 @@ export default function SettingsMenu({
             )}
             {onLosRadiusChange && losRadiusM !== undefined && (
               <div className="mb-1">
-                <label className="text-xs font-medium text-gray-700 block mb-1">
+                <label className="text-sm font-medium text-gray-700 block mb-1">
                   Range (radius): {losRadiusM} m
                 </label>
                 <input
@@ -653,7 +682,7 @@ export default function SettingsMenu({
             )}
             {onLosColorChange && (
               <div className="mt-3">
-                <label className="text-xs font-medium text-gray-700 block mb-1">
+                <label className="text-sm font-medium text-gray-700 block mb-1">
                   LOS color
                 </label>
                 <input
@@ -666,7 +695,7 @@ export default function SettingsMenu({
             )}
             {onLosOpacityChange && (
               <div className="mt-2">
-                <label className="text-xs font-medium text-gray-700 block mb-1">
+                <label className="text-sm font-medium text-gray-700 block mb-1">
                   LOS opacity: {Math.round((losOpacity ?? 0.25) * 100)}%
                 </label>
                 <input
@@ -682,7 +711,7 @@ export default function SettingsMenu({
             )}
             {onLosHoleColorChange && (
               <div className="mt-3">
-                <label className="text-xs font-medium text-gray-700 block mb-1">
+                <label className="text-sm font-medium text-gray-700 block mb-1">
                   Outside LOS color
                 </label>
                 <input
@@ -695,7 +724,7 @@ export default function SettingsMenu({
             )}
             {onLosHoleOpacityChange && (
               <div className="mt-2">
-                <label className="text-xs font-medium text-gray-700 block mb-1">
+                <label className="text-sm font-medium text-gray-700 block mb-1">
                   Outside LOS opacity: {Math.round((losHoleOpacity ?? 0.12) * 100)}%
                 </label>
                 <input
@@ -719,10 +748,10 @@ export default function SettingsMenu({
           <button
             type="button"
             onClick={() => setIsOfflineMapExpanded(!isOfflineMapExpanded)}
-            className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors"
+            className="w-full min-h-[3rem] flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors"
           >
-            <span className="text-sm font-medium text-gray-700">📥 Offline kart</span>
-            <span className="text-gray-500 text-sm">{isOfflineMapExpanded ? '▼' : '▶'}</span>
+            <span className="text-base font-semibold text-gray-900">📥 Offline kart</span>
+            <span className="text-gray-600 text-base">{isOfflineMapExpanded ? '▼' : '▶'}</span>
           </button>
           
           {isOfflineMapExpanded && (
@@ -748,10 +777,10 @@ export default function SettingsMenu({
           <button
             type="button"
             onClick={() => setIsFilterExpanded(!isFilterExpanded)}
-            className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors"
+            className="w-full min-h-[3rem] flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors"
           >
-            <span className="text-sm font-medium text-gray-700">Filter settings</span>
-            <span className="text-gray-500 text-sm">{isFilterExpanded ? '▼' : '▶'}</span>
+            <span className="text-base font-semibold text-gray-900">Filter settings</span>
+            <span className="text-gray-600 text-base">{isFilterExpanded ? '▼' : '▶'}</span>
           </button>
           
           {isFilterExpanded && (
@@ -759,7 +788,7 @@ export default function SettingsMenu({
               {/* Vis bebyggelse */}
               {showMarkers !== undefined && onShowMarkersChange && (
                 <div className="mb-3">
-                  <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+                  <label className="flex items-center gap-2 cursor-pointer text-sm bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
                     <input
                       type="checkbox"
                       checked={showMarkers}
@@ -775,7 +804,7 @@ export default function SettingsMenu({
               
               <div className="space-y-1">
                 {Object.entries(categoryFilters).map(([category, checked]) => (
-                  <label key={category} className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+                  <label key={category} className="flex items-center gap-2 cursor-pointer text-sm bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
                     <input
                       type="checkbox"
                       checked={checked}
@@ -801,10 +830,10 @@ export default function SettingsMenu({
         <button
           type="button"
           onClick={() => setIsShootTrackExpanded(!isShootTrackExpanded)}
-          className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors"
+          className="w-full min-h-[3rem] flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors"
         >
-          <span className="text-sm font-medium text-gray-700">Shoot & Track settings</span>
-          <span className="text-gray-500 text-sm">{isShootTrackExpanded ? '▼' : '▶'}</span>
+          <span className="text-base font-semibold text-gray-900">Shoot & Track settings</span>
+          <span className="text-gray-600 text-base">{isShootTrackExpanded ? '▼' : '▶'}</span>
         </button>
         
         {isShootTrackExpanded && (
@@ -812,7 +841,7 @@ export default function SettingsMenu({
             {/* Target size */}
             {targetSize !== undefined && onTargetSizeChange && (
               <div className="mb-3">
-                <label className="block text-xs font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Target size: {targetSize}m
                 </label>
                 <input
@@ -830,7 +859,7 @@ export default function SettingsMenu({
             {/* Standplass size */}
             {shotSize !== undefined && onShotSizeChange && (
               <div className="mb-3">
-                <label className="block text-xs font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Standplass size: {shotSize}m
                 </label>
                 <input
@@ -848,7 +877,7 @@ export default function SettingsMenu({
             {/* Observasjons size */}
             {observationSize !== undefined && onObservationSizeChange && (
               <div className="mb-3">
-                <label className="block text-xs font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Observasjons size: {observationSize}m
                 </label>
                 <input
@@ -866,7 +895,7 @@ export default function SettingsMenu({
             {/* Skuddplass color */}
             {shotColor !== undefined && onShotColorChange && (
               <div className="mb-3">
-                <label className="block text-xs font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Skuddplass color:
                 </label>
                 <div className="flex items-center gap-2">
@@ -876,7 +905,7 @@ export default function SettingsMenu({
                     onChange={(e) => onShotColorChange(e.target.value)}
                     className="w-12 h-8 border rounded cursor-pointer"
                   />
-                  <span className="text-xs text-gray-600">{shotColor}</span>
+                  <span className="text-sm text-gray-600">{shotColor}</span>
                 </div>
               </div>
             )}
@@ -884,7 +913,7 @@ export default function SettingsMenu({
             {/* Treffpunkt color */}
             {targetColor !== undefined && onTargetColorChange && (
               <div className="mb-3">
-                <label className="block text-xs font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Treffpunkt color:
                 </label>
                 <div className="flex items-center gap-2">
@@ -894,7 +923,7 @@ export default function SettingsMenu({
                     onChange={(e) => onTargetColorChange(e.target.value)}
                     className="w-12 h-8 border rounded cursor-pointer"
                   />
-                  <span className="text-xs text-gray-600">{targetColor}</span>
+                  <span className="text-sm text-gray-600">{targetColor}</span>
                 </div>
               </div>
             )}
@@ -902,7 +931,7 @@ export default function SettingsMenu({
             {/* Target line color */}
             {targetLineColor !== undefined && onTargetLineColorChange && (
               <div className="mb-3">
-                <label className="block text-xs font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Target line color:
                 </label>
                 <div className="flex items-center gap-2">
@@ -912,7 +941,7 @@ export default function SettingsMenu({
                     onChange={(e) => onTargetLineColorChange(e.target.value)}
                     className="w-12 h-8 border rounded cursor-pointer"
                   />
-                  <span className="text-xs text-gray-600">{targetLineColor}</span>
+                  <span className="text-sm text-gray-600">{targetLineColor}</span>
                 </div>
               </div>
             )}
@@ -920,7 +949,7 @@ export default function SettingsMenu({
             {/* Target line tykkelse */}
             {targetLineWeight !== undefined && onTargetLineWeightChange && (
               <div className="mb-3">
-                <label className="block text-xs font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Target line tykkelse: {targetLineWeight}px
                 </label>
                 <input
@@ -953,10 +982,10 @@ export default function SettingsMenu({
         <button
           type="button"
           onClick={() => setIsHuntingAreaExpanded(!isHuntingAreaExpanded)}
-          className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors"
+          className="w-full min-h-[3rem] flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors"
         >
-          <span className="text-sm font-medium text-gray-700">Jaktfelt</span>
-          <span className="text-gray-500 text-sm">{isHuntingAreaExpanded ? '▼' : '▶'}</span>
+          <span className="text-base font-semibold text-gray-900">Jaktfelt</span>
+          <span className="text-gray-600 text-base">{isHuntingAreaExpanded ? '▼' : '▶'}</span>
         </button>
         
         {isHuntingAreaExpanded && (
@@ -985,7 +1014,7 @@ export default function SettingsMenu({
             {/* Velg aktivt jaktfelt dropdown */}
             {huntingAreas !== undefined && onActiveHuntingAreaChange && (
               <div className="mb-3">
-                <label className="block text-xs font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Velg aktivt jaktfelt:
                 </label>
                 <select
@@ -1004,7 +1033,7 @@ export default function SettingsMenu({
                   ))}
                 </select>
                 {huntingAreas.length === 0 && (
-                  <p className="text-xs text-gray-500 mt-1 italic">
+                  <p className="text-sm text-gray-500 mt-1 italic">
                     Ingen jaktfelt definert ennå
                   </p>
                 )}
@@ -1042,7 +1071,7 @@ export default function SettingsMenu({
                         onDeleteHuntingArea(activeHuntingAreaId);
                       }
                     }}
-                    className="w-full mt-2 bg-red-600 hover:bg-red-700 text-white font-semibold py-1.5 px-3 rounded text-xs"
+                    className="w-full mt-2 bg-red-600 hover:bg-red-700 text-white font-semibold py-1.5 px-3 rounded text-sm"
                   >
                     🗑️ Slett aktivt jaktfelt
                   </button>
@@ -1053,7 +1082,7 @@ export default function SettingsMenu({
             {/* Jaktgrense farge */}
             {huntingBoundaryColor !== undefined && onHuntingBoundaryColorChange && (
               <div className="mb-3">
-                <label className="block text-xs font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Jaktgrense farge:
                 </label>
                 <div className="flex items-center gap-2">
@@ -1063,7 +1092,7 @@ export default function SettingsMenu({
                     onChange={(e) => onHuntingBoundaryColorChange(e.target.value)}
                     className="w-12 h-8 border rounded cursor-pointer"
                   />
-                  <span className="text-xs text-gray-600">{huntingBoundaryColor}</span>
+                  <span className="text-sm text-gray-600">{huntingBoundaryColor}</span>
                 </div>
               </div>
             )}
@@ -1071,7 +1100,7 @@ export default function SettingsMenu({
             {/* Jaktgrense tykkelse */}
             {huntingBoundaryWeight !== undefined && onHuntingBoundaryWeightChange && (
               <div className="mb-3">
-                <label className="block text-xs font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Jaktgrense tykkelse: {huntingBoundaryWeight}px
                 </label>
                 <input
@@ -1089,7 +1118,7 @@ export default function SettingsMenu({
             {/* Jaktgrense opasitet */}
             {huntingBoundaryOpacity !== undefined && onHuntingBoundaryOpacityChange && (
               <div className="mb-3">
-                <label className="block text-xs font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Jaktgrense opasitet: {huntingBoundaryOpacity}%
                 </label>
                 <input
@@ -1137,7 +1166,7 @@ export default function SettingsMenu({
             {/* Nye hogster farge */}
             {showNewCuts && newCutsColor !== undefined && onNewCutsColorChange && (
               <div className="mt-2 mb-3">
-                <label className="block text-xs font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Nye hogster farge:
                 </label>
                 <div className="flex items-center gap-2">
@@ -1147,7 +1176,7 @@ export default function SettingsMenu({
                     onChange={(e) => onNewCutsColorChange(e.target.value)}
                     className="w-12 h-8 border rounded cursor-pointer"
                   />
-                  <span className="text-xs text-gray-600">{newCutsColor}</span>
+                  <span className="text-sm text-gray-600">{newCutsColor}</span>
                 </div>
               </div>
             )}
@@ -1155,7 +1184,7 @@ export default function SettingsMenu({
             {/* Nye hogster opasitet */}
             {showNewCuts && newCutsOpacity !== undefined && onNewCutsOpacityChange && (
               <div className="mb-3">
-                <label className="block text-xs font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Nye hogster opasitet: {newCutsOpacity}%
                 </label>
                 <input
@@ -1178,17 +1207,17 @@ export default function SettingsMenu({
         <button
           type="button"
           onClick={() => setIsPieSliceExpanded(!isPieSliceExpanded)}
-          className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors"
+          className="w-full min-h-[3rem] flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors"
         >
-          <span className="text-sm font-medium text-gray-700">Pie slice settings</span>
-          <span className="text-gray-500 text-sm">{isPieSliceExpanded ? '▼' : '▶'}</span>
+          <span className="text-base font-semibold text-gray-900">Pie slice settings</span>
+          <span className="text-gray-600 text-base">{isPieSliceExpanded ? '▼' : '▶'}</span>
         </button>
         
         {isPieSliceExpanded && (
           <div className="p-3 bg-white">
             {/* Angle Range Setting */}
             <div className="mb-4">
-              <label className="block text-xs font-medium text-gray-700 mb-1">Retningsvinkel (±grader):</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Retningsvinkel (±grader):</label>
               <input
                 type="range"
                 min={1}
@@ -1197,12 +1226,12 @@ export default function SettingsMenu({
                 onChange={e => onAngleRangeChange(Number(e.target.value))}
                 className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
               />
-              <div className="text-xs text-gray-600 mt-1">±{angleRange}°</div>
+              <div className="text-sm text-gray-600 mt-1">±{angleRange}°</div>
             </div>
             
             {/* Global Opacity Slider */}
             <div className="mb-4">
-              <label className="block text-xs font-medium text-gray-700 mb-1">Opasitet alle kakestykker:</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Opasitet alle kakestykker:</label>
               <input
                 type="range"
                 min={0.1}
@@ -1222,7 +1251,7 @@ export default function SettingsMenu({
                   return !opacities.every(o => o === opacities[0]);
                 })()}
               />
-              <div className="text-xs text-gray-600 mt-1">
+              <div className="text-sm text-gray-600 mt-1">
                 {(() => {
                   const opacities = Object.values(categoryConfigs).map(c => c.opacity);
                   if (opacities.every(o => o === opacities[0])) {
@@ -1235,7 +1264,7 @@ export default function SettingsMenu({
               {/* Reset-knapp for opasitet */}
               <button
                 type="button"
-                className="mt-2 mb-2 px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 text-xs font-medium text-gray-700 transition-colors"
+                className="mt-2 mb-2 px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 text-sm font-medium text-gray-700 transition-colors"
                 onClick={() => {
                   Object.keys(categoryConfigs).forEach((key) => {
                     onCategoryConfigChange(key, {
@@ -1251,7 +1280,7 @@ export default function SettingsMenu({
             
             {/* Kategori-farger og opasitet */}
             <div>
-              <div className="text-xs font-medium text-gray-700 mb-2">Farger og opasitet:</div>
+              <div className="text-sm font-medium text-gray-700 mb-2">Farger og opasitet:</div>
               {Object.entries(categoryConfigs).map(([category, config]) => (
                 <div key={category} className="flex items-center gap-2 mb-2">
                   <span className="text-lg" title={category}>{config.icon}</span>
@@ -1270,7 +1299,7 @@ export default function SettingsMenu({
                     onChange={e => handleOpacityChange(category, Number(e.target.value))}
                     className="w-24 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
                   />
-                  <span className="text-xs text-gray-600">{Math.round(config.opacity * 100)}%</span>
+                  <span className="text-sm text-gray-600">{Math.round(config.opacity * 100)}%</span>
                 </div>
               ))}
             </div>

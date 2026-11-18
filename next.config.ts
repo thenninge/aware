@@ -7,6 +7,8 @@ const BUILD_ID = process.env.VERCEL_GIT_COMMIT_SHA || `local-${Date.now()}`;
 const BUILD_TIME = String(Date.now()).padStart(13, '0');
 
 const nextConfig: NextConfig = {
+  // Skjul Next.js-indikatoren i utvikling; den lå over MSR-knappen nederst til venstre.
+  devIndicators: false,
   generateBuildId: async () => BUILD_ID,
   env: {
     NEXT_PUBLIC_BUILD_ID: BUILD_ID,

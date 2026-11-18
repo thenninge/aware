@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
+import MapButton from '@/components/ui/MapButton';
+import { AlertIcon, CloseIcon, CompassIcon, EyeIcon, LayersIcon, LocateIcon, LockIcon, ReticleIcon, RulerIcon, SearchIcon, SpinnerIcon, UnlockIcon } from '@/components/ui/icons';
 import { MapContainer, TileLayer, Marker, useMap, Circle, CircleMarker, Polyline, Polygon, Tooltip, Popup, LayersControl, ZoomControl, Rectangle } from 'react-leaflet';
 import L from 'leaflet';
 import MSRRetikkel from './msr-retikkel';
@@ -1117,12 +1119,12 @@ const LAYER_CONFIGS = [
 // Only rotate among these keys (order: Flyfoto ESRI, Kartverket, OSM)
 const LAYER_ROTATION_KEYS = ['google_sat', 'kartverket_topo', 'osm'] as const;
 
-// Legg til en SVG-komponent for layers-ikonet
-function LayersIcon() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2" fill="#fff"/><polyline points="2 17 12 22 22 17" fill="#fff"/><polyline points="2 12 12 17 22 12" fill="#fff"/></svg>
-  );
-}
+// Korte navn under kartlag-knappen
+const LAYER_SHORT_NAMES: Record<string, string> = {
+  google_sat: 'Flyfoto',
+  kartverket_topo: 'Topo',
+  osm: 'OSM',
+};
 
 export default function MapComponent({ 
   radius, 
@@ -4311,21 +4313,22 @@ export default function MapComponent({
       {/* --- PATCH FOR BEDRE KNAPPEPLASSERING --- */}
       {/* Track-mode: Knapp for lagring av skuddpar */}
       {mode === 'track' && (
-        <div className="fixed bottom-4 inset-x-0 z-[2001] flex flex-wrap justify-center items-center gap-2 px-2" style={{ pointerEvents: 'none' }}>
+        <div className="fixed inset-x-0 aware-bottom aware-bottom-bar z-[2001] flex flex-wrap-reverse justify-center items-center gap-2 px-2" style={{ pointerEvents: 'none' }}>
           <button
             onClick={handleSaveCurrentPos}
-            className="flex-1 min-w-[80px] max-w-[140px] w-auto h-12 rounded-full shadow-lg font-semibold text-[0.875rem] transition-colors border flex flex-col items-center justify-center px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white border-blue-700"
+            className="min-w-[9rem] h-14 rounded-full shadow-lg ring-2 ring-white/70 font-bold text-lg transition-colors flex items-center justify-center gap-2 px-6 bg-blue-600 hover:bg-blue-700 text-white"
             title="Lagre skuddpar (Skyteplass + Treffpunkt)"
             style={{ pointerEvents: 'auto' }}
           >
-            <span className="text-[10px] mt-0.5">Target</span>
+            <ReticleIcon />
+            <span>Target</span>
           </button>
         </div>
       )}
 
       {/* Avstandsmåling knapper - kun i aware-modus */}
       {mode === 'aware' && (
-        <div className="fixed bottom-4 inset-x-0 z-[2001] flex flex-wrap justify-center items-center gap-2 px-2" style={{ pointerEvents: 'none' }}>
+        <div className="fixed inset-x-0 aware-bottom aware-bottom-bar z-[2001] flex flex-wrap-reverse justify-center items-center gap-2 px-2" style={{ pointerEvents: 'none' }}>
           {/* MSR-size slider: vises når retikkel er på */}
           {localShowMSRRetikkel && (
             <div
@@ -4359,21 +4362,20 @@ export default function MapComponent({
           {/* Reset-knapp - alltid synlig */}
             <button
             onClick={handleResetMeasurement}
-            className={`w-18 h-12 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex items-center justify-center ${
-              (isMeasuring || measurementPoints.length > 0 || searchPosition || !!los.data)
-                ? 'bg-red-600 hover:bg-red-700 text-white border-red-700'
-                : 'bg-gray-300 text-gray-400 border-gray-400 cursor-not-allowed'
+            className={`w-14 h-14 rounded-full shadow-lg ring-2 ring-white/70 flex items-center justify-center bg-red-600 hover:bg-red-700 text-white ${
+              (isMeasuring || measurementPoints.length > 0 || searchPosition || !!los.data) ? '' : 'invisible'
             }`}
             disabled={!isMeasuring && measurementPoints.length === 0 && !searchPosition && !los.data}
             style={{ pointerEvents: 'auto' }}
             title="Fjern målinger/overlays"
+            aria-label="Fjern målinger og overlegg"
             >
-                  ✕
+                  <CloseIcon size="1.75rem" />
             </button>
 
           {/* Avstandstekst - alltid synlig */}
-          <div className="bg-white rounded-full px-3 h-12 shadow-lg border min-w-[60px] flex items-center justify-center">
-            <span className="text-base font-semibold text-black">
+          <div className={`bg-white rounded-full px-3 h-14 shadow-lg ring-2 ring-white/70 min-w-[4.5rem] flex items-center justify-center ${(isMeasuring || totalDistance > 0) ? '' : 'invisible'}`}>
+            <span className="text-xl font-bold text-black tabular-nums">
               {(() => {
                 // Ny logikk:
                 // - Mens du panorerer mellom målepunkter: vis LØPENDE DISTANSE fra siste punkt til nåværende (skjermsenter)
@@ -4397,61 +4399,62 @@ export default function MapComponent({
           {/* Måle-knapp - avlang */}
           <button
             onClick={handleMeasureClick}
-            className={`w-18 h-12 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex items-center justify-center ${
+            className={`w-14 h-14 rounded-full shadow-lg ring-2 ring-white/70 transition-colors flex items-center justify-center ${
               isMeasuring
-                ? 'bg-green-600 hover:bg-green-700 text-white border-green-700'
-                : 'bg-blue-600 hover:bg-blue-700 text-white border-blue-700'
+                ? 'bg-green-600 hover:bg-green-700 text-white'
+                : 'bg-blue-600 hover:bg-blue-700 text-white'
             }`}
             title={isMeasuring ? "Klikk for å legge til neste målepunkt" : "Start avstandsmåling"}
             style={{ pointerEvents: 'auto' }}
+            aria-label={isMeasuring ? 'Legg til målepunkt' : 'Start avstandsmåling'}
           >
-            📏
+            <RulerIcon size="1.75rem" />
           </button>
         </div>
       )}
       
                         {/* Start/Stopp spor knapp kun i søk-modus */}
         {mode === 'søk' && (
-          <div className="fixed bottom-4 inset-x-0 z-[2001] flex flex-wrap justify-center items-center gap-2 px-2 -ml-[15px]" style={{ pointerEvents: 'none' }}>
+          <div className="fixed inset-x-0 aware-bottom aware-bottom-bar z-[2001] flex flex-wrap-reverse justify-center items-center gap-2 px-2" style={{ pointerEvents: 'none' }}>
                     {/* Obs-knapp */}
             <button
                       onClick={toggleObservationMode}
-                      className="flex-1 min-w-[60px] max-w-[55px] w-auto h-12 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex items-center justify-center px-[0.375em] py-[0.375em] bg-orange-600 hover:bg-orange-700 text-white border-orange-700"
+                      className="min-w-[4rem] h-14 px-3 rounded-full shadow-lg ring-2 ring-white/70 font-bold text-lg transition-colors flex items-center justify-center bg-orange-600 hover:bg-orange-700 text-white"
                       title="Legg til observasjon"
                       style={{ pointerEvents: 'auto' }}
                     >
-                      <span className="text-[10px] font-bold">Obs</span>
+                      <span>Obs</span>
           </button>
       
                     {/* Funn! knapp */}
             <button
                       onClick={toggleFindingMode}
-                      className="flex-1 min-w-[60px] max-w-[55px] w-auto h-12 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex items-center justify-center px-[0.375em] py-[0.375em] bg-purple-600 hover:bg-purple-700 text-white border-purple-700"
+                      className="min-w-[4rem] h-14 px-3 rounded-full shadow-lg ring-2 ring-white/70 font-bold text-lg transition-colors flex items-center justify-center bg-purple-600 hover:bg-purple-700 text-white"
                       title="Klikk for å plassere markering"
                       style={{ pointerEvents: 'auto' }}
                     >
-                      <span className="text-[10px] font-bold">Mark!</span>
+                      <span>Mark!</span>
             </button>
             
             {/* Start/Stopp spor knapp */}
             <button
               onClick={isTracking ? stopTracking : startTracking}
-              className={`flex-1 min-w-[60px] max-w-[55px] w-auto h-12 rounded-full shadow-lg font-semibold text-[0.75rem] transition-colors border flex flex-col items-center justify-center px-[0.375em] py-[0.375em] ${
+              className={`min-w-[4rem] h-14 px-3 rounded-full shadow-lg ring-2 ring-white/70 font-bold text-lg transition-colors flex items-center justify-center ${
                 isTracking
-                  ? 'bg-red-600 hover:bg-red-700 text-white border-red-700'
-                  : 'bg-green-600 hover:bg-green-700 text-white border-green-700'
+                  ? 'bg-red-600 hover:bg-red-700 text-white'
+                  : 'bg-green-600 hover:bg-green-700 text-white'
               }`}
                                               title={isTracking ? 'Stop' : 'Start'}
               style={{ pointerEvents: 'auto' }}
             >
-                                                                                              <span className="text-[10px] mt-0.5">{isTracking ? 'Stop' : 'Start'}</span>
+                                                                                              <span>{isTracking ? 'Stop' : 'Start'}</span>
             </button>
           </div>
         )}
         
       {/* Hunting Area Definition Buttons */}
       {isDefiningHuntingArea && (
-        <div className="fixed bottom-4 inset-x-0 z-[2001] flex flex-wrap justify-center items-center gap-4 px-2" style={{ pointerEvents: 'none' }}>
+        <div className="fixed inset-x-0 aware-bottom aware-bottom-bar z-[2001] flex flex-wrap-reverse justify-center items-center gap-4 px-2" style={{ pointerEvents: 'none' }}>
           <button
             onClick={handleCancelHuntingArea}
             className="px-6 py-3 rounded-full shadow-lg font-semibold transition-colors bg-red-600 hover:bg-red-700 text-white"
@@ -4474,7 +4477,7 @@ export default function MapComponent({
       
       {/* No-Hunt-Zone Definition Buttons */}
       {isDefiningNoHuntZone && (
-        <div className="fixed bottom-4 inset-x-0 z-[2001] flex flex-wrap justify-center items-center gap-4 px-2" style={{ pointerEvents: 'none' }}>
+        <div className="fixed inset-x-0 aware-bottom aware-bottom-bar z-[2001] flex flex-wrap-reverse justify-center items-center gap-4 px-2" style={{ pointerEvents: 'none' }}>
           <button
             onClick={handleCancelNoHuntZone}
             className="px-6 py-3 rounded-full shadow-lg font-semibold transition-colors bg-red-600 hover:bg-red-700 text-white"
@@ -4496,26 +4499,22 @@ export default function MapComponent({
       )}
       
       {/* MSR-retikkel Button - Bottom Left */}
-      <div className="fixed bottom-4 left-4 sm:bottom-4 sm:left-4 bottom-2 left-2 z-[2000] flex flex-col gap-2" style={{ pointerEvents: 'auto' }}>
+      <div className="fixed left-2 aware-bottom z-[2000] flex flex-col gap-2" style={{ pointerEvents: 'auto' }}>
           {/* MSR-retikkel knapp */}
-          <button
-            className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
-              localShowMSRRetikkel 
-                ? 'bg-red-600 hover:bg-red-700 text-white' 
-                : 'bg-gray-600 hover:bg-gray-700 text-white'
-            }`}
+          <MapButton
             onClick={() => setLocalShowMSRRetikkel(!localShowMSRRetikkel)}
-            title={localShowMSRRetikkel ? 'MSR-retikkel ON' : 'MSR-retikkel OFF'}
-          >
-            📐
-          </button>
+            tone={localShowMSRRetikkel ? 'danger' : 'neutral'}
+            icon={<ReticleIcon />}
+            label="MSR"
+            title={localShowMSRRetikkel ? 'MSR-retikkel på' : 'MSR-retikkel av'}
+          />
       </div>
 
       {/* Scan & Live Buttons - Bottom Right */}
-      <div className="fixed bottom-4 right-4 sm:bottom-4 sm:right-4 bottom-2 right-2 z-[2000] flex flex-col gap-2" style={{ pointerEvents: 'auto' }}>
+      <div className="fixed right-2 aware-bottom z-[2000] flex flex-col gap-2" style={{ pointerEvents: 'auto' }}>
           {/* LOS (Line of Sight) knapp over ❗ i aware-mode */}
           {mode === 'aware' && (
-            <button
+            <MapButton
               onClick={() => {
                 if (los.status === 'running') {
                   try { los.cancel(); } catch {}
@@ -4526,20 +4525,16 @@ export default function MapComponent({
                   runLosAtCurrent();
                 }
               }}
-              className={` w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
-                los.status === 'running'
-                  ? 'bg-gray-400 cursor-not-allowed text-white'
-                  : 'bg-gray-600 hover:bg-gray-700 text-white'
-              }`}
+              tone={los.status === 'running' ? 'busy' : los.data ? 'primary' : 'neutral'}
+              icon={los.status === 'running' ? <SpinnerIcon /> : <EyeIcon />}
+              label="Sikt"
               title={ los.status==='running' ? 'LOS: jobber…' : (los.data ? 'Skru av LOS' : 'LOS (Line of Sight)') }
               disabled={los.status === 'running'}
-            >
-              {los.status === 'running' ? '⏳' : '👁️'}
-            </button>
+            />
           )}
           {/* Invertert bebyggelses-scan knapp (❗) over 🔍 i aware-mode */}
           {mode === 'aware' && (
-            <button
+            <MapButton
               onClick={() => {
                 // Toggle off if invert scan is currently displayed
                 if (invertSlices && places.length > 0 && !isScanningInvert) {
@@ -4556,20 +4551,16 @@ export default function MapComponent({
                 setInvertSlices(true);
                 onScanArea?.();
               }}
-              className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
-                isScanningInvert 
-                  ? 'bg-gray-400 cursor-not-allowed text-white' 
-                  : 'bg-gray-600 hover:bg-gray-700 text-white'
-              }`}
+              tone={isScanningInvert ? 'busy' : (invertSlices && places.length > 0) ? 'warning' : 'neutral'}
+              icon={isScanningInvert ? <SpinnerIcon /> : <AlertIcon />}
+              label="Fare"
               title={isScanningInvert ? 'Scanning...' : (invertSlices && places.length>0 ? 'Skru av Faresøk' : 'Invertert bebyggelses-søk')}
               disabled={isScanningInvert}
-            >
-              {isScanningInvert ? '⏳' : '❗'}
-            </button>
+            />
           )}
           {/* Scan-knapp kun i aware-mode */}
           {mode === 'aware' && (
-          <button
+          <MapButton
             onClick={() => {
               // Toggle off if normal scan is currently displayed
               if (!invertSlices && places.length > 0 && !isScanningNormal) {
@@ -4585,15 +4576,11 @@ export default function MapComponent({
               setInvertSlices(false);
               onScanArea?.();
             }}
-              className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
-              isScanningNormal 
-                  ? 'bg-gray-400 cursor-not-allowed text-white' 
-                  : 'bg-blue-600 hover:bg-blue-700 text-white'
-              }`}
+            tone={isScanningNormal ? 'busy' : (!invertSlices && places.length > 0) ? 'primary' : 'neutral'}
+            icon={isScanningNormal ? <SpinnerIcon /> : <SearchIcon />}
+            label="Søk"
             title={isScanningNormal ? 'Scanning...' : (!invertSlices && places.length>0 ? 'Skru av søk' : 'Scan område')}
-            >
-            {isScanningNormal ? '⏳' : '🔍'}
-            </button>
+          />
           )}
           {/* Skuddpar-valgknapper - kun i søk-modus (deaktivert) */}
           {false && mode === 'søk' && (
@@ -4627,7 +4614,7 @@ export default function MapComponent({
           
       {/* Elevation HUD */}
       {mode === 'aware' && showElevationProfile && (elevLoading || elevError || elevSamples.length > 1) && (
-        <div className="fixed z-[3000]" style={{ top: 'calc(env(safe-area-inset-top) + 56px)', left: '50%', transform: 'translateX(-50%)', pointerEvents: 'none' }}>
+        <div className="fixed z-[3000]" style={{ top: 'calc(env(safe-area-inset-top, 0px) + 4.25rem)', left: '50%', transform: 'translateX(-50%)', pointerEvents: 'none' }}>
           <div style={{ background: 'rgba(255,255,255,0.6)', borderRadius: 8, padding: '6px 10px', boxShadow: '0 1px 4px rgba(0,0,0,0.15)' }}>
             {elevLoading && (
               <div className="text-xs font-semibold text-gray-800">Høydeprofil: Laster…</div>
@@ -4740,8 +4727,7 @@ export default function MapComponent({
           {/* Kalibreringsknapp flyttet ut av denne gruppen */}
           
           {/* Layers button - above compass */}
-            <button
-            className="w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center bg-transparent border border-gray-300 hover:bg-white/20"
+            <MapButton
               onClick={() => {
               const currentKey = LAYER_CONFIGS[layerIdx]?.key;
               const i = LAYER_ROTATION_KEYS.indexOf(currentKey as any);
@@ -4749,14 +4735,13 @@ export default function MapComponent({
               const nextIdx = LAYER_CONFIGS.findIndex(l => l.key === nextKey);
               if (nextIdx >= 0) setLayerIdx(nextIdx);
             }}
+            icon={<LayersIcon />}
+            label={LAYER_SHORT_NAMES[LAYER_CONFIGS[layerIdx]?.key] ?? 'Kart'}
             title={`Bytt kartlag (${LAYER_CONFIGS[layerIdx].name})`}
-            style={{ pointerEvents: 'auto' }}
-          >
-            <span className="w-7 h-7 flex items-center justify-center"><LayersIcon /></span>
-          </button>
+          />
           
           {/* Kompass-knapp - toggle on/off, below layers */}
-            <button
+            <MapButton
             onClick={async () => {
               if (compassMode === 'off') {
                 // If turning compass ON, turn GPS OFF and unlock map
@@ -4796,18 +4781,14 @@ export default function MapComponent({
                 onCompassLockedChange?.(false);
               }
             }}
-            className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
-              compassMode === 'off'
-                ? 'bg-red-300 hover:bg-red-400 text-white'
-                : 'bg-red-400 hover:bg-red-500 text-white'
-            }`}
+            tone={compassMode === 'off' ? 'neutral' : 'danger'}
+            icon={<CompassIcon />}
+            label="Kompass"
             title={compassMode === 'off' ? 'Start kompass' : 'Stopp kompass'}
-            >
-              🧭
-            </button>
+            />
 
           {/* GPS (Live mode) button - now below compass */}
-            <button
+            <MapButton
               onClick={() => {
               const next = !isLiveMode;
               onLiveModeChange?.(next);
@@ -4818,17 +4799,14 @@ export default function MapComponent({
                 onCompassLockedChange?.(false);
               }
             }}
-            className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
-              isLiveMode ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-gray-600 hover:bg-gray-700 text-white'
-            }`}
-            title={isLiveMode ? 'Live GPS' : 'Live GPS'}
-            style={{ pointerEvents: 'auto' }}
-          >
-            📍
-            </button>
+            tone={isLiveMode ? 'success' : 'neutral'}
+            icon={<LocateIcon />}
+            label="GPS"
+            title={isLiveMode ? 'Live GPS på' : 'Live GPS av'}
+          />
           
           {/* Pan lock button - always visible */}
-          <button
+          <MapButton
             onClick={() => {
               const next = !isMapLocked;
               setIsMapLocked(next);
@@ -4851,14 +4829,11 @@ export default function MapComponent({
                 }
               }
             }}
-            className={`w-12 h-12 rounded-full shadow-lg transition-colors flex items-center justify-center ${
-              isMapLocked ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-gray-600 hover:bg-gray-700 text-white'
-            }`}
+            tone={isMapLocked ? 'primary' : 'neutral'}
+            icon={isMapLocked ? <LockIcon /> : <UnlockIcon />}
+            label={isMapLocked ? 'Låst' : 'Lås'}
             title={isMapLocked ? 'Lås på: pan er låst til GPS' : 'Lås av: pan er tillatt'}
-            style={{ pointerEvents: 'auto' }}
-          >
-            {isMapLocked ? '🔒' : '🔓'}
-          </button>
+          />
         </div>
 
       {/* Kartrotasjon (bare i live-mode og rotateMap) */}

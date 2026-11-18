@@ -135,15 +135,15 @@ export default function OfflineMapManager({
   return (
     <div className="space-y-3">
       {/* Current cache size */}
-      <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded space-y-1">
+      <div className="text-sm text-gray-600 bg-gray-50 p-2 rounded space-y-1">
         <div><strong>Total cache:</strong> {formatBytes(cacheSize)}</div>
-        <div className="text-[10px] text-gray-500">
+        <div className="text-sm text-gray-500">
           Lagrer Kartverket-topo, høydedata og bebyggelse inntil 3 km utenfor jaktgrensen.
           Kongshov-flyfoto lastes ned sammen med jaktfeltet. Google-satellitt kan ikke lastes ned.
         </div>
       </div>
       {downloadError && (
-        <div className="text-xs text-red-700 bg-red-50 p-2 rounded">{downloadError}</div>
+        <div className="text-sm text-red-700 bg-red-50 p-2 rounded">{downloadError}</div>
       )}
       {huntingAreaName && onUseHuntingArea && !definedBounds && !isDefining && (
         <button
@@ -159,25 +159,25 @@ export default function OfflineMapManager({
       {/* Download configuration (shown when bounds are defined) */}
       {definedBounds && !isDownloading && (
         <div className="bg-blue-50 p-3 rounded border border-blue-200 space-y-2">
-          <div className="text-xs font-semibold text-blue-800">Konfigurer nedlasting:</div>
+          <div className="text-sm font-semibold text-blue-800">Konfigurer nedlasting:</div>
           
           <input
             type="text"
             placeholder="Navn på område (f.eks. 'Hjortejakt 2026')"
             value={areaName}
             onChange={(e) => setAreaName(e.target.value)}
-            className="w-full px-2 py-1 text-xs border rounded"
+            className="w-full px-2 py-1 text-sm border rounded"
           />
           
           <div>
-            <div className="text-xs text-gray-700 mb-1">Zoom-nivåer:</div>
+            <div className="text-sm text-gray-700 mb-1">Zoom-nivåer:</div>
             <div className="flex flex-wrap gap-1">
               {[12, 13, 14, 15, 16, 17].map(zoom => (
                 <button
                   key={zoom}
                   type="button"
                   onClick={() => toggleZoom(zoom)}
-                  className={`px-2 py-1 text-xs rounded ${
+                  className={`px-2 py-1 text-sm rounded ${
                     selectedZooms.includes(zoom)
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-200 text-gray-700'
@@ -187,13 +187,13 @@ export default function OfflineMapManager({
                 </button>
               ))}
             </div>
-            <div className="text-[10px] text-gray-500 mt-1">
+            <div className="text-sm text-gray-500 mt-1">
               Anbefalt: 13–15 for jakt. Høyere = mer detalj, men flere fliser.
             </div>
           </div>
 
           <div>
-            <label className="flex items-center gap-2 cursor-pointer text-xs text-gray-700">
+            <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-700">
               <input
                 type="checkbox"
                 checked={includeElevation}
@@ -202,15 +202,15 @@ export default function OfflineMapManager({
               />
               <span>Inkluder høydedata (LOS og profil uten nett)</span>
             </label>
-            <div className="text-[10px] text-gray-500 mt-1 ml-6">
+            <div className="text-sm text-gray-500 mt-1 ml-6">
               Terrarium-høyde lastes på zoom 13 for samme område
             </div>
           </div>
 
-          <div className="text-xs text-gray-700 bg-white p-2 rounded">
+          <div className="text-sm text-gray-700 bg-white p-2 rounded">
             <strong>Estimat:</strong> {estimatedTiles + estimatedElevationTiles} fliser (~{formatBytes(estimateStorageSize(estimatedTiles, estimatedElevationTiles))})
             {includeElevation && (
-              <div className="text-[10px] text-gray-600 mt-1">
+              <div className="text-sm text-gray-600 mt-1">
                 {estimatedTiles} kart + {estimatedElevationTiles} høyde (z13)
               </div>
             )}
@@ -220,14 +220,14 @@ export default function OfflineMapManager({
             <button
               type="button"
               onClick={handleConfirm}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-1 px-3 rounded text-xs font-semibold"
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-1 px-3 rounded text-sm font-semibold"
             >
               Last ned
             </button>
             <button
               type="button"
               onClick={onCancelDefine}
-              className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-1 px-3 rounded text-xs font-semibold"
+              className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-1 px-3 rounded text-sm font-semibold"
             >
               Avbryt
             </button>
@@ -254,7 +254,7 @@ export default function OfflineMapManager({
       {/* Download progress */}
       {isDownloading && downloadProgress && (
         <div className="bg-blue-50 p-3 rounded border border-blue-200">
-          <div className="text-xs font-semibold text-blue-800 mb-1">
+          <div className="text-sm font-semibold text-blue-800 mb-1">
             {downloadProgress.label || 'Laster ned…'}
           </div>
           <div className="w-full bg-blue-200 rounded-full h-2 mb-1">
@@ -263,7 +263,7 @@ export default function OfflineMapManager({
               style={{ width: `${downloadProgress.percentage}%` }}
             />
           </div>
-          <div className="text-xs text-blue-700">
+          <div className="text-sm text-blue-700">
             {downloadProgress.current} / {downloadProgress.total} ({downloadProgress.percentage}%)
           </div>
         </div>
@@ -272,17 +272,17 @@ export default function OfflineMapManager({
       {/* List of offline areas */}
       {offlineAreas.length > 0 && (
         <div className="space-y-2">
-          <div className="text-xs font-semibold text-gray-700">Lagrede områder:</div>
+          <div className="text-sm font-semibold text-gray-700">Lagrede områder:</div>
           {offlineAreas.map((area) => (
             <div
               key={area.id}
-              className="bg-gray-50 p-2 rounded border border-gray-200 text-xs"
+              className="bg-gray-50 p-2 rounded border border-gray-200 text-sm"
             >
               <div className="flex items-start justify-between mb-1">
                 <div>
                   <div className="font-semibold text-gray-800">{area.name}</div>
                   {area.huntingAreaId && (
-                    <div className="text-[10px] text-green-700 font-medium">Jaktfelt</div>
+                    <div className="text-sm text-green-700 font-medium">Jaktfelt</div>
                   )}
                 </div>
                 <button
@@ -304,21 +304,21 @@ export default function OfflineMapManager({
                   {' '}(~{formatBytes(estimateStorageSize(area.tileCount, area.elevationTileCount || 0))})
                 </div>
                 {area.includesElevation && (
-                  <div className="text-[10px] text-green-600">
+                  <div className="text-sm text-green-600">
                     ✓ Inkluderer høydedata
                   </div>
                 )}
                 {typeof area.placeCount === 'number' && area.placeCount > 0 && (
-                  <div className="text-[10px] text-green-600">
+                  <div className="text-sm text-green-600">
                     ✓ {area.placeCount} bebyggelse-punkt (3 km utenfor grensen)
                   </div>
                 )}
                 {area.huntingAreaId && area.placeCount === 0 && (
-                  <div className="text-[10px] text-amber-700">
+                  <div className="text-sm text-amber-700">
                     Ingen bebyggelse lagret — last ned på nytt med nett
                   </div>
                 )}
-                <div className="text-[10px] text-gray-500">
+                <div className="text-sm text-gray-500">
                   {new Date(area.createdAt).toLocaleString('no-NO')}
                 </div>
               </div>
@@ -328,7 +328,7 @@ export default function OfflineMapManager({
       )}
 
       {offlineAreas.length === 0 && !isDefining && !definedBounds && (
-        <div className="text-xs text-gray-500 italic text-center py-2">
+        <div className="text-sm text-gray-500 italic text-center py-2">
           Ingen offline-områder lagret ennå
         </div>
       )}

@@ -72,7 +72,7 @@ const categoryLabels: Record<keyof CategoryFilter, string> = {
 
 export default function FilterMenu({ categoryFilters, onCategoryChange, radius, onRadiusChange, losRangeMeters, onLosRangeChange, losHeightMeters, onLosHeightChange, showMarkers, onShowMarkersChange, orientationMode, onOrientationModeChange, categoryConfigs, showOnlyLastShot, onShowOnlyLastShotChange, mode, showAllTracksAndFinds, onShowAllTracksAndFindsChange, showObservations, onShowObservationsChange, showFinds, onShowFindsChange, showShots, onShowShotsChange, showTracks, onShowTracksChange, showHuntingBoundary, onShowHuntingBoundaryChange, onSync, showSearchTracks, onShowSearchTracksChange, showSearchFinds, onShowSearchFindsChange, batterySaver, onBatterySaverChange, targetRangeMeters, onTargetRangeChange, showElevationProfile, onShowElevationProfileChange }: FilterMenuProps) {
   return (
-    <div className="bg-white rounded-lg shadow-lg p-4 min-w-[220px] max-w-xs">
+    <div className="bg-white rounded-2xl shadow-lg p-4 w-[min(22rem,calc(100vw-1rem))] max-h-[calc(100dvh-env(safe-area-inset-top,0px)-10rem)] overflow-y-auto">
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-lg font-semibold text-gray-800">Quick filters</h3>
       </div>
@@ -80,7 +80,7 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
       {/* Radius Control - kun i Aware-mode */}
       {mode === 'aware' && (
         <div className="mb-3">
-          <label className="text-xs font-medium text-gray-700 block mb-1">
+          <label className="text-sm font-medium text-gray-700 block mb-1">
             Aware-range: {radius}m
           </label>
           <input
@@ -100,7 +100,7 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
       {/* LOS range in aware quick filter */}
       {mode === 'aware' && onLosRangeChange && (
         <div className="mb-3">
-          <label className="text-xs font-medium text-gray-700 block mb-1">
+          <label className="text-sm font-medium text-gray-700 block mb-1">
             LOS-range: {losRangeMeters ?? 350}m
           </label>
           <input
@@ -117,7 +117,7 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
       {/* LOS height in aware quick filter */}
       {mode === 'aware' && onLosHeightChange && (
         <div className="mb-3">
-          <label className="text-xs font-medium text-gray-700 block mb-1">
+          <label className="text-sm font-medium text-gray-700 block mb-1">
             LOS-height: {losHeightMeters ?? 5}m
           </label>
           <input
@@ -134,7 +134,7 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
       {/* Elevation profile toggle */}
       {mode === 'aware' && onShowElevationProfileChange && (
         <div className="mb-3">
-          <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+          <label className="flex items-center gap-2 cursor-pointer text-sm bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
             <input
               type="checkbox"
               checked={!!showElevationProfile}
@@ -154,7 +154,7 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
           {/* Vis skuddpar */}
           {showShots !== undefined && onShowShotsChange && (
             <div className="mb-3">
-              <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+              <label className="flex items-center gap-2 cursor-pointer text-sm bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
                 <input
                   type="checkbox"
                   checked={showShots}
@@ -170,7 +170,7 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
           {/* Vis kun siste skuddpar (tilvalg under Vis skuddpar) */}
           {onShowOnlyLastShotChange && (
             <div className="mb-3 ml-5">
-              <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+              <label className="flex items-center gap-2 cursor-pointer text-sm bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
                 <input
                   type="checkbox"
                   checked={!!showOnlyLastShot}
@@ -188,7 +188,7 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
           {/* Vis søkespor */}
           {showTracks !== undefined && onShowTracksChange && (
             <div className="mb-3">
-              <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+              <label className="flex items-center gap-2 cursor-pointer text-sm bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
                 <input
                   type="checkbox"
                   checked={showTracks}
@@ -204,7 +204,7 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
           {/* Vis funn */}
           {showFinds !== undefined && onShowFindsChange && (
             <div className="mb-3">
-              <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+              <label className="flex items-center gap-2 cursor-pointer text-sm bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
                 <input
                   type="checkbox"
                   checked={!!showFinds}
@@ -221,7 +221,7 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
           {/* Vis observasjoner */}
           {showObservations !== undefined && onShowObservationsChange && (
             <div className="mb-3">
-              <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+              <label className="flex items-center gap-2 cursor-pointer text-sm bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
                 <input
                   type="checkbox"
                   checked={showObservations}
@@ -238,7 +238,7 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
           {/* Jaktgrenser */}
           {showHuntingBoundary !== undefined && onShowHuntingBoundaryChange && (
             <div className="mb-3">
-              <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+              <label className="flex items-center gap-2 cursor-pointer text-sm bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
                 <input
                   type="checkbox"
                   checked={showHuntingBoundary}
@@ -260,7 +260,7 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
           {/* Target range slider for Shoot quick filter */}
           {onTargetRangeChange && (
             <div className="mb-3">
-              <label className="text-xs font-medium text-gray-700 block mb-1">
+              <label className="text-sm font-medium text-gray-700 block mb-1">
                 Target range: {targetRangeMeters ?? 500}m
               </label>
               <input
@@ -277,7 +277,7 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
           {/* Vis skuddpar */}
           {showShots !== undefined && onShowShotsChange && (
             <div className="mb-3">
-              <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+              <label className="flex items-center gap-2 cursor-pointer text-sm bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
                 <input
                   type="checkbox"
                   checked={showShots}
@@ -294,7 +294,7 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
           {/* Vis kun siste skuddpar (under Vis skuddpar) */}
           {onShowOnlyLastShotChange && (
             <div className="mb-3 ml-5">
-              <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+              <label className="flex items-center gap-2 cursor-pointer text-sm bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
                 <input
                   type="checkbox"
                   checked={!!showOnlyLastShot}
@@ -312,7 +312,7 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
           {/* Vis søkespor */}
           {showTracks !== undefined && onShowTracksChange && (
             <div className="mb-3">
-              <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+              <label className="flex items-center gap-2 cursor-pointer text-sm bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
                 <input
                   type="checkbox"
                   checked={showTracks}
@@ -328,7 +328,7 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
           {/* Vis funn */}
           {showFinds !== undefined && onShowFindsChange && (
             <div className="mb-3">
-              <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+              <label className="flex items-center gap-2 cursor-pointer text-sm bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
                 <input
                   type="checkbox"
                   checked={!!showFinds}
@@ -345,7 +345,7 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
           {/* Vis observasjoner */}
           {showObservations !== undefined && onShowObservationsChange && (
             <div className="mb-3">
-              <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+              <label className="flex items-center gap-2 cursor-pointer text-sm bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
                 <input
                   type="checkbox"
                   checked={showObservations}
@@ -362,7 +362,7 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
           {/* Jaktgrenser */}
           {showHuntingBoundary !== undefined && onShowHuntingBoundaryChange && (
             <div className="mb-3">
-              <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+              <label className="flex items-center gap-2 cursor-pointer text-sm bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
                 <input
                   type="checkbox"
                   checked={showHuntingBoundary}
@@ -384,7 +384,7 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
           {/* Batterispar */}
           {onBatterySaverChange && (
             <div className="mb-3">
-              <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+              <label className="flex items-center gap-2 cursor-pointer text-sm bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
                 <input
                   type="checkbox"
                   checked={!!batterySaver}
@@ -400,7 +400,7 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
           {/* Vis skuddpar */}
           {showShots !== undefined && onShowShotsChange && (
             <div className="mb-3">
-              <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+              <label className="flex items-center gap-2 cursor-pointer text-sm bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
                 <input
                   type="checkbox"
                   checked={showShots}
@@ -416,7 +416,7 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
           {/* Vis kun siste skuddpar (samme kontroll som i Shoot) */}
           {onShowOnlyLastShotChange && (
             <div className="mb-3 ml-5">
-              <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+              <label className="flex items-center gap-2 cursor-pointer text-sm bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
                 <input
                   type="checkbox"
                   checked={!!showOnlyLastShot}
@@ -436,7 +436,7 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
       {/* Vis søkespor i søk-modus */}
       {mode === 'søk' && onShowSearchTracksChange && (
         <div className="mb-3">
-          <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+          <label className="flex items-center gap-2 cursor-pointer text-sm bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
             <input
               type="checkbox"
               checked={!!showSearchTracks}
@@ -453,7 +453,7 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
       {/* Vis funn i søk-modus */}
       {mode === 'søk' && onShowSearchFindsChange && (
         <div className="mb-3">
-          <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+          <label className="flex items-center gap-2 cursor-pointer text-sm bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
             <input
               type="checkbox"
               checked={!!showSearchFinds}
@@ -470,7 +470,7 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
       {/* Vis observasjoner i søk-modus */}
       {mode === 'søk' && onShowObservationsChange && (
         <div className="mb-3">
-          <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+          <label className="flex items-center gap-2 cursor-pointer text-sm bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
             <input
               type="checkbox"
               checked={!!showObservations}
@@ -487,7 +487,7 @@ export default function FilterMenu({ categoryFilters, onCategoryChange, radius, 
       {/* Jaktgrenser i søk-modus */}
       {mode === 'søk' && showHuntingBoundary !== undefined && onShowHuntingBoundaryChange && (
         <div className="mb-3">
-          <label className="flex items-center gap-2 cursor-pointer text-xs bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
+          <label className="flex items-center gap-2 cursor-pointer text-sm bg-gray-50 px-2 py-1 rounded border hover:bg-gray-100 transition-colors">
             <input
               type="checkbox"
               checked={showHuntingBoundary}

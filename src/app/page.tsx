@@ -8,6 +8,8 @@ import AdminMenu from '@/components/adminmenu';
 import OfflineAreaControls from '@/components/OfflineAreaControls';
 import { useAuth } from '@/contexts/AuthContext';
 import { boundsFromPolygon } from '@/lib/geo/tiles';
+import MapButton from '@/components/ui/MapButton';
+import { CompassIcon, FilterIcon, LockIcon, MenuIcon, ReticleIcon, SettingsIcon } from '@/components/ui/icons';
 
 interface Position {
   lat: number;
@@ -659,109 +661,106 @@ export default function Home() {
         return (
           <div className="w-full h-screen">
 
-        {/* Admin hamburger-knapp oppe til høyre */}
-        <div className="fixed top-4 right-4 z-[2001]">
+        {/* Topprad: innstillinger, modus, filter og meny. Alt i rem, så det følger Visningsstørrelse. */}
+        <div
+          className="fixed top-0 inset-x-0 z-[2001] mx-auto max-w-[32rem] flex items-center justify-center gap-[min(0.375rem,1.25vw)] px-2 pointer-events-none"
+          style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.5rem)' }}
+        >
+          <button
+            onClick={() => {
+              if (isSettingsExpanded) {
+                requestCloseSettings();
+                return;
+              }
+              setIsSettingsExpanded(true);
+              setIsFilterExpanded(false);
+            }}
+            ref={settingsButtonRef}
+            className={`pointer-events-auto w-[min(2.75rem,10vw)] h-[min(2.75rem,10vw)] shrink-0 flex items-center justify-center rounded-full shadow-lg ring-2 transition-colors ${
+              isSettingsExpanded
+                ? 'bg-blue-600 text-white ring-white'
+                : 'bg-white text-gray-900 ring-white/70 hover:bg-gray-100'
+            }`}
+            title={isSettingsExpanded ? 'Lukk innstillinger' : 'Åpne innstillinger'}
+            aria-label={isSettingsExpanded ? 'Lukk innstillinger' : 'Åpne innstillinger'}
+          >
+            <SettingsIcon />
+          </button>
+          <div className="pointer-events-auto flex flex-1 min-w-0 max-w-[20rem] rounded-full bg-white/95 shadow-lg ring-2 ring-white/70 p-1 gap-0.5">
+            {([
+              ['aware', 'Aware'],
+              ['track', 'Shoot'],
+              ['søk', 'Track'],
+            ] as const).map(([key, label]) => (
+              <button
+                key={key}
+                className={`flex-1 h-[min(2.25rem,8.5vw)] min-w-0 px-1 rounded-full text-[min(1rem,4vw)] font-bold leading-none transition-colors ${
+                  mode === key ? 'bg-blue-600 text-white' : 'text-gray-800 hover:bg-gray-200'
+                }`}
+                aria-pressed={mode === key}
+                onClick={() => setMode(key)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => {
+              if (isSettingsExpanded && isOfflineDownloading) {
+                setShowLeaveDownloadConfirm(true);
+                return;
+              }
+              setIsFilterExpanded(!isFilterExpanded);
+              if (!isFilterExpanded) {
+                setIsSettingsExpanded(false);
+              }
+            }}
+            ref={filterButtonRef}
+            className={`pointer-events-auto w-[min(2.75rem,10vw)] h-[min(2.75rem,10vw)] shrink-0 flex items-center justify-center rounded-full shadow-lg ring-2 transition-colors ${
+              isFilterExpanded
+                ? 'bg-blue-600 text-white ring-white'
+                : 'bg-white text-gray-900 ring-white/70 hover:bg-gray-100'
+            }`}
+            title={isFilterExpanded ? 'Lukk filter' : 'Åpne filter'}
+            aria-label={isFilterExpanded ? 'Lukk filter' : 'Åpne filter'}
+          >
+            <FilterIcon />
+          </button>
           <button
             onClick={() => setIsAdminExpanded(!isAdminExpanded)}
-            className="w-10 h-10 bg-gray-800 hover:bg-gray-700 text-white rounded-lg shadow-lg flex items-center justify-center transition-colors"
-            title="Admin Panel"
+            className="pointer-events-auto w-[min(2.75rem,10vw)] h-[min(2.75rem,10vw)] shrink-0 bg-gray-900/90 hover:bg-gray-800 text-white rounded-full shadow-lg ring-2 ring-white/70 flex items-center justify-center transition-colors"
+            title="Lag og konto"
+            aria-label="Lag og konto"
           >
-            <span className="text-lg">☰</span>
+            <MenuIcon />
           </button>
         </div>
-        
-        {/* Lock-knapp - under admin-knappen, kun synlig når kompass er på */}
+
+        {/* Kompasslås og kalibrering - under toppraden til høyre, kun når kompasset er på */}
         {compassMode === 'on' && (
-          <div className="fixed top-16 right-4 z-[2001] flex flex-col items-end gap-2">
-            <button
+          <div
+            className="fixed right-2 z-[2001] flex flex-col items-end gap-2"
+            style={{ top: 'calc(env(safe-area-inset-top, 0px) + 4.25rem)' }}
+          >
+            <MapButton
               onClick={() => setIsCompassLocked(!isCompassLocked)}
-              className={`w-10 h-10 rounded-lg shadow-lg flex items-center justify-center transition-colors ${
-                isCompassLocked
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                  : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
-              }`}
-              title={isCompassLocked ? 'Låst: Kart roterer' : 'Ulåst: Pil roterer'}
-            >
-              <span className="text-lg">⬆️</span>
-            </button>
-            <button
+              tone={isCompassLocked ? 'primary' : 'neutral'}
+              icon={isCompassLocked ? <LockIcon /> : <CompassIcon />}
+              label={isCompassLocked ? 'Kart roterer' : 'Pil roterer'}
+              title={isCompassLocked ? 'Låst: kartet roterer' : 'Ulåst: pilen roterer'}
+              className="w-auto px-2"
+            />
+            <MapButton
               onClick={() => calibrationOpenRef.current && calibrationOpenRef.current()}
-              className="w-10 h-10 rounded-lg shadow-lg flex items-center justify-center transition-colors bg-white/90 border border-gray-300 hover:bg-gray-100 text-gray-800"
+              icon={<ReticleIcon />}
+              label="Kalibrer"
               title="Kalibrer kompass"
-            >
-              <span className="text-lg">🗜️</span>
-            </button>
+            />
           </div>
         )}
-        
-        {/* Mode-toggle og menyknapper alltid synlig, fixed og midtjustert, også på mobil */}
-      <div className="fixed top-0 left-1/2 -translate-x-1/2 z-[2001] flex justify-center items-center w-full max-w-xs px-2 py-2 gap-2">
-        {/* Settings-knapp */}
-        <button
-          onClick={() => {
-            if (isSettingsExpanded) {
-              requestCloseSettings();
-              return;
-            }
-            setIsSettingsExpanded(true);
-            setIsFilterExpanded(false);
-          }}
-          ref={settingsButtonRef}
-          className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors border ${
-            isSettingsExpanded 
-              ? 'bg-blue-100 border-blue-300 hover:bg-blue-200' 
-              : 'bg-white hover:bg-gray-200'
-          }`}
-          title={isSettingsExpanded ? 'Lukk innstillinger' : 'Åpne innstillinger'}
-        >
-          <span className="text-xl">⚙️</span>
-        </button>
-        <button
-          className={`font-semibold px-2 py-3 rounded-full transition-colors text-xs ${mode === 'aware' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
-          onClick={() => setMode('aware')}
-        >
-          Aware
-        </button>
-        <button
-          className={`font-semibold px-2 py-3 rounded-full transition-colors text-xs ${mode === 'track' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
-          onClick={() => setMode('track')}
-        >
-          Shoot
-        </button>
-        <button
-          className={`font-semibold px-2 py-3 rounded-full transition-colors text-xs ${mode === 'søk' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
-          onClick={() => setMode('søk')}
-        >
-          Track
-        </button>
-        {/* Filter-knapp */}
-        <button
-          onClick={() => {
-            if (isSettingsExpanded && isOfflineDownloading) {
-              setShowLeaveDownloadConfirm(true);
-              return;
-            }
-            setIsFilterExpanded(!isFilterExpanded);
-            if (!isFilterExpanded) {
-              setIsSettingsExpanded(false);
-            }
-          }}
-          ref={filterButtonRef}
-          className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors border ${
-            isFilterExpanded 
-              ? 'bg-blue-100 border-blue-300 hover:bg-blue-200' 
-              : 'bg-white hover:bg-gray-100 border-gray-200'
-          }`}
-          title={isFilterExpanded ? 'Lukk filter' : 'Åpne filter'}
-        >
-          <span className="text-xl">☑️</span>
-        </button>
-      </div>
-      
-
       {/* Settings Menu */}
       {isSettingsExpanded && (
-        <div ref={settingsMenuRef} className="fixed top-14 left-1/2 -translate-x-1/2 z-[2002]">
+        <div ref={settingsMenuRef} className="fixed left-1/2 -translate-x-1/2 z-[2002]" style={{ top: 'calc(env(safe-area-inset-top, 0px) + 4.25rem)' }}>
           <SettingsMenu
             categoryConfigs={categoryConfigs}
             onCategoryConfigChange={handleCategoryConfigChange}
@@ -906,7 +905,7 @@ export default function Home() {
         </div>
       )}
       {isFilterExpanded && (
-        <div ref={filterMenuRef} className="fixed top-14 left-1/2 -translate-x-1/2 z-[2002]">
+        <div ref={filterMenuRef} className="fixed left-1/2 -translate-x-1/2 z-[2002]" style={{ top: 'calc(env(safe-area-inset-top, 0px) + 4.25rem)' }}>
                   <FilterMenu
           categoryFilters={categoryFilters}
           onCategoryChange={handleCategoryChange}
