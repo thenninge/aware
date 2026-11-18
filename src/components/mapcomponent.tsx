@@ -1996,6 +1996,8 @@ export default function MapComponent({
   const loadSavedObservations = (): SavedObservation[] => listCachedObservations(activeTeam);
 
   const handleDeleteFind = async (findId: string) => {
+    const item = savedFinds.find((f) => f.id === findId);
+    if (!window.confirm(`Slette funnet${item?.name ? ` «${item.name}»` : ''}?`)) return;
     removeCachedItem(activeTeam, 'finds', findId);
     setSavedFinds((prev) => prev.filter((find) => find.id !== findId));
     if (activeTeam) {
@@ -2009,6 +2011,8 @@ export default function MapComponent({
   };
 
   const handleDeleteObservation = async (observationId: string) => {
+    const item = savedObservations.find((o) => o.id === observationId);
+    if (!window.confirm(`Slette observasjonen${item?.name ? ` «${item.name}»` : ''}?`)) return;
     removeCachedItem(activeTeam, 'observations', observationId);
     setSavedObservations((prev) => prev.filter((obs) => obs.id !== observationId));
     if (activeTeam) {
@@ -2022,6 +2026,8 @@ export default function MapComponent({
   };
 
   const handleDeleteTrack = async (trackId: string) => {
+    const item = savedTracks.find((t) => t.id === trackId);
+    if (!window.confirm(`Slette sporet${item?.name ? ` «${item.name}»` : ''}?`)) return;
     removeCachedItem(activeTeam, 'tracks', trackId);
     setSavedTracks((prev) => prev.filter((track) => track.id !== trackId));
     if (activeTeam) {
@@ -3286,16 +3292,20 @@ export default function MapComponent({
             {savedFinds.map((find) => {
               // Skaler "+"-symbolet i piksel basert på nåværende zoom slik at det oppfører seg som sirkel (meter-basert)
               const pxSize = Math.round(2 * symPx(observationSize, SYMBOL_PX.find)); // diameter i piksler
+              // Trykkflaten er minst like stor som en fingertupp, selv om «+» er mindre
+              const hitSize = Math.max(pxSize, SYMBOL_PX.hit * 2);
               const icon = L.divIcon({
                 className: 'custom-marker find-plus',
                 html: `
-                  <div style="position:relative;width:${pxSize}px;height:${pxSize}px;">
-                    <div style="position:absolute;left:0;top:50%;width:100%;height:3px;background:${find.color};box-shadow:0 0 0 1px rgba(255,255,255,.8);transform:translateY(-50%);"></div>
-                    <div style="position:absolute;top:0;left:50%;width:3px;height:100%;background:${find.color};box-shadow:0 0 0 1px rgba(255,255,255,.8);transform:translateX(-50%);"></div>
+                  <div style="position:relative;width:${hitSize}px;height:${hitSize}px;display:flex;align-items:center;justify-content:center;">
+                    <div style="position:relative;width:${pxSize}px;height:${pxSize}px;">
+                      <div style="position:absolute;left:0;top:50%;width:100%;height:3px;background:${find.color};box-shadow:0 0 0 1px rgba(255,255,255,.8);transform:translateY(-50%);"></div>
+                      <div style="position:absolute;top:0;left:50%;width:3px;height:100%;background:${find.color};box-shadow:0 0 0 1px rgba(255,255,255,.8);transform:translateX(-50%);"></div>
+                    </div>
                   </div>
                 `,
-                iconSize: [pxSize, pxSize] as any,
-                iconAnchor: [pxSize / 2, pxSize / 2] as any,
+                iconSize: [hitSize, hitSize] as any,
+                iconAnchor: [hitSize / 2, hitSize / 2] as any,
               });
               return (
               <Marker
@@ -3304,15 +3314,21 @@ export default function MapComponent({
                   icon={icon}
               >
                 <Popup>
-                  <div className="text-center">
-                    <div className="font-semibold text-sm">{find.name}</div>
-                    <div className="text-xs text-gray-600 mt-1">
-                      {new Date(find.createdAt).toLocaleDateString('nb-NO')}
+                  <div className="text-center min-w-[10rem]">
+                    <div className="font-semibold text-base">{find.name || 'Funn'}</div>
+                    {!Number.isNaN(new Date(find.createdAt).getTime()) && (
+                      <div className="text-sm text-gray-700 mt-1">
+                        {new Date(find.createdAt).toLocaleDateString('nb-NO')} kl.{' '}
+                        {new Date(find.createdAt).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    )}
+                    <div className="text-xs text-gray-600 mt-1 font-mono">
+                      {find.position.lat.toFixed(5)}, {find.position.lng.toFixed(5)}
                     </div>
-                      <button
-                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteFind(find.id); }}
-                        className="mt-2 px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white"
-                      >Slett funn</button>
+                    <button
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteFind(find.id); }}
+                      className="mt-3 px-3 py-1.5 text-sm rounded border-2 border-red-600 text-red-700 hover:bg-red-50"
+                    >Slett funn</button>
                   </div>
                 </Popup>
               </Marker>
@@ -3335,33 +3351,44 @@ export default function MapComponent({
         {/* Alle lagrede observasjoner i søk-modus */}
         {((mode === 'søk' && showObservations) || (mode === 'aware' && showObservations) || (mode === 'track' && showObservations)) && savedObservations && savedObservations.length > 0 && (
           <>
-            {savedObservations.map((observation) => (
-            <CircleMarker
-                key={`saved-observation-${observation.id}`}
-                center={[observation.position.lat, observation.position.lng]}
-                radius={symPx(observationSize)}
-                pathOptions={{
-                  color: observation.color,
-                  fillColor: 'transparent',
-                  fillOpacity: 0,
-                  weight: 2,
-                }}
-                
-              >
-                <Popup>
-                  <div className="text-center">
-                    <div className="font-semibold text-sm">{observation.name}</div>
-                    <div className="text-xs text-gray-600 mt-1">
-                      {new Date(observation.createdAt).toLocaleDateString('nb-NO')}
-                    </div>
-                    <button
-                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteObservation(observation.id); }}
-                      className="mt-2 px-2 py-1 rounded bg-red-600 hover:bg-red-700 text-white"
-                    >Slett observasjon</button>
-                  </div>
-                </Popup>
-              </CircleMarker>
-            ))}
+            {savedObservations.map((observation) => {
+              const created = new Date(observation.createdAt);
+              const when = Number.isNaN(created.getTime())
+                ? ''
+                : `${created.toLocaleDateString('nb-NO')} kl. ${created.toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' })}`;
+              return (
+                <React.Fragment key={`saved-observation-${observation.id}`}>
+                  {/* Synlig ring */}
+                  <CircleMarker
+                    center={[observation.position.lat, observation.position.lng]}
+                    radius={symPx(observationSize)}
+                    interactive={false}
+                    pathOptions={{ color: observation.color, fillColor: 'transparent', fillOpacity: 0, weight: 2 }}
+                  />
+                  {/* Usynlig trykkflate i markør-laget, over jaktfelt, soner og sikt, så den alltid kan trykkes på */}
+                  <CircleMarker
+                    center={[observation.position.lat, observation.position.lng]}
+                    radius={SYMBOL_PX.hit}
+                    pane="markerPane"
+                    pathOptions={{ color: observation.color, opacity: 0.01, fillOpacity: 0.01 }}
+                  >
+                    <Popup>
+                      <div className="text-center min-w-[10rem]">
+                        <div className="font-semibold text-base">{observation.name || 'Observasjon'}</div>
+                        {when && <div className="text-sm text-gray-700 mt-1">{when}</div>}
+                        <div className="text-xs text-gray-600 mt-1 font-mono">
+                          {observation.position.lat.toFixed(5)}, {observation.position.lng.toFixed(5)}
+                        </div>
+                        <button
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteObservation(observation.id); }}
+                          className="mt-3 px-3 py-1.5 text-sm rounded border-2 border-red-600 text-red-700 hover:bg-red-50"
+                        >Slett observasjon</button>
+                      </div>
+                    </Popup>
+                  </CircleMarker>
+                </React.Fragment>
+              );
+            })}
           </>
         )}
         {/* Live preview av radius-sirkel når radius-modal er aktiv */}

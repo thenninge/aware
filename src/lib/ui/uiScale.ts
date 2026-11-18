@@ -4,6 +4,7 @@
 export const UI_SCALE_KEY = 'aware_ui_scale';
 
 export const UI_SCALES = [
+  { value: 0.85, label: 'Mini' },
   { value: 1, label: 'Normal' },
   { value: 1.15, label: 'Stor' },
   { value: 1.3, label: 'Ekstra stor' },
@@ -28,4 +29,4 @@ export function applyUiScale(scale: number): void {
 }
 
 /** Kjøres inline i <head> så siden ikke blinker i feil størrelse. */
-export const UI_SCALE_BOOT_SCRIPT = `try{var s=Number(localStorage.getItem('${UI_SCALE_KEY}'));if(s===1.15||s===1.3)document.documentElement.style.setProperty('--ui-scale',String(s));}catch(e){}`;
+export const UI_SCALE_BOOT_SCRIPT = `try{var s=Number(localStorage.getItem('${UI_SCALE_KEY}'));if(s===0.85||s===1.15||s===1.3)document.documentElement.style.setProperty('--ui-scale',String(s));}catch(e){}`;
