@@ -4,7 +4,8 @@ import L from 'leaflet';
  * Énhånds-zoom («dobbelttrykk og dra») for Leaflet, slik som i Google Maps.
  *
  * Trykk én gang, trykk igjen på omtrent samme sted og hold fingeren nede:
- *   dra ned → zoom inn, dra opp → zoom ut. Punktet der man trykket ligger i ro.
+ *   dra ned → zoom inn, dra opp → zoom ut, rundt kartets sentrum (sentrum ligger i ro).
+ *   Vanlig dobbelttrykk zoomer fortsatt inn rundt punktet man trykket på.
  * Løftes fingeren uten å dra, zoomes det inn ett trinn (vanlig dobbelttrykk).
  *
  * Leaflet 1.9 har ikke denne gesten. Bevegelsen bruker samme interne kall som
@@ -64,9 +65,8 @@ export function attachOneFingerZoom(leafletMap: L.Map): () => void {
   let gesturePointer = -1;
   let startY = 0;
   let startZoom = 0;
-  let anchorPoint = L.point(0, 0); // containerpunkt som skal ligge i ro
-  let anchorLatLng = L.latLng(0, 0);
-  let center = L.latLng(0, 0);
+  let anchorPoint = L.point(0, 0); // trykkpunktet, brukes bare av vanlig dobbelttrykk
+  let center = L.latLng(0, 0); // kartets sentrum ved start; ligger i ro under hele dra-gesten
   let zoom = 0;
   let raf = 0;
   // touch*-hendelser kommer etter pointer*-hendelsene; svelg dem til fingeren er løftet
@@ -86,17 +86,11 @@ export function attachOneFingerZoom(leafletMap: L.Map): () => void {
     return !tz || tz.enabled();
   };
 
-  const centerFor = (z: number) => {
-    // Samme regnestykke som Leaflets knipe-zoom: ankeret blir liggende under fingeren
-    const offset = anchorPoint.subtract(map.getSize().divideBy(2));
-    return map.unproject(map.project(anchorLatLng, z).subtract(offset), z);
-  };
-
   const finish = (commit: boolean) => {
     cancelAnimationFrame(raf);
     if (phase === 'zooming' && commit) {
       const target = map._limitZoom(zoom);
-      const c = centerFor(target);
+      const c = center;
       if (map.options.zoomAnimation) {
         map._animateZoom(c, target, true, map.options.zoomSnap);
       } else {
@@ -148,7 +142,6 @@ export function attachOneFingerZoom(leafletMap: L.Map): () => void {
       startZoom = map.getZoom();
       zoom = startZoom;
       anchorPoint = p;
-      anchorLatLng = map.containerPointToLatLng(p);
       center = map.getCenter();
       map._stop();
       return;
@@ -176,7 +169,6 @@ export function attachOneFingerZoom(leafletMap: L.Map): () => void {
     }
 
     zoom = oneFingerZoomLevel(startZoom, dy, map.getMinZoom(), map.getMaxZoom());
-    center = centerFor(zoom);
     cancelAnimationFrame(raf);
     raf = requestAnimationFrame(() => {
       map._move(center, zoom, { pinch: true, round: false });
